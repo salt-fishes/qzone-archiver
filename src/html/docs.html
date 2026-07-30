@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/options.css">
+    <link rel="icon" href="../img/icon-128.png">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>QQ空间导出助手-使用文档</title>
+    <script src="../vendor/jquery/jquery.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
+        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
+        .doc-content h3 { margin-top: 1.75rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
+        .doc-content p, .doc-content li { line-height: 1.7; }
+        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
+        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
+        .doc-content .toc ol { margin: 0; }
+        .doc-content .refactor { background: #f0f7ff; padding: 1rem 1.5rem; border-left: 3px solid #007bff; margin: 1.5rem 0; }
+        .doc-content .refactor h3 { border-bottom: none; color: #0056b3; }
+        .doc-content .notice { background: #fff3f3; padding: 1rem 1.5rem; border-left: 3px solid #dc3545; margin: 1.5rem 0; }
+        .doc-content .notice h3 { border-bottom: none; color: #a71d2a; }
+        .doc-content .original { background: #fffaf0; padding: 1rem 1.5rem; border-left: 3px solid #ff9800; margin: 1.5rem 0; }
+        .doc-content .original h3 { border-bottom: none; color: #b25e00; }
+        .doc-content .original p { color: #663300; }
+        .doc-content .changelog { background: #f8f9fa; padding: 1rem 1.5rem; border-left: 3px solid #28a745; margin: 1rem 0; }
+        .doc-content .changelog h4 { color: #28a745; margin-top: 0; }
+        .doc-content table.compare { margin: 0.5rem 0 1rem; font-size: 0.95rem; }
+        .doc-content table.compare th { background: #e9ecef; }
+        .doc-content .pros-cons { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+        .doc-content .pros-cons > div { flex: 1; min-width: 280px; padding: 1rem; border-radius: 4px; }
+        .doc-content .pros { background: #e8f5e9; border-left: 3px solid #28a745; }
+        .doc-content .cons { background: #fbe9e7; border-left: 3px solid #ff5722; }
+        .doc-content .pros h4 { color: #28a745; }
+        .doc-content .cons h4 { color: #ff5722; }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="options.html">设置</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tools.html">工具</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="about.html">关于</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="doc-content">
+            <h2>QQ空间导出助手</h2>
+            <p class="lead">一键快速备份QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客为文件，便于迁移与保存。</p>
+
+            <div class="toc">
+                <ol>
+                    <li><a href="#refactor">重构说明</a></li>
+                    <li><a href="#compare">新老版本对比</a></li>
+                    <li><a href="#pros-cons">优势与不足</a></li>
+                    <li><a href="#notice">原作者公告</a></li>
+                    <li><a href="#original">原作者前言概述</a></li>
+                    <li><a href="#features">功能清单</a></li>
+                    <li><a href="#quick-start">快速开始</a></li>
+                    <li><a href="#notes">注意事项</a></li>
+                    <li><a href="#更新日志">更新日志</a></li>
+                </ol>
+            </div>
+
+            <div class="refactor">
+                <h3 id="refactor">重构说明</h3>
+                <p>本版本是我在原作者 <a href="https://github.com/ShunCai" target="_blank">ShunCai</a> 的 <a href="https://github.com/ShunCai/QZoneExport" target="_blank">QZoneExport</a> 基础上进行的个人重构版。</p>
+
+                <h4>为什么重构</h4>
+                <ul>
+                    <li><strong>Manifest V2 已被 Chrome 淘汰</strong>：原版基于 MV2（manifest_version: 2, version 2.0）开发，Chrome 自 2024 年起已逐步停用 MV2，原扩展在新版浏览器中无法加载。</li>
+                    <li><strong>CSP 限制收紧</strong>：原版 CSP 含 <code>'unsafe-eval'</code> 与 jsdelivr、staticfile、thunderurl 等多个远程 CDN，MV3 明确禁止 <code>eval</code>/<code>new Function</code> 与扩展页面远程脚本。</li>
+                    <li><strong>远程依赖治理</strong>：原版扩展页面与 14 个导出模板（albums/blogs/boards/diaries 等）大量依赖 <code>cdn.staticfile.org</code>、<code>cdn.jsdelivr.net</code> 与 <code>www.lvshuncai.com/custom/js/clicklove.min.js</code>，网络波动时页面直接错乱、模板渲染失败。</li>
+                    <li><strong>原作者已归档</strong>：原作者于 2024 年将项目归档停止维护，部分接口与 QQ 空间最新数据结构脱节且无法修复。</li>
+                </ul>
+
+                <h4>动了哪些模块</h4>
+                <ul>
+                    <li><strong>manifest.json</strong>：MV2 → MV3；<code>background.scripts</code> → <code>background.service_worker</code>；<code>page_action</code> → <code>action</code>；CSP 收紧为仅 <code>self</code>；移除所有远程 CDN 域名白名单。</li>
+                    <li><strong>background.js</strong>：持久态从全局变量迁移到 <code>chrome.storage.session</code>；安装/更新跳转从 <code>lvshuncai.com</code> 改为内置 <code>html/docs.html</code>；<code>chrome.extension.getURL</code> 全部改为 <code>chrome.runtime.getURL</code>；网络请求用 <code>fetch + AbortController</code> 替代 <code>XMLHttpRequest</code>。</li>
+                    <li><strong>模板系统</strong>：原版使用 <code>vendor/template/template.js</code> 运行时编译（依赖 <code>new Function</code>，被 MV3 CSP 拦截），重构为 <code>tools/precompile-templates.js</code> 预编译到 <code>src/js/templates-compiled.js</code>，规避 <code>eval</code>。</li>
+                    <li><strong>模板资源</strong>：14 个 <code>src/templates/*.html</code> 全部移除 <code>cdn.staticfile.org</code>、<code>cdn.jsdelivr.net</code>、<code>clicklove.min.js</code> 等远程引用，断网亦可查看。</li>
+                    <li><strong>扩展页面</strong>：options/about/tools/indicator 的第三方库（bootstrap/jquery/lodash 等）全部从 <code>vendor/</code> 本地加载；隐私政策、常见问题、使用说明、更新日志跳转全部内置为本地 HTML。</li>
+                    <li><strong>新增 SPA 前端</strong>：新增 Vue 3 + Vite + Pinia 的单页应用（<code>src/spa</code>），打包为单 IIFE 文件，兼容 <code>file://</code> 协议直接打开；支持说说、日志、相册、视频、留言、好友、收藏、分享、访客九大模块的现代化浏览（搜索、按年份分组、详情弹窗、虚拟滚动）。</li>
+                    <li><strong>新增已删除说说恢复</strong>：基于 <code>feeds2_html_pav_all</code> 通知接口与 <code>emotion_cgi_msgdetail_v6</code> 详情接口实现，独立存放于 <code>messages-deleted.js</code>，不污染主索引。</li>
+                    <li><strong>作者署名</strong>：<code>src/js/modules/*.js</code> 与 <code>src/export/js/statistics.js</code> 中的 <code>@author https://lvshuncai.com</code> 统一替换为 <code>@author https://github.com/ShunCai/</code>。</li>
+                </ul>
+            </div>
+
+            <h3 id="compare">新老版本对比</h3>
+            <table class="table table-bordered table-sm compare">
+                <thead>
+                    <tr><th style="width:22%">维度</th><th style="width:39%">原版（ShunCai v2.0）</th><th style="width:39%">重构版（v3.0.0）</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Manifest 规范</td><td>V2（<code>manifest_version: 2</code>）</td><td>V3（<code>manifest_version: 3</code>）</td></tr>
+                    <tr><td>后台脚本</td><td><code>background.scripts</code>（非持久化）</td><td><code>background.service_worker</code></td></tr>
+                    <tr><td>CSP</td><td>含 <code>'unsafe-eval'</code> + 5 个远程 CDN 域名</td><td>仅 <code>self</code>，无 <code>unsafe-eval</code>，无远程域名</td></tr>
+                    <tr><td>扩展页面第三方库</td><td>从 <code>cdn.staticfile.org</code> 加载</td><td>从本地 <code>vendor/</code> 加载</td></tr>
+                    <tr><td>导出模板第三方库</td><td>14 个模板全部依赖 <code>cdn.staticfile.org</code> + <code>cdn.jsdelivr.net</code></td><td>全部本地化，断网可查看</td></tr>
+                    <tr><td>模板引擎</td><td>运行时编译（<code>template.js</code> + <code>new Function</code>）</td><td>预编译（<code>templates-compiled.js</code>）</td></tr>
+                    <tr><td>装饰脚本</td><td>引用 <code>clicklove.min.js</code>（点击爱心）</td><td>已移除</td></tr>
+                    <tr><td>安装/更新跳转</td><td>打开 <code>lvshuncai.com/archives/qzone-export.html</code></td><td>打开内置 <code>html/docs.html</code></td></tr>
+                    <tr><td>文档页面</td><td>跳转 <code>lvshuncai.com</code>（隐私政策/常见问题/使用说明）</td><td>内置 <code>privacy.html / faq.html / usage.html / docs.html</code></td></tr>
+                    <tr><td>作者署名</td><td><code>@author https://lvshuncai.com</code></td><td><code>@author https://github.com/ShunCai/</code></td></tr>
+                    <tr><td>持久态存储</td><td>全局变量（如 <code>BrowseDownloads</code>）</td><td><code>chrome.storage.session</code></td></tr>
+                    <tr><td>扩展接口</td><td><code>chrome.extension.getURL</code></td><td><code>chrome.runtime.getURL</code></td></tr>
+                    <tr><td>网络请求</td><td><code>XMLHttpRequest</code></td><td><code>fetch + AbortController</code></td></tr>
+                    <tr><td>前端浏览</td><td>仅导出 HTML（依赖 jQuery + Bootstrap + BootstrapTable）</td><td>新增 Vue 3 SPA（<code>src/spa</code>），支持搜索/分组/详情/虚拟滚动</td></tr>
+                    <tr><td>已删除说说</td><td>不支持</td><td>支持恢复（基于通知接口，仅限有互动记录）</td></tr>
+                    <tr><td>维护状态</td><td>2024 年归档停止维护</td><td>个人维护</td></tr>
+                </tbody>
+            </table>
+
+            <h3 id="pros-cons">优势与不足</h3>
+            <div class="pros-cons">
+                <div class="pros">
+                    <h4>优势</h4>
+                    <ul>
+                        <li>兼容最新 Chrome MV3 规范，可正常加载与上架</li>
+                        <li>扩展页面与导出 HTML 全部资源本地化，断网亦可正常查看</li>
+                        <li>模板预编译，启动更快，符合 CSP</li>
+                        <li>新增 SPA 前端，备份数据浏览体验现代化（搜索、分组、虚拟滚动）</li>
+                        <li>新增已删除说说恢复功能</li>
+                        <li>文档内置，安装即查看，无需联网</li>
+                        <li>网络请求统一为 <code>fetch</code>，符合 Service Worker 规范</li>
+                    </ul>
+                </div>
+                <div class="cons">
+                    <h4>不足</h4>
+                    <ul>
+                        <li>仅个人维护，更新频率无法保证</li>
+                        <li>SPA 前端目前仅支持浏览，暂不支持编辑/导出</li>
+                        <li>已删除说说恢复依赖通知接口，仅能恢复有互动记录的内容，私密说说无法恢复</li>
+                        <li>部分历史边缘场景未充分验证（如老版本增量数据兼容）</li>
+                        <li>未在 Edge / 360 等其它 Chromium 浏览器上充分测试</li>
+                        <li>原版导出 HTML 的 BootstrapTable 表格视图暂未在 SPA 中等价复刻</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="notice">
+                <h3 id="notice">公告（原作者）</h3>
+                <p>天地是万物众生的客舍，光阴是古往今来的过客。</p>
+                <p>青春，总会逝去，宴席，总会散场，助手也终将迎来落幕。</p>
+                <p>即日起，项目归档，停止维护与更新。</p>
+                <p>无不可抗力隐私，纯粹是因作者能力有限，且要抽时间撩妹脱单了。。。。。。</p>
+            </div>
+
+            <div class="original">
+                <h3 id="original">前言概述（原作者）</h3>
+                <p>落叶随风，青春，稍纵即逝，QQ空间，一个承载了很多人的青春的地方。</p>
+                <p>或许，是遗憾，毕竟，谁的青春没留遗憾呢，《曾经沧海无限感慨，唯愿往事随风》。我是往事随风。你好，我是轻舞飞扬。</p>
+                <p>或许，是害怕，曾经的青春变得不可控，毕竟，新浪博客相册、网易相册、腾讯微博等相继停运，无不意味着，互联网产品都有着自己的生命周期。</p>
+                <p>于是，萌生了备份QQ空间的念头，也在互联网上找到一些工具与脚本，要么操作复杂、要么备份类型单一，于是乎，简单易用全类型备份的QQ空间导出助手诞生了。</p>
+            </div>
+
+            <h3 id="features">功能清单</h3>
+            <ol>
+                <li>支持备份QQ空间文字说说、图文说说、语音说说、长说说，以及评论、点赞、最近访问</li>
+                <li>支持备份QQ空间文字日志、图文日志、模板日志，以及评论、点赞、最近访问</li>
+                <li>支持备份QQ空间文字日记、图文日记，以及评论、点赞、最近访问</li>
+                <li>支持备份QQ空间相册/相片，以及相册/相片的评论、相册/相片的点赞、相册的最近访问</li>
+                <li>支持备份QQ空间视频，以及评论、点赞、最近访问</li>
+                <li>支持备份QQ空间留言寄语与留言、以及留言回复</li>
+                <li>支持备份QQ好友、含好友成立时间、单向好友检测、空间访问权限检测、特别关心的好友等</li>
+                <li>支持备份QQ空间分享内容，以及评论、点赞、最近访问</li>
+                <li>支持备份QQ空间收藏内容</li>
+                <li>支持备份QQ空间访客，仅支持备份谁访问了我，非全部备份，备份内容的多少，看是不是黄钻</li>
+            </ol>
+
+            <h3 id="quick-start">快速开始</h3>
+            <ol>
+                <li>阅读<a href="privacy.html">隐私政策</a>，并安装与配置助手。</li>
+                <li>登录并访问需要备份的QQ空间，在备份的QQ空间页面点击浏览器扩展栏的助手图标开始备份。</li>
+                <li>助手开始采集数据，采集时长视空间数据量而定，请耐心等待采集完成，主号建议睡前备份。</li>
+                <li>数据采集完成后，采集页面点击打包下载按钮打包文案内容(即说说、日志等文字内容)到压缩包。</li>
+                <li>等待压缩包下载完成，压缩包存放的是文案内容，不包含多媒体文件，解压后得到QQ空间备份_QQ号命名的文件夹。</li>
+                <li>等待多媒体文件下载完成，多媒体文件将会下载到助手配置的下载工具本身所设置的文件夹中，生成QQ空间备份_QQ号命名的文件夹。</li>
+                <li>合并第5步与第6步中的两个QQ空间备份_QQ号命名的文件夹中的内容，即剪切或复制其中一个所有内容到另外一个即可。</li>
+                <li>打开合并后的QQ空间备份_QQ号命名的文件夹中的index文件查看备份内容即可。</li>
+                <li>如需要，可再次把合并后的QQ空间备份_QQ号命名的文件夹复制、剪切到其它地方可进行再次备份，避免因磁盘损坏等导致备份丢失或损坏。</li>
+            </ol>
+
+            <h3 id="notes">注意事项</h3>
+            <ol>
+                <li>本项目只做个人学习研究之用，不是官话，当初就是为了学习Chrome扩展开发写的工具，随时会因不可抗力因素下架，且用且珍惜。</li>
+                <li>本助手开源免费，请勿从第三方购买或第三方下载，助手不保证第三方安全可靠。</li>
+                <li>本助手基于<a href="https://qzone.qq.com/index.html" target="_blank">QQ空间官方网站</a>备份个人空间数据，与QQ空间不存在任何联系。</li>
+                <li>使用本助手即同意助手收集QQ空间网站的Cookie信息，仅用于获取QQ空间数据，不传输任何数据到后台服务器，仅保存到浏览器客户端。</li>
+                <li>更多详情请查看<a href="privacy.html">隐私政策</a>。</li>
+            </ol>
+
+            <h3 id="更新日志">更新日志</h3>
+            <div class="changelog">
+                <h4>v3.0.0（重构版）</h4>
+                <ul>
+                    <li>升级到 Manifest V3，适配 Chrome 最新扩展规范</li>
+                    <li>所有扩展页面第三方资源本地化，移除远程 CDN 依赖</li>
+                    <li>模板预编译，符合 MV3 CSP 限制</li>
+                    <li>新增 SPA 单页应用前端，支持说说、日志、相册、视频、留言、好友、收藏、分享、访客模块浏览</li>
+                    <li>新增已删除说说恢复功能（基于通知接口）</li>
+                    <li>原 lvshuncai.com 文档与隐私政策本地化为扩展内置页面</li>
+                    <li>移除导出 HTML 中的 clicklove.min.js 等装饰脚本</li>
+                    <li>作者署名统一指向 GitHub</li>
+                </ul>
+            </div>
+            <div class="changelog">
+                <h4>v2.0 及更早版本（原作者）</h4>
+                <ul>
+                    <li>由原作者 ShunCai 维护，详见 <a href="https://github.com/ShunCai/QZoneExport" target="_blank">GitHub 仓库</a></li>
+                </ul>
+            </div>
+
+            <p class="mt-4">
+                <a href="about.html" class="btn btn-secondary">&larr; 返回关于</a>
+                <a href="usage.html" class="btn btn-primary ml-2">查看使用说明</a>
+                <a href="faq.html" class="btn btn-outline-primary ml-2">常见问题</a>
+                <a href="privacy.html" class="btn btn-outline-primary ml-2">隐私政策</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,67 @@
+# ============ 用户隐私数据（绝不入库）============
+# QQ 空间备份导出目录（含真实用户数据）
+QQ空间备份_*/
+# 备份产物中的 JSON 数据
+Common/json/
+
+# ============ 辅助/参考项目（独立仓库）============
+GetQQzonehistory-main/
+原版/
+
+# ============ 构建产物 ============
+# SPA 构建输出
+src/export/spa-dist/
+src/spa/dist/
+# 扩展打包发布
+releases/
+*.zip
+*.crx
+*.pem
+
+# ============ 依赖 ============
+node_modules/
+package-lock.json
+yarn.lock
+
+# ============ SPA 测试数据（含真实隐私，本地保留）============
+# 开发时放入测试数据，不入库；保留目录结构通过 .gitkeep
+src/spa/public/Common/json/
+src/spa/public/Messages/data/*.js
+src/spa/public/Visitors/data/*.js
+src/spa/public/Videos/data/*.js
+src/spa/public/Albums/data/*.js
+src/spa/public/Blogs/data/*.js
+src/spa/public/Diaries/data/*.js
+src/spa/public/Favorites/data/*.js
+src/spa/public/Friends/data/*.js
+src/spa/public/Shares/data/*.js
+src/spa/public/Boards/data/*.js
+
+# ============ 临时文件 =============
+_tmp_*
+*.tmp
+*.log
+feed2测试.txt
+方案.txt
+
+# ============ 编辑器/系统文件 =============
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ============ 截图/测试输出 =============
+test-screenshots/
+*.png
+!src/img/**/*.png
+!src/export/images/**/*.png
+!src/spa/src/**/*.png
+
+# ============ 环境配置 =============
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,551 @@
+/**
+ * QQ空间访客模块的导出API
+ * @author https://github.com/ShunCai/
+ */
+
+API.Visitors.export = async() => {
+
+    // 模块总进度更新器
+    const indicator = new StatusIndicator('Visitors_Row_Infos');
+    indicator.print();
+
+    try {
+
+        // 获取所有的访客列表
+        const visitorInfo = await API.Visitors.getAllList();
+        console.info('访客列表获取完成', visitorInfo);
+
+        // 添加多媒体下载任务
+        await API.Visitors.addMediaToTasks(visitorInfo);
+
+        // 根据导出类型导出数据    
+        await API.Visitors.exportAllListToFiles(visitorInfo);
+
+    } catch (error) {
+        console.error('访客导出异常：', error);
+    }
+
+    // 完成
+    indicator.complete();
+}
+
+/**
+ * 获取所有访客列表
+ */
+API.Visitors.getAllList = async() => {
+    // 初始化数据
+    QZone.Visitors.Data = {
+        items: [],
+        total: 0,
+        totalPage: 0
+    }
+
+    // 访客状态更新器
+    const indicator = new StatusIndicator('Visitors');
+    indicator.setIndex(1);
+    indicator.print();
+
+    const CONFIG = QZone_Config.Visitors;
+
+    const nextPage = async function(pageIndex) {
+
+        // 下一页索引
+        const nextPageIndex = pageIndex + 1;
+        indicator.setIndex(nextPageIndex);
+
+        return await API.Visitors.getList(nextPageIndex).then(async(data) => {
+
+            // 页面转数据
+            data = API.Utils.toJson(data, /^_Callback\(/) || {};
+            if (data.code && data.code != 0) {
+                // 获取异常
+                console.warn('获取单页的访客列表异常：', nextPageIndex, data);
+            }
+            data = data.data || {};
+            const items = data.items || [];
+            if (data.Ishost === 0) {
+                // 访客身份
+                QZone.Visitors.Data.total = QZone.Visitors.Data.total || data.modvisitcount[0]['totalcount'] || 0;
+                QZone.Visitors.Data.totalPage = QZone.Visitors.Data.totalPage || 1;
+            } else {
+                QZone.Visitors.Data.total = QZone.Visitors.Data.total || data.totalcount || 0;
+                QZone.Visitors.Data.totalPage = QZone.Visitors.Data.totalPage || data.totalpage || 0;
+            }
+
+            // 更新总数
+            indicator.setTotal(QZone.Visitors.Data.total);
+            indicator.setTotalPage(QZone.Visitors.Data.totalPage);
+
+            // 合并数据
+            QZone.Visitors.Data.items = API.Utils.unionItems(QZone.Visitors.Data.items, items);
+            if (!_.isEmpty(QZone.Visitors.OLD_Data.items) && API.Common.isPreBackupPos(items, CONFIG)) {
+                // 如果备份到已备份过的数据，则停止获取下一页，适用于增量备份
+                return QZone.Visitors.Data;
+            }
+
+            if (nextPageIndex >= QZone.Visitors.Data.totalPage) {
+                // 最后一页停止获取
+                return QZone.Visitors.Data;
+            }
+
+            // 请求一页成功后等待一秒再请求下一页
+            const min = CONFIG.randomSeconds.min;
+            const max = CONFIG.randomSeconds.max;
+            const seconds = API.Utils.randomSeconds(min, max);
+            await API.Utils.sleep(seconds * 1000);
+            return await arguments.callee.apply(undefined, [nextPageIndex]);
+        }).catch(async(e) => {
+            console.error("获取访客列表异常，当前页：", nextPageIndex, e);
+            // PATCH: 如果服务器错误，则判断页数再进入重试
+            if (nextPageIndex >= QZone.Visitors.Data.totalPage) {
+                // 最后一页停止获取
+                return QZone.Visitors.Data;
+            }
+
+            // 当前页失败后，跳过继续请求下一页
+            // 递归获取下一页
+            // 请求一页成功后等待一秒再请求下一页
+            const min = CONFIG.randomSeconds.min;
+            const max = CONFIG.randomSeconds.max;
+            const seconds = API.Utils.randomSeconds(min, max);
+            await API.Utils.sleep(seconds * 1000);
+            return await arguments.callee.apply(undefined, [nextPageIndex]);
+        });
+    }
+
+    await nextPage(0);
+
+    // 合并、过滤数据
+    QZone.Visitors.Data.items = API.Common.unionBackedUpItems(CONFIG, QZone.Visitors.OLD_Data.items, QZone.Visitors.Data.items);
+
+    // 完成
+    indicator.complete();
+
+    return QZone.Visitors.Data;
+}
+
+/**
+ * 添加多媒体下载任务
+ * @param {Array} item
+ */
+API.Visitors.addMediaToTasks = async(visitorInfo) => {
+
+    const items = visitorInfo.items || [];
+
+    for (const item of items) {
+
+        if (!API.Common.isNewItem(item)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        // 下载配图
+        await API.Visitors.addDownloadImagesTasks(item);
+
+        // 下载表情
+        API.Visitors.addDownloadEmoticonTasks(item);
+    }
+    return visitorInfo;
+}
+
+/**
+ * 所有访客转换成导出文件
+ * @param {Array} visitorInfo 访客列表
+ */
+API.Visitors.exportAllListToFiles = async(visitorInfo) => {
+    // 获取用户配置
+    const exportType = QZone_Config.Visitors.exportType;
+    switch (exportType) {
+        case 'HTML':
+            await API.Visitors.exportToHtml(visitorInfo);
+            break;
+        case 'MarkDown':
+            await API.Visitors.exportToMarkdown(visitorInfo);
+            break;
+        case 'JSON':
+            await API.Visitors.exportToJson(visitorInfo);
+            break;
+        case 'SPA':
+            await API.Visitors.exportToSpa(visitorInfo);
+            break;
+        default:
+            console.warn('未支持的导出类型', exportType);
+            break;
+    }
+}
+
+/**
+ * 导出访客到 SPA
+ * 数据策略：
+ *   1. 轻量索引 visitorsIndex（uin/姓名/时间/来源/互动数）—— SPA 启动时立即加载
+ *   2. 按年分片全量数据 visitors_<year> —— 用户滚动到某年时按需 <script> 加载
+ *
+ * 注意：visitorInfo 是 { items: [...], total, totalPage } 对象，
+ *   与 messages 数组不同，这里取 items 数组进行分组。
+ *   time 字段是 unix 秒，需要格式化为字符串供 SPA 端展示。
+ */
+API.Visitors.exportToSpa = async(visitorInfo) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Visitors_Export_Other');
+    indicator.setIndex('SPA');
+
+    try {
+        // 模块文件夹路径
+        const moduleFolder = API.Common.getModuleRoot('Visitors');
+        // 创建 data 子目录（SPA 专用数据文件目录）
+        const dataFolder = moduleFolder + '/data';
+        await API.Utils.createFolder(dataFolder);
+
+        const items = visitorInfo.items || [];
+
+        // 1. 生成轻量索引：仅保留 SPA 首屏需要的字段
+        const index = items.map(v => ({
+            uin: v.uin,
+            name: v.name || '',
+            time: API.Utils.formatDate(v.time),
+            src: v.src || 0,
+            platformSrc: v.platform_src || 0,
+            isHideVisit: v.is_hide_visit === 1,
+            yellow: v.yellow || -1,
+            supervip: v.supervip || 0,
+            uinsCount: (v.uins && v.uins.length) || 0,
+            shuoshuoCount: (v.shuoshuoes && v.shuoshuoes.length) || 0,
+            blogCount: (v.blogs && v.blogs.length) || 0,
+            photoCount: (v.photoes && v.photoes.length) || 0,
+            shareCount: (v.shares && v.shares.length) || 0
+        }));
+        await API.Common.writeJsonToJs('visitorsIndex', index, dataFolder + '/visitors-index.js');
+        console.info('生成 SPA 访客索引完成', { total: index.length });
+
+        // 2. 按年分片全量数据
+        // visitorInfo.items 的 time 是 unix 秒，groupedByTime 需要 time 字段
+        const yearMaps = API.Utils.groupedByTime(items, "time", 'year');
+        for (const [year, yearItems] of yearMaps) {
+            // 变量名形如 visitors_2026（与 SPA 端 data-loader 约定一致）
+            await API.Common.writeJsonToJs(
+                `visitors_${year}`,
+                yearItems,
+                `${dataFolder}/visitors-${year}.js`
+            );
+            console.info('生成 SPA 访客年份分片完成', { year, count: yearItems.length });
+        }
+
+        console.info('导出访客到 SPA 完成', { total: items.length, years: yearMaps.size });
+
+    } catch (error) {
+        console.error('导出访客到 SPA 异常', error, visitorInfo);
+    }
+
+    // 完成
+    indicator.complete();
+    return visitorInfo;
+}
+
+/**
+ * 导出访客到HTML文件
+ * @param {Array} visitorInfo 数据
+ */
+API.Visitors.exportToHtml = async(visitorInfo) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Visitors_Export_Other');
+    indicator.setIndex('HTML');
+
+    try {
+
+        // 模块文件夹路径
+        const moduleFolder = API.Common.getModuleRoot('Visitors');
+        // 创建模块文件夹
+        await API.Utils.createFolder(moduleFolder + '/json');
+
+        // 基于JSON生成JS
+        await API.Utils.createFolder(moduleFolder + '/json');
+        await API.Common.writeJsonToJs('visitorInfo', visitorInfo, moduleFolder + '/json/visitors.js');
+
+        // 访客数据根据年份分组
+        let yearMaps = API.Utils.groupedByTime(visitorInfo.items, "time", 'year');
+        // 基于模板生成年份访客HTML
+        for (const [year, yearItems] of yearMaps) {
+            let params = {
+                visitors: yearItems,
+                total: yearItems.length
+            }
+            await API.Common.writeHtmlofTpl('visitors', params, moduleFolder + "/" + year + ".html");
+        }
+
+        // 基于模板生成汇总访客HTML
+        let params = {
+            visitors: visitorInfo.items,
+            total: visitorInfo.total
+        }
+        await API.Common.writeHtmlofTpl('visitors', params, moduleFolder + "/index.html");
+
+    } catch (error) {
+        console.error('导出访客到HTML异常', error, visitorInfo);
+    }
+
+    // 完成
+    indicator.complete();
+    return visitorInfo;
+}
+
+/**
+ * 获取单篇访客的Markdown内容
+ * @param {ShareInfo} item 访客
+ */
+API.Visitors.getMarkdown = (item) => {
+    const contents = [];
+    // 访问时间
+    contents.push('###### {0}  \n'.format(API.Utils.formatDate(item.time)));
+
+    // 访客
+    let user_name = API.Common.formatContent(item.name, 'MD', false, false, false, false, true);
+    user_name = API.Common.getUserLink(item.uin, user_name, 'MD', true);
+
+    // 访问内容
+    if (API.Visitors.isHome(item)) {
+        // 主页
+        contents.push('{0} 访问了主页  \n'.format(user_name));
+        contents.push('---');
+        return contents.join('\n');
+    }
+    // 说说
+    if (item.shuoshuoes.length > 0) {
+        contents.push('{0} 查看了说说  '.format(user_name));
+        for (const message of item.shuoshuoes) {
+            contents.push('- {0}   '.format(API.Common.formatContent(message.name, 'MD', false, false, false, false, true)));
+            if (message.imgsrc) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(message.custom_url, message.custom_filepath)) + '  ');
+            }
+        }
+        contents.push('\n  ');
+    }
+    // 日志
+    if (item.blogs.length > 0) {
+        contents.push('{0} 查看了日志  '.format(user_name));
+        for (const blog of item.blogs) {
+            contents.push('- {0}  '.format(API.Common.formatContent(blog.name, 'MD', false, false, false, false, true)));
+        }
+        contents.push('\n  ');
+    }
+    // 相册
+    if (item.photoes.length > 0) {
+        contents.push('{0} 查看了相册  '.format(user_name));
+        for (const photo of item.photoes) {
+            contents.push('> {0}  '.format(API.Common.formatContent(photo.name, 'MD', false, false, false, false, true)));
+            contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(photo.custom_url, photo.custom_filepath)) + '  ');
+            contents.push('\n  ');
+        }
+        contents.push('\n  ');
+    }
+    // 分享
+    if (item.shares.length > 0) {
+        contents.push('{0} 查看了分享  '.format(user_name));
+        for (const share of item.shares) {
+            contents.push('- {0}   '.format(API.Common.formatContent(share.name, 'MD', false, false, false, false, true)));
+            if (share.imgsrc) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(share.custom_url, share.custom_filepath)) + '  ');
+            }
+        }
+        contents.push('\n  ');
+    }
+    // 其它访客
+    if (item.uins && item.uins.length > 0) {
+        contents.push('以下这些访客当天也访问了这些内容： ');
+        for (const uinItem of item.uins) {
+            contents.push('- {0} *{1}*   '.format(API.Common.formatContent(uinItem.name, 'MD'), API.Utils.formatDate(uinItem.time)));
+        }
+    }
+    contents.push('---');
+    return contents.join('\n');
+}
+
+/**
+ * 导出访客到Markdown文件
+ * @param {Array} visitorInfo 数据
+ */
+API.Visitors.exportToMarkdown = async(visitorInfo) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Visitors_Export_Other');
+    indicator.setIndex('Markdown');
+
+    try {
+        // 汇总内容
+        const allYearContents = [];
+        // 访客数据根据年份分组
+        const year_month_maps = API.Utils.groupedByTime(visitorInfo.items, "time");
+        for (const [year, month_maps] of year_month_maps) {
+            const yearContents = [];
+            yearContents.push("# " + year + "年");
+            for (const [month, items] of month_maps) {
+                yearContents.push("## " + month + "月");
+                for (const item of items) {
+                    yearContents.push(API.Visitors.getMarkdown(item));
+                }
+            }
+
+            // 年份内容
+            const yearContent = yearContents.join('\r\n');
+
+            // 汇总年份内容
+            allYearContents.push(yearContent);
+
+            // 生成年份文件
+            const yearFilePath = API.Common.getModuleRoot('Visitors') + "/" + year + ".md";
+            await API.Utils.writeText(yearContent, yearFilePath).then(fileEntry => {
+                console.info('备份访客列表到Markdown完成，当前年份=', year, fileEntry);
+            }).catch(error => {
+                console.error('备份访客列表到Markdown异常，当前年份=', year, error);
+            });
+        }
+
+        // 生成汇总文件
+        await API.Utils.writeText(allYearContents.join('\r\n'), API.Common.getModuleRoot('Visitors') + '/Visitors.md').then((fileEntry) => {
+            console.info('生成汇总访客Markdown文件完成', visitorInfo, fileEntry);
+        }).catch((e) => {
+            console.error("生成汇总访客Markdown文件异常", visitorInfo, e)
+        });
+
+    } catch (error) {
+        console.error('导出访客到Markdown文件异常', error, visitorInfo);
+    }
+    // 完成
+    indicator.complete();
+    return visitorInfo;
+}
+
+/**
+ * 导出访客到JSON文件
+ * @param {Array} visitorInfo 数据
+ */
+API.Visitors.exportToJson = async(visitorInfo) => {
+    // 进度功能性期
+    const indicator = new StatusIndicator('Visitors_Export_Other');
+    indicator.setIndex('JSON');
+
+    // 生成年份JSON
+    // 访客数据根据年份分组
+    const yearDataMap = API.Utils.groupedByTime(visitorInfo, "time", "year");
+    for (const [year, yearItems] of yearDataMap) {
+        console.info('正在生成年份访客JSON文件', year);
+        const yearFilePath = API.Common.getModuleRoot('Visitors') + "/" + year + ".json";
+        const yearInfo = {
+            total: yearItems.length,
+            items: yearItems
+        }
+        await API.Utils.writeText(JSON.stringify(yearInfo), yearFilePath).then((fileEntry) => {
+            console.info('生成年份访客JSON文件完成', year, fileEntry);
+        }).catch((e) => {
+            console.error("生成年份访客JSON文件异常", yearInfo, e)
+        });
+    }
+
+    // 生成汇总JSON
+    const json = JSON.stringify(visitorInfo);
+    await API.Utils.writeText(json, API.Common.getModuleRoot('Visitors') + '/visitors.json').then((fileEntry) => {
+        console.info('生成汇总访客JSON文件完成', visitorInfo, fileEntry);
+    }).catch((e) => {
+        console.error("生成汇总访客JSON文件异常", visitorInfo, e)
+    });
+
+    // 完成
+    indicator.complete();
+    return visitorInfo;
+}
+
+/**
+ * 添加下载配图任务
+ * @param {Message} item 访客 
+ */
+API.Visitors.addDownloadImagesTasks = async(item) => {
+    if (!API.Common.isNewItem(item)) {
+        // QQ空间外链，跳过
+        return item;
+    }
+
+    // 下载相对目录
+    const module_dir = 'Visitors/images';
+
+    // 说说配图
+    item.shuoshuoes = item.shuoshuoes || []
+    for (const message of item.shuoshuoes) {
+        if (!message.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', message, message.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    // 日志配图 暂无
+    item.blogs = item.blogs || [];
+
+    // 相册配图
+    item.photoes = item.photoes || [];
+    for (const photo of item.photoes) {
+        if (!photo.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', photo, photo.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    // 分享配图
+    item.shares = item.shares || [];
+    for (const share of item.shares) {
+        if (!share.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', share, share.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    return item;
+
+}
+
+/**
+ * 添加下载表情任务
+ * @param {Message} item 访客 
+ */
+API.Visitors.addDownloadEmoticonTasks = (item) => {
+    if (API.Common.isQzoneUrl() || !API.Common.isNewItem(item)) {
+        // QQ空间外链，跳过
+        return item;
+    }
+
+    // 访客名称
+    API.Common.formatContent(item.name, 'HTML', false, false, false, true, false);
+
+    // 说说访问记录
+    if (item.shuoshuoes && item.shuoshuoes.length > 0) {
+        for (const shuoshuo of item.shuoshuoes) {
+            API.Common.formatContent(shuoshuo.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 日志访问记录
+    if (item.blogs && item.blogs.length > 0) {
+        for (const blog of item.blogs) {
+            API.Common.formatContent(blog.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 相片访问记录
+    if (item.photoes && item.photoes.length > 0) {
+        for (const photo of item.photoes) {
+            API.Common.formatContent(photo.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 分享访问记录
+    if (item.shares && item.shares.length > 0) {
+        for (const share of item.shares) {
+            API.Common.formatContent(share.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 其它相同访客
+    if (item.uins && item.uins.length > 0) {
+        for (const uniItem of item.uins) {
+            API.Common.formatContent(uniItem.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    return item;
+}

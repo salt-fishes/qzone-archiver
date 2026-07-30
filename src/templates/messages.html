@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+	<link rel="icon" href="../Common/images/favicon.ico"> 
+	<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>QQ空间备份-说说</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/bootstrap/4.6.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery-bundle.min.css">
+	<link rel="stylesheet" type="text/css" href="../Common/css/common.css">
+	<script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/jquery-mousewheel/3.1.13/jquery.mousewheel.min.js"></script>
+	<script src="https://cdn.staticfile.org/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.staticfile.org/lodash.js/4.17.21/lodash.min.js"></script>
+	
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/lightgallery.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/zoom/lg-zoom.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/video/lg-video.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/thumbnail/lg-thumbnail.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/rotate/lg-rotate.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/fullscreen/lg-fullscreen.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/comment/lg-comment.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/autoplay/lg-autoplay.min.js"></script>
+	
+	<script src="https://cdn.staticfile.org/jquery_lazyload/2.0.0-rc.2/lazyload.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/template_js@2.2.1/dist/index.aio.min.js" integrity="sha256-gnK+GsIXEBgu/mJouMDtUxXvXM3M0jzxNYmjnlsifgY=" crossorigin="anonymous"></script>
+	
+	<script type="text/javascript" src="../Common/json/config.js"></script>
+	<script type="text/javascript" src="json/messages.js"></script>
+	<script type="text/javascript" src="../Common/js/common.js"></script>
+	<script type="text/javascript" src="../Common/js/sidebar.js"></script>
+	<script type="text/javascript" src="js/messages.js"></script>
+</head>
+
+<body>
+	<header>
+		<nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
+			<a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<nav aria-label="breadcrumb">
+					<ol class="breadcrumb bg-dark">
+						<li class="breadcrumb-item"><a href="../index.html">个人中心</a></li>
+						<li class="breadcrumb-item active" aria-current="page">说说</li>
+					</ol>
+				</nav>
+			</div>
+		</nav>
+	</header>
+	<main role="main" class="flex-shrink-0">
+		<div id="messages_html" class="container messages">
+			<%for (const [year, yearMap] of messageMaps) {%>
+				<span class="sidebar-h1" data-tag="h1" data-sidebar='<%:=year%>年<span class="badge badge-primary badge-pill itemSize"><%:=API.Utils.sumYearItemSize(yearMap)%><span>'></span>
+				<%for (const [month, monthItems] of yearMap) {%>
+					<span class="sidebar-h2" data-tag="h2" data-sidebar='<%:=month%>月<span class="badge badge-secondary badge-pill itemSize"><%:=monthItems.length%><span>'></span>
+					<%for (let index = 0; index < monthItems.length; index++) {%>
+						<%const message = monthItems[index]%>
+						<%total = total -1%>
+						<div class="card w-70 mt-2 border">
+							<div class="card-body">
+								<div class="d-flex justify-content-start message-infos">
+									<div class="message-avatar-img">
+										<a class="avatar p-0 m-0" target="_blank" href="<%:=API.Common.getUserUrl(message.uin)%>">
+											<img class="w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(message.uin, true)%>">
+										</a>
+									</div>
+									<div class="message-info ml-2">
+										<a class="message-avatar-name" target="_blank" href="<%:=API.Common.getUserUrl(message.uin)%>">
+											<%:=API.Common.formatContent(message.name, "HTML", false, false, false, false, true)%>
+										</a>
+    									<div class="message-time text-muted small"><%:=API.Common.formatContent(message.custom_create_time)%></div>
+									</div>
+								</div>
+								<div class="messageText mt-3">
+									<!-- 说说内容 -->
+									<pre class="card-text content <%:=message.has_more_con ? 'hasMore' : ''%> <%:=config.Messages.isShowMore ? 'more' : ''%> "><%:=API.Common.formatContent(message, "HTML", false, false, false, false, true)%></pre>
+									<!-- 说说全文 -->
+									<%if(message.has_more_con){%>
+										<span class="fa fa-2x <%:=config.Messages.isShowMore ? 'fa-angle-up' : 'fa-angle-down'%> cursor <%:=config.Messages.isShowMore ? 'more' : ''%> readMore" title="<%:=config.Messages.isShowMore ? '收起全文' : '展开全文'%>"></span>
+									<%}%>
+									<!-- 语音内容 -->
+									<%if(message.custom_voices){%>
+										<%for (const voice of message.custom_voices) {%>
+											<audio controls src="<%:=(voice.custom_filepath || voice.custom_url)%>"></audio>
+										<%}%>
+									<%}%>
+									<!-- 转发内容 -->
+									<%if(message.rt_tid){%>
+										<blockquote class="source">
+											<a class="float-left" target="_blank" href="<%:=API.Common.getUserUrl(message.rt_uin)%>">
+												<span class="text-info"><%:=API.Common.formatContent(message.rt_uinname, "HTML", false, false, false, false, true)%>：</span>
+											</a>
+											<!-- 转发全文 -->
+											<pre class="card-text content <%:=message.has_more_con ? 'hasMore' : ''%> <%:=config.Messages.isShowMore ? 'more' : ''%> "><%:=API.Common.formatContent(message, "HTML", true, false, false, false, true)%></pre>
+											<%if(message.rt_has_more_con && message.rt_con){%>
+												<span class="fa fa-2x <%:=config.Messages.isShowMore ? 'fa-angle-up' : 'fa-angle-down'%> cursor readMore" title="<%:=config.Messages.isShowMore ? '收起全文' : '展开全文'%>"></span>
+											<%}%>
+										</blockquote>
+									<%}%>
+									<!-- 查看大图 -->
+									<div id="<%:= 'QZIMG-'+ message.tid%>" class='photo-detail' style="display:none">
+										<div class="container">
+											<div class="row">
+												<div class="col text-white-50 text-left">
+													<p>
+														<i title="发表时间" class="fa fa-clock-o text-primary"><%:=API.Utils.formatDate(message.created_time)%></i>
+													</p>
+													<p>
+														<%if(!(!message.story_info || !message.story_info.time || !message.story_info.lbs)){%>
+															<a class="fa fa-map-marker text-primary" target="_blank" href="<%:=API.Messages.getMapUrl(message.story_info.lbs)%>" class="card-link"><%:=message.story_info.lbs.idname || message.story_info.lbs.name%></a> 
+															<span class="fa fa-camera text-muted">拍摄于 <%:=API.Utils.formatDate(message.story_info.time)%> </span>
+														<%}else{%>
+															<%if(message.lbs && message.lbs.pos_x && message.lbs.pos_y){%>
+																<a title="上传地点" class="text-primary" href="<%:=API.Messages.getMapUrl(message.lbs)%>" target="_blank"><i class="fa fa-map-marker"></i><%:=message.lbs.idname || message.lbs.name%></a>
+															<%}%>
+														<%}%>
+													</p>
+												</div>
+												<div class="col text-truncate">
+													<p class="text-white" data-toggle="tooltip" data-html="true" title="<%:=API.Common.formatContent(message, 'HTML', false, false, false, false, true)%></p>">
+														<%:=API.Common.formatContent(message, "HTML", false, false, false, false, true)%>
+													</p>
+												</div>
+												<div class="col"></div>
+											</div>
+										</div>
+									</div>
+									<!-- 原创/转发多媒体内容 -->
+									<div id="<%:= 'QZ-'+ message.tid%>" class="medias row pl-3 lightgallery <%:=API.Common.getImgClassType(message)%>">
+										<!-- 视频内容（一般为单视频） -->
+										<%if(message.custom_videos){%>
+											<%let imgIdx = 0%>
+											<%for(let video of message.custom_videos){%>
+												<%if (API.Videos.isExternalVideo(video)) {%>
+													<!-- 外部视频 -->
+													<a class="medias-item border message-lightbox-external" href="<%:=API.Videos.getVideoUrl(video)%>" target="_blank">
+														<span class="message-video"></span>
+														<img class="lazyload loading w-100 h-100" src="../Common/images/loading.gif" data-src="<%:=video.custom_pre_filepath || video.custom_pre_url || video.url1%>">
+													</a>
+												<%}else{%>
+													<!-- 空间视频 -->
+													<a class="medias-item border message-lightbox" data-idx="<%:=imgIdx%>" data-video='{"source": [{"src":"<%:=(video.custom_filepath || video.custom_url || video.url3)%>", "type":"video/mp4"}],"attributes": {"preload": false, "controls": true}}'
+														data-poster="<%:=video.custom_pre_filepath || video.custom_pre_url || video.url1%>" data-sub-html="#<%:= 'QZIMG-'+ message.tid%>">
+														<span class="message-video"></span>
+														<img class="lazyload loading w-100 h-100" data-id="<%:=video.video_id%>" src="../Common/images/loading.gif"  data-src="<%:=video.custom_pre_filepath || video.custom_pre_url || video.url1%>" />
+													</a>
+													<%imgIdx++%>
+												<%}%>
+											<%}%>
+										<%}%>
+										<!-- 图片内容(含视频，即同时存在图片与视频) -->
+										<%if(message.custom_images){%>
+											<%let imgIdx = 0%>
+											<%for(let image of message.custom_images){%>
+												<%if(image.is_video && image.video_info){%>
+													<%if (API.Videos.isExternalVideo(image.video_info)) {%>
+														<!-- 外部视频 -->
+														<a class="medias-item border message-lightbox-external" href="<%:=API.Videos.getVideoUrl(image.video_info)%>" target="_blank">
+															<span class="message-video"></span>
+															<img class="lazyload loading w-100 h-100" src="../Common/images/loading.gif" data-src="<%:=image.video_info.custom_pre_filepath || image.video_info.custom_pre_url || image.video_info.url1%>">
+														</a>
+													<%}else{%>
+														<!-- 空间视频 -->
+														<a class="medias-item border message-lightbox" data-idx="<%:=imgIdx%>" data-video='{"source": [{"src":"<%:=(image.video_info.custom_filepath || image.video_info.custom_url || image.video_info.url3)%>", "type":"video/mp4"}],"attributes": {"preload": false, "controls": true}}'
+															data-poster="<%:=image.video_info.custom_pre_filepath || image.video_info.custom_pre_url || image.video_info.url1%>" data-sub-html="#<%:= 'QZIMG-'+ message.tid%>">
+															<span class="message-video"></span>
+															<img class="lazyload loading w-100 h-100" data-id="<%:=image.video_info.video_id%>" src="../Common/images/loading.gif" data-src="<%:=image.video_info.custom_pre_filepath || image.video_info.custom_pre_url || image.video_info.url1%>" />
+														</a>
+														<%imgIdx++%>
+													<%}%>
+												<%}else{%>
+													<a class="medias-item border message-lightbox" data-idx="<%:=imgIdx%>" data-src="<%:=(image.custom_filepath || image.custom_url)%>" data-sub-html="#<%:= 'QZIMG-'+ message.tid%>">
+														<img class="lazyload loading w-100 h-100" data-id="<%:=image.pic_id%>" src="../Common/images/loading.gif" src="../Common/images/loading.gif" data-src="<%:=(image.custom_filepath || image.custom_url)%>">
+													</a>
+													<%imgIdx++%>
+												<%}%>
+											<%}%>
+										<%}%>
+										<!-- 动画表情内容（目前只支持一个） -->
+										<%if(message.custom_magics){%>
+											<%for(let image of message.custom_magics){%>
+												<a class="medias-item border" data-src="<%:=(image.custom_filepath || image.custom_url)%>">
+													<img class="lazyload loading w-100 h-100" data-src='<%:=(image.custom_filepath || image.custom_url)%>'>
+												</a>
+												<hr>
+											<%}%>
+										<%}%>
+									</div>
+									<!-- 音乐内容（目前已无法正常播放，直接显示专辑图片与歌曲信息） -->
+									<%if(message.custom_audios && message.audiototal > 0){%>
+										<div class="medias row p-3">
+											<ul class="list-unstyled w-100">
+												<%for(let music of message.custom_audios){%>
+													<li class="border">
+														<a class="medias-item text-center" data-src="<%:=(music.custom_filepath || music.image)%>" href="<%:=music.playurl%>">
+															<img class="lazyload loading border" data-src="<%:=(music.custom_filepath || music.image)%>">
+															<span><%:=music.name%></span>
+														</a>
+													</li>
+												<%}%>
+											</ul>
+										</div>
+									<%}%>
+									<!-- 投票内容（待定），功能下线了，找不到历史数据，暂不实现 -->
+									<!-- 说说评论 -->
+									<%if(message.custom_comments && message.custom_comments.length > 0){%>
+										<%for(let comment of message.custom_comments){%>
+											<hr>
+											<div class="comments mt-2">
+												<div class="comment">
+													<div class="d-flex justify-content-start ">
+														<div class="comment-avatar">
+															<a class="avatar p-0 m-0" target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(comment).uin)%>">
+																<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(API.Common.getCommentUser(comment).uin, true)%>" >
+															</a>
+														</div>
+														<div class="comment-infos ml-2">
+															<a target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(comment).uin)%>">
+																<span><%:=API.Common.formatContent(API.Common.getCommentUser(comment).name, "HTML", false, false, false, false, true)%></span>
+															</a>
+															<%if(comment.private){%>
+																<span class="text-warning"> 私密评论 </span>
+															<%}%>
+															<div class="text-muted small"><%:=API.Utils.formatDate(comment.postTime || comment.create_time)%></div>
+														</div>
+													</div>
+													<div class="comment-text">
+														<div class="messageText">
+															<p><%:=API.Common.formatContent(comment.content, 'HTML', false, false, false, false, true)%></p>
+															<%if(comment.pic){%>
+																<div class="comment-lightgallery">
+																	<%for (let cmIdx = 0; cmIdx < comment.pic.length; cmIdx++) {%>
+																		<%const image = comment.pic[cmIdx];%>
+																		<a class="comment-img-lightbox" data-idx="<%:=cmIdx%>" data-sub-html="<%:=API.Common.formatContent(comment.content, 'HTML', false, false, false, false, true)%>"
+																			data-src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>">
+																			<img src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>" class="comment-img img-thumbnail">
+																		</a>
+																	<%}%>
+																</div>
+															<%}%>
+														</div>
+														<% const replies = comment.replies || comment.list_3 || []%>
+														<%if(replies.length > 0){%>
+															<%for(const reply of replies){%>
+																<div class="comments">
+																	<div class="comment">
+																		<div class="d-flex justify-content-start">
+																			<div class="comment-avatar">
+																				<a class="avatar p-0 m-0 " target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(reply).uin)%>">
+																					<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(API.Common.getCommentUser(reply).uin, true)%>">
+																				</a>
+																			</div>
+																			<div class="comment-infos ml-2">
+																				<a target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(reply).uin)%>">
+																					<span><%:=API.Common.formatContent(API.Common.getCommentUser(reply).name, 'HTML', false, false, false, false, true)%></span>
+																				</a>
+																				<%if(reply.private){%>
+																					<span class="text-warning"> 私密回复 </span>
+																				<%}%>
+																				<div class="text-muted small"><%:=API.Utils.formatDate(reply.postTime || reply.create_time)%></div>
+																			</div>
+																		</div>
+																		<div class="comment-text">
+																			<div class="messageText">
+																				<p><%:=API.Common.formatContent(reply.content, 'HTML', false, false, false, false, true)%></p>
+																				<%if(reply.pic){%>
+																					<div class="comment-lightgallery">
+																						<%for (let cmIdx = 0; cmIdx < reply.pic.length; cmIdx++) {%>
+																							<%const image = reply.pic[cmIdx];%>
+																							<a class="comment-img-lightbox" data-idx="<%:=cmIdx%>" data-sub-html="<%:=API.Common.formatContent(reply.content, 'HTML', false, false, false, false, true)%>" 
+																								data-src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>">
+																								<img src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>" class="comment-img img-thumbnail">
+																							</a>
+																						<%}%>
+																					</div>
+																				<%}%>
+																			</div>
+																		</div>
+																	</div>
+																</div>
+															<%}%>
+														<%}%>
+													</div>
+												</div>
+											</div>
+										<%}%>
+									<%}%>
+								</div>
+								<!-- 说说额外信息 -->
+								<ul class="message-infos small list-group list-group-flush">
+									<!-- 坐标信息 -->
+									<%if(message.lbs && message.lbs.pos_x && message.lbs.pos_y){%>
+										<li class="list-group-item pl-0">
+											<a class="fa fa-map-marker" target="_blank" href="<%:=API.Messages.getMapUrl(message.lbs)%>" class="card-link"> <%:=message.lbs.idname || message.lbs.name%></a>
+										</li>
+									<%}%>
+									<!-- 故事信息 -->
+									<%if(!(!message.story_info || !message.story_info.time || !message.story_info.lbs)){%>
+										<li class="list-group-item pl-0">
+											<a class="fa fa-map-marker" target="_blank" href="<%:=API.Messages.getMapUrl(message.story_info.lbs)%>" class="card-link"><%:=message.story_info.lbs.idname || message.story_info.lbs.name%></a> 
+											<span class="fa fa-camera text-muted">拍摄于 <%:=API.Utils.formatDate(message.story_info.time)%> </span>
+										</li>
+									<%}%>
+									<!-- 设备 -->
+									<%if(message.source_name){%>
+										<li class="list-group-item pl-0">
+											<%if(message.source_url){%>
+												<span class="text-info"><a target="_blank" href="<%:=message.source_url%>"><%:=API.Common.formatContent(message.source_name, 'HTML', false, false, false, false, true)%></a></span>
+											<%}else{%>
+												<span class="text-info fa fa-mobile-phone"> <%:=API.Common.formatContent(message.source_name, 'HTML', false, false, false, false, true)%></span>
+											<%}%>
+										</li>	
+									<%}%>
+									<!-- 说说来源 -->
+									<%if(API.Messages.getSourceHTML(message)){%>
+										<li class="list-group-item pl-0">
+											<%:=API.Messages.getSourceHTML(message)%>
+										</li>	
+									<%}%>
+								</ul>
+							</div>
+							<div class="card-footer text-muted">
+								<span class="text-primary p-1 fa fa-thumbs-up mr-2 cursor viewlikes" title="点赞列表" data-field="tid" data-target="<%:=message.tid%>"><%:=message.likeTotal || 0 %></span>
+								<span class="text-primary p-1 fa fa-eye mr-2 cursor viewVisitors" title="最近访问" data-field="tid" data-target="<%:=message.tid%>"><%:=message.custom_visitor && message.custom_visitor.viewCount || 0 %></span>
+								<span class="border-primary border rounded text-primary small p-1 float-right" title="当前楼层">#<%:=total + 1 %></span>
+							</div>
+						</div>
+					<%}%>
+				<%}%>
+			<%}%>
+		</div>
+	</main>
+</body>
+
+</html>

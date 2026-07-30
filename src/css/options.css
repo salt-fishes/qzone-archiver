@@ -1,0 +1,70 @@
+/* 滚动条优化 */
+
+::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+::-webkit-scrollbar-track-piece {
+    background-color: transparent;
+}
+
+body::-webkit-scrollbar-track-piece {
+    background-color: white;
+}
+
+::-webkit-scrollbar-track-piece:no-button {}
+
+::-webkit-scrollbar-thumb {
+    background-color: #7D7D7D;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background-color: #999;
+}
+
+::-webkit-scrollbar-thumb:active {
+    background-color: #666;
+}
+
+table {
+    table-layout: fixed;
+}
+
+table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#about .list-group-item {
+    padding: .5rem!important
+}
+
+.glyphicon {
+    display: inline-block;
+    font: normal normal normal 14px/1 FontAwesome;
+    font-size: inherit;
+    text-rendering: auto;
+    -webkit-font-smoothing: antialiased;
+}
+
+.glyphicon-ok:before {
+    content: "\f0c7"
+}
+
+.glyphicon-remove:before {
+    content: "\f00d"
+}
+
+
+/* 帮助图标 */
+
+.fa-question-circle-o {
+    cursor: pointer;
+}
+
+.tooltip-inner {
+    max-width: 600px !important;
+}

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/options.css">
+    <link rel="icon" href="../img/icon-128.png">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>QQ空间导出助手-常见问题</title>
+    <script src="../vendor/jquery/jquery.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
+        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
+        .doc-content h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
+        .doc-content p, .doc-content li { line-height: 1.7; }
+        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
+        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
+        .doc-content .toc ol { margin: 0; }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="options.html">设置</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tools.html">工具</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="about.html">关于</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="doc-content">
+            <h2>QQ空间导出助手之问题篇</h2>
+
+            <div class="toc">
+                <ol>
+                    <li><a href="#think">阅前思考</a></li>
+                    <li><a href="#deep">值得深思</a></li>
+                    <li><a href="#account">账号安全</a></li>
+                    <li><a href="#usage">助手使用</a></li>
+                    <li><a href="#config">助手配置</a></li>
+                    <li><a href="#messages">说说相关</a></li>
+                </ol>
+            </div>
+
+            <h3 id="think">阅前思考</h3>
+            <ol>
+                <li>自行确认下QQ空间的情况，看看行不行？</li>
+                <li>或者，刷新QQ空间页面再重试看看？</li>
+                <li>或者，重启浏览器再重试看看？</li>
+                <li>或者，网络问题，稍后再试试看？</li>
+                <li>或者，卸载助手重装后再试试看？</li>
+                <li>或者，重启电脑试试？</li>
+                <li>或者，重启路由器试试？</li>
+                <li>毕竟，关机重启、卸载重装，可以解决99%的问题。</li>
+            </ol>
+
+            <h3 id="deep">值得深思</h3>
+            <ol>
+                <li>语音说说的语音忽然备份不了，进入到QQ空间试了试，发现QQ空间的语音也播放不了。</li>
+                <li>收藏夹忽然备份不了，一进入QQ空间的收藏夹，一直提示要登录。</li>
+                <li>收藏夹中视频忽然备份不了了，一看QQ空间的收藏夹播放视频，发现也播放不了。</li>
+                <li>说说的配图没法下载，进去QQ空间一看，发现该条说说的配图已经丢失了。</li>
+                <li>总而言之，言而总之，有问题，先思考，参考阅前思考。</li>
+            </ol>
+
+            <h3 id="account">账号安全</h3>
+            <h4>助手是否安全</h4>
+            <ol>
+                <li>安全，如果开源都不安全，那我也不知道怎么才算安全了，<a href="https://github.com/ShunCai/QZoneExport" target="_blank">开源地址</a>。</li>
+                <li>官方版保证安全，第三方修改版除外。</li>
+                <li>更多详情参考<a href="privacy.html">隐私政策</a>。</li>
+            </ol>
+            <h4>是否会导致QQ空间账号被冻结</h4>
+            <ol>
+                <li>一般情况下不会，但如果助手采集速度过快时，偶尔会造成QQ空间短暂的冻结，如造成相册访问空白等。</li>
+                <li>过段时间会自动解冻，如若介意，请勿使用，否则，后果自负。</li>
+                <li>如遇冻结，建议上调相应模块的数据采集时间，然后解冻后继续备份。</li>
+            </ol>
+            <h4>是否会导致QQ空间账号被封号</h4>
+            <ol>
+                <li>理论上不会，但不承诺一定不会封号。</li>
+                <li>至少目前为止，本人没有遭遇封号。</li>
+                <li>曾有用户反馈遭遇封号，如若介意，请勿使用，否则，后果自负。</li>
+            </ol>
+            <h4>是否会导致个人隐私的泄露</h4>
+            <ol>
+                <li>助手承诺不泄露个人隐私，第三方修改版除外。</li>
+                <li>如因个人原因导致备份文件丢失与泄露，比如备份到U盘后U盘丢失，或者备份到服务器导致自己或他人信息泄露，本助手概不负责。</li>
+                <li>更多详情请访问<a href="privacy.html">隐私政策</a>。</li>
+            </ol>
+
+            <h3 id="usage">助手使用</h3>
+            <h4>如何备份别人的QQ空间</h4>
+            <ol>
+                <li><strong>登录自己</strong>的QQ空间，<strong>访问别人</strong>的QQ空间，然后备份即可，更多详情请访问<a href="usage.html">使用说明</a>。</li>
+                <li>备份他人空间内容，将会在<strong>他人QQ空间访客中留言访问记录</strong>，当然，如果你是黄钻当我没说。</li>
+                <li>如果造成别人信息泄露，本助手概不负责，更多详情参考<a href="privacy.html">隐私政策</a>。</li>
+            </ol>
+            <h4>是否可以导出别人空间的数据</h4>
+            <ol>
+                <li>可以，但<strong>仅支持导出有权限访问或公开的数据</strong>，即没权限看的就没法备份。</li>
+                <li>建议先征求别人同意后备份，避免造成误会或造成别人信息泄露。</li>
+                <li>备份他人空间内容，将会在<strong>他人QQ空间访客中留言访问记录</strong>，当然，如果你是黄钻当我没说。</li>
+                <li>如果造成别人信息泄露，本助手概不负责，更多详情参考<a href="privacy.html">隐私政策</a>。</li>
+            </ol>
+            <h4>是否可以导出别人的加密QQ空间/相册</h4>
+            <ol>
+                <li>有访问权限的，可以，比如别人空间/相册虽然加密了，但是对你开放，可备份。</li>
+                <li>无访问权限的，不可以。</li>
+            </ol>
+            <h4>无法进入QQ空间能否备份QQ空间内容</h4>
+            <ol>
+                <li>不能，助手是模拟用户访问QQ空间进行备份，无法进入时无法备份。</li>
+                <li>比如，没有权限访问他人空间等等。</li>
+            </ol>
+            <h4>QQ空间被封是否能正常备份</h4>
+            <ol>
+                <li>理论上可以，登录QQ空间后，在提示被封的界面，点击助手备份即可。</li>
+                <li>仅支持备份导出说说、视频、留言板、收藏夹、访客以及QQ好友模块的内容，但不保证能正常备份所有内容。</li>
+                <li>不支持备份日志、私密日记、相册、分享模块的内容。</li>
+            </ol>
+            <h4>助手是否有手机版</h4>
+            <ol>
+                <li>没有，其它一切的手机版本，均非官方版本，不保证安全可靠。</li>
+                <li>其它的所有应用程序，比如exe之类的，均非官方版本，官方版本仅有扩展版本。</li>
+                <li>如需在移动端或平板端进行备份，比如，你仅仅需要一个可以装Chromium扩展的手机浏览器即可，其它的使用方式与PC端一致。</li>
+            </ol>
+            <h4>是否可以备份私密日记</h4>
+            <ol>
+                <li>可以，但需要先关闭私密日记的【独立密码认证】，可在备份完成后重新打开。</li>
+                <li>关闭独立密码认证后，需刷新QQ空间页面重新备份。</li>
+            </ol>
+            <h4>点击图标无反应或不弹出备份界面</h4>
+            <ol>
+                <li>请先登录QQ空间并进入需要备份的QQ空间，然后在QQ空间的页面再点击图标。</li>
+                <li>确保当前QQ空间的地址栏的地址为 user.qzone.qq.com/QQ号 开头，而不是 QQ号.qzone.qq.com 开头或者其它。</li>
+                <li>如再不行，可先重启浏览器后重试。</li>
+            </ol>
+            <h4>助手采集过程中，总是有部分数据被跳过</h4>
+            <ol>
+                <li>比如，获取说说全文，如果不是长说说就无需获取全文，所以就跳过了。</li>
+                <li>比如，获取说说更多图片，如果你的说说的配图没有超过9张的，就跳过了，不需要额外获取更多图片。</li>
+                <li>比如，获取说说语音信息，你的说说没有语音信息的话，自然就跳过了。</li>
+                <li>比如，获取好友互动信息，跳过1条，那不用说，肯定是添加了自己。</li>
+                <li>总而言之，言而总之，一般来说，跳过的都是属于正常的。</li>
+            </ol>
+
+            <h4>助手备份成功后，备份文件在哪，如何进行查看</h4>
+            <ol>
+                <li>文案的备份文件：在浏览器设置的下载目录中，请自行查看。</li>
+                <li>文件的下载目录：根据助手配置的文件下载工具自行查看
+                    <ul>
+                        <li>浏览器：在浏览器设置的下载目录中</li>
+                        <li>迅雷：在迅雷设置的下载目录中</li>
+                        <li>Aria2/Motrix：在Aria2/Motrix设置的下载目录中</li>
+                    </ul>
+                </li>
+            </ol>
+            <h4>如何查看备份内容中的HTML文件</h4>
+            <p>使用主流浏览器均可正常查看。</p>
+            <h4>查看HTML文件时，页面显示不正常</h4>
+            <ol>
+                <li>页面一片空白，可能是助手备份时发生错误，可反馈问题。</li>
+                <li>文案关联的配图、如说说的图片、相册的相片无法正常查看
+                    <ul>
+                        <li>没有进行文件夹合并，可参考使用说明中的合并备份。</li>
+                        <li>图片未正常下载，如QQ空间的图片已不存在或无法正常下载。</li>
+                    </ul>
+                </li>
+                <li>能正常查看文案与图片，但是页面乱七八糟，跟预览图或预览界面不一致
+                    <ul>
+                        <li>助手备份内容使用了部分的在线第三方工具，网络不好时，无法正常查看，可稍后重试。</li>
+                    </ul>
+                </li>
+            </ol>
+            <h4>查看QQ空间备份数据时，发现数据缺少</h4>
+            <ol>
+                <li>若QQ空间能正常查看，可能是助手采集数据的频率过快导致的，建议上调相应备份模块的查询间隔后重新备份。</li>
+                <li>若QQ空间无法正常查看或缺少，助手也爱莫能助。</li>
+            </ol>
+            <h4>备份内容丢失或缺失</h4>
+            <ol>
+                <li>确认QQ空间本身是否能正常访问，比如相册模块或视频模块遭遇冻结的时候，助手将无法正常查询数据。</li>
+                <li>如果QQ空间备份能正常备份，可能是遭遇冻结，可上调备份时间间隔或者重试次数、重试间隔。</li>
+            </ol>
+
+            <h4>相册下载的相片是否为原图</h4>
+            <ol>
+                <li>相册下载时，可指定【相片质量】，默认为原图。</li>
+                <li>如果QQ空间不存在原图，则按依次递减。</li>
+            </ol>
+            <h4>下载的相片重复是怎么回事</h4>
+            <ol>
+                <li>你可能重复备份了，建议删除备份数据后重新备份。</li>
+                <li>你确实没有重复备份，但是还是重复了，助手偶发问题，还没找到问题原因。</li>
+            </ol>
+
+            <h3 id="config">助手配置</h3>
+            <h4>助手配置页面错乱，无法正常进行配置</h4>
+            <p>助手使用了在线访问的第三方库，部分时间或会网络不稳定，可稍后再试，或更新到最新版本，最新版本已切换离线 CDN。</p>
+
+            <h4>文件下载工具为【浏览器】下载时，不停弹窗提示保存文件</h4>
+            <p>请确保已关闭浏览器设置中的下载前询问每个文件的保存位置。</p>
+            <ul>
+                <li>Edge：设置 -&gt; 下载 -&gt; 每次下载都询问我该做些什么。</li>
+                <li>Chrome：设置 -&gt; 高级 -&gt; 下载内容 -&gt; 下载前询问每个文件的保存位置。</li>
+                <li>360极速浏览器：选项 -&gt; 下载设置 -&gt; 下载前询问每个文件的保存位置。</li>
+                <li>其它浏览器：请自行摸索。</li>
+            </ul>
+
+            <h4>文件下载工具为【浏览器】下载时，部分下载文件显示已禁止、无权限、下载失败、添加失败等，且文件名后缀为txt/html</h4>
+            <p>因浏览器与QQ空间限制，目前主要出现在视频文件下载时，无法正常下载，可尝试在选项 -&gt; 公共 -&gt; 追加引用来源中添加下载识别的域名后重试，如若不行，请更换文件下载工具为其它。</p>
+
+            <h4>文件下载工具为【迅雷】下载时，无法唤起迅雷下载</h4>
+            <ol>
+                <li>确保已安装官方正版迅雷，版本10以上。</li>
+                <li>不保证第三方美化、破解、绿色版本可用。</li>
+                <li>并确保管家类软件没有禁用迅雷的基础服务。</li>
+                <li>如果还是不行，可将工具更换为【迅雷下载链接】，然后备份完成后，人工打开迅雷添加下载任务。</li>
+            </ol>
+
+            <h4>文件下载工具为【Aria2/Motrix】下载时，无法正常添加下载任务</h4>
+            <ol>
+                <li>确保Aria2已安装，版本1.35.0+。</li>
+                <li>确保Aria2已启动，并开启HTTP方式的RPC服务。</li>
+            </ol>
+
+            <h4>助手是否可以支持其他下载工具，如IDM</h4>
+            <ol>
+                <li>暂不支持其他下载工具，因为其他下载工具添加任务时，不支持指定目录的方式添加，而助手的备份内容的设计是含目录结构的。</li>
+                <li>如果有其他支持指定保存文件夹方式（含目录结构）添加任务的下载工具，可联系我。</li>
+            </ol>
+
+            <h4>是否支持清空QQ空间内容，比如清空说说，清空留言等</h4>
+            <p>不支持，也没有支持的打算，毕竟，数据是比较珍贵的，哪怕是黑历史。若因冲动或其它原因删除后，以后就没有后悔药了。助手既不推荐，也不建议备份QQ空间内容后，从而进行删除或注销QQ等后续操作，助手仅仅只是个人用于预防QQ盗号、QQ封号等不可抗力因素从而导致QQ空间青春数据丢失的工具。</p>
+
+            <h3 id="messages">说说相关</h3>
+            <h4>备份过程中，提示使用人数过多，请稍后重试</h4>
+            <ol>
+                <li>一般是出现在说说备份的时候，其它的一般也会出现，但是可忽略不计，比如点赞等。</li>
+                <li>出现的原因是因为助手采集频率过快导致的，就算不是助手采集，自己人工在说说模块进行翻页，快速进行连续翻页的时候，也会提示这个。</li>
+                <li>那既然知道问题出现在采集频率，那要解决这个问题，很简单，让助手采集说说的时候慢点就行，请自行到说说配置里面，调整说说选项的查询间隔。</li>
+                <li>参考范围：10-30（在10秒到30秒随机进行翻页）、20-50、30-60。</li>
+                <li>在调整了说说的查询间隔之后，同时建议，可以在公共配置【稍候重试接口】里面把【说说列表】勾选、同时配置【稍候重试次数】与【稍候重试间隔】，也可以使用默认的。</li>
+                <li>这个配置简单说明，就是当【说说列表】出现稍后重试提示了，则等待【稍候重试间隔】后进行重试，如果重试成功后，则不再重试，否则直到【稍候重试次数】用完后跳过当前页不进行备份。</li>
+                <li>其它模块的备份如果也出现同样的提示，也可以在【稍候重试接口】里面把其他列表的勾选，建议只勾选列表相关接口，评论、点赞、访客之类的，不勾选。</li>
+            </ol>
+
+            <p class="mt-4">
+                <a href="about.html" class="btn btn-secondary">&larr; 返回关于</a>
+                <a href="privacy.html" class="btn btn-primary ml-2">查看隐私政策</a>
+                <a href="usage.html" class="btn btn-outline-primary ml-2">查看使用说明</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

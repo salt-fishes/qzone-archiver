@@ -1,0 +1,108 @@
+{
+    "manifest_version": 3,
+    "name": "QQ空间导出助手",
+    "description": "QQ空间导出助手，用于导出备份QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客为文件，便于迁移与保存",
+    "version": "3.0.0",
+    "icons": {
+        "128": "img/icon-128.png"
+    },
+    "homepage_url": "https://github.com/ShunCai/QZoneExport",
+    "background": {
+        "service_worker": "js/background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://*.qzone.qq.com/*"
+            ],
+            "js": [
+                "vendor/thunder/thunder-link.js",
+                "vendor/jquery/jquery.min.js",
+                "vendor/bootstrap/js/bootstrap.bundle.min.js",
+                "vendor/bootstrap/js/bootstrap-table.min.js",
+                "vendor/bootstrap/js/bootstrap-table-zh-CN.min.js",
+                "vendor/turndown/turndown.js",
+                "vendor/lodash/lodash.min.js",
+                "vendor/filer/filer.min.js",
+                "vendor/jszip/jszip.min.js",
+                "vendor/FileSaver/FileSaver.min.js",
+                "vendor/ponyfill/ponyfill.min.js",
+                "vendor/blob/Blob.js",
+                "vendor/sheetjs/xlsx.full.min.js",
+                "vendor/template/template.js",
+                "js/templates-compiled.js",
+                "js/utils.js",
+                "js/config.js",
+                "js/api.js",
+                "js/content.js",
+                "js/modules/common.js",
+                "js/modules/messages.js",
+                "js/modules/blogs.js",
+                "js/modules/diaries.js",
+                "js/modules/photos.js",
+                "js/modules/videos.js",
+                "js/modules/boards.js",
+                "js/modules/friends.js",
+                "js/modules/favorites.js",
+                "js/modules/shares.js",
+                "js/modules/visitors.js"
+            ],
+            "css": [
+                "vendor/bootstrap/css/bootstrap.min.css",
+                "vendor/bootstrap/css/bootstrap-table.min.css",
+                "css/content.css"
+            ]
+        }
+    ],
+    "action": {
+        "default_icon": "img/icon-128.png",
+        "default_title": "QQ空间导出助手",
+        "default_popup": "html/popup.html"
+    },
+    "options_ui": {
+        "page": "html/options.html",
+        "open_in_tab": true
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://open.thunderurl.com/ https://res-etl-ssl.xunlei.com/"
+    },
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "html/indicator.html",
+                "export/*.*",
+                "export/spa-dist/*",
+                "export/spa-dist/**/*",
+                "templates/*.*",
+                "vendor/*.*"
+            ],
+            "matches": [
+                "https://*.qzone.qq.com/*"
+            ]
+        }
+    ],
+    "permissions": [
+        "activeTab",
+        "cookies",
+        "notifications",
+        "storage",
+        "unlimitedStorage",
+        "downloads",
+        "declarativeContent",
+        "clipboardWrite",
+        "declarativeNetRequest"
+    ],
+    "host_permissions": [
+        "https://*.qzone.qq.com/*",
+        "https://*.gtimg.com/*",
+        "https://apis.map.qq.com/*",
+        "https://v.qq.com/*",
+        "https://open.thunderurl.com/*",
+        "https://res-etl-ssl.xunlei.com/*",
+        "https://cdn.jsdelivr.net/*",
+        "https://fastly.jsdelivr.net/*",
+        "https://gcore.jsdelivr.net/*",
+        "https://cdn.staticfile.org/*",
+        "http://127.0.0.1/*"
+    ]
+}

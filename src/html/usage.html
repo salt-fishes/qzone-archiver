@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../css/options.css">
+    <link rel="icon" href="../img/icon-128.png">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>QQ空间导出助手-使用说明</title>
+    <script src="../vendor/jquery/jquery.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
+        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
+        .doc-content h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
+        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
+        .doc-content p, .doc-content li { line-height: 1.7; }
+        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
+        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
+        .doc-content .toc ol { margin: 0; }
+        .doc-content table { margin: 0.5rem 0 1rem; }
+        .doc-content pre { background: #f8f9fa; padding: 0.75rem; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="options.html">设置</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="tools.html">工具</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="nav-link" href="about.html">关于</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container-fluid">
+        <div class="doc-content">
+            <h2>QQ空间导出助手之使用篇</h2>
+
+            <div class="toc">
+                <ol>
+                    <li><a href="#terms">相关术语</a></li>
+                    <li><a href="#overview">简易概述</a></li>
+                    <li><a href="#tips">备份建议</a></li>
+                    <li><a href="#steps">备份步骤</a></li>
+                    <li><a href="#features">功能说明</a></li>
+                    <li><a href="#增量备份">增量备份</a></li>
+                    <li><a href="#backup-mgmt">备份管理</a></li>
+                </ol>
+            </div>
+
+            <h3 id="terms">相关术语</h3>
+            <p>以下表格内容为本文常见术语，请了解并熟记，便于更好的理解本文。</p>
+            <table class="table table-bordered table-sm">
+                <thead class="thead-light">
+                    <tr><th style="width:25%">术语</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>备份压缩包</td><td>助手采集完成后，<strong>打包下载</strong>得到的压缩文件</td></tr>
+                    <tr><td>文案内容</td><td>QQ空间的所有的<strong>纯文字内容</strong>，比如说说的文字内容、评论内容，日志的文字内容，评论内容等等</td></tr>
+                    <tr><td>文案内容文件</td><td>存放了文案内容的文件，助手默认为HTML文件，用浏览器打开查看</td></tr>
+                    <tr><td>文案内容下载文件夹</td><td><strong>下载前询问每个文件的保存位置</strong>关闭时，也就是浏览器设置的下载文件夹；<strong>下载前询问每个文件的保存位置</strong>打开时，你保存备份压缩包的文件夹</td></tr>
+                    <tr><td>文案内容备份文件夹</td><td>在文案内容下载文件夹中的QQ空间备份_QQ号的文件夹，即解压备份压缩包后得到的文件夹</td></tr>
+                    <tr><td>多媒体文件</td><td>QQ空间的所有的多媒体文件，比如说说日志的配图，相册的相片文件，视频的MP4文件，说说的语音MP3文件</td></tr>
+                    <tr><td>多媒体文件下载文件夹</td><td>文件下载工具所设置的下载目录，与助手无关</td></tr>
+                    <tr><td>多媒体文件备份文件夹</td><td>在多媒体文件下载文件夹中的QQ空间备份_QQ号文件夹</td></tr>
+                    <tr><td>完整备份文件夹</td><td>合并文案内容备份文件夹与多媒体文件备份文件夹的最终文件夹，里面同时放了文案内容文件与多媒体文件</td></tr>
+                </tbody>
+            </table>
+
+            <h3 id="overview">简易概述</h3>
+            <ol>
+                <li>点击开始备份，助手开始采集QQ空间数据，采集时长视QQ空间数据量而定。</li>
+                <li>助手生成QQ空间数据的文案内容压缩包并下载，解压后得到文案内容备份文件夹。</li>
+                <li>助手自动添加QQ空间多媒体内容到文件下载工具并等待下载完成，得到多媒体文件备份文件夹。</li>
+                <li>合并同名的文案内容备份文件夹与多媒体文件备份文件夹，得到完整备份文件夹。</li>
+                <li>查看完整备份文件夹下的index文件即可浏览备份内容。</li>
+            </ol>
+
+            <h3 id="tips">备份建议</h3>
+            <ol>
+                <li>建议更换文件下载工具为非浏览器的第三方下载工具。</li>
+                <li>多媒体文件下载工具为浏览器时，必须关闭"下载前询问每个文件的保存位置"。</li>
+                <li>对点赞、访客没要求的，不建议打开备份（默认关闭），可加快备份时间。</li>
+                <li>对备份流程不熟悉的，首次备份建议使用小号备份，无小号的，可单独备份某个数据较少的模块。</li>
+                <li>数据量较多的，建议上调查询间隔。</li>
+                <li>数据量较多的，建议上调列表重试配置。</li>
+                <li>完整备份，建议睡前备份，无人值守备份，推荐文件下载工具调整为Aria2/Motrix。</li>
+                <li>数据量过多的，建议分开模块进行备份，然后，每个模块备份完后，进行合并即可，或者不合并。</li>
+            </ol>
+
+            <h3 id="steps">备份步骤</h3>
+            <ol>
+                <li>安装并配置好助手。</li>
+                <li>登录自己的QQ空间，并访问需要备份的QQ空间。</li>
+                <li>在需备份的QQ空间页面点击浏览器扩展栏的助手图标进入备份界面。</li>
+                <li>选择要备份的QQ空间内容，建议全部备份，点击<strong>开始备份</strong>。</li>
+                <li>助手开始采集数据，采集时长视空间数据量而定，请耐心等待采集完成，主号建议睡前晚上备份。</li>
+                <li>数据采集完成后，助手自行添加<strong>多媒体文件</strong>的下载任务到文件下载工具。</li>
+                <li><strong>多媒体文件</strong>下载任务添加完成后，点击打包下载按钮打包文案内容(即说说、日志等文字内容)到压缩包。</li>
+                <li>等待压缩包下载完成，压缩包存放的是文案内容，不包含多媒体文件(即图片、相片、视频、语音、表情文件)，点击<strong>查看备份</strong>按钮查看<strong>备份压缩包</strong>所在文件夹。</li>
+                <li>解压压缩包，得到一个QQ空间备份_QQ号命名的文件夹，也就是<strong>文案内容备份文件夹</strong>。</li>
+                <li>等待多媒体文件下载完成，多媒体文件将会下载到助手配置的下载工具本身所设置的文件夹中，其中有个QQ空间备份_QQ号命名的文件夹，也就是<strong>多媒体文件备份文件夹</strong>。</li>
+                <li>合并文件夹，简单来说，就是第9步与第10步中的两个QQ空间备份_QQ号命名的文件夹中的东西剪切或复制移动到同一个文件夹即可，最终形成<strong>完整备份文件夹</strong>。</li>
+                <li>打开合并后QQ空间备份_QQ号也就是<strong>完整备份文件夹</strong>中的index文件查看备份内容即可。</li>
+                <li>备份完成，如需要，可再次把合并后的QQ空间备份_QQ号也就是<strong>完整备份文件夹</strong>复制、剪切到其它地方可进行再次备份，避免因磁盘损坏等导致备份丢失或损坏。</li>
+            </ol>
+
+            <h3 id="features">功能说明</h3>
+            <h4>打包下载</h4>
+            <p>一般来说，只要备份都会出现打包下载按钮。当只备份相册/视频模块，且备份类型为文件/MP4文件时，且文件下载工具不是<strong>迅雷下载链接</strong>时，不出现<strong>打包下载</strong>。</p>
+            <table class="table table-bordered table-sm">
+                <thead class="thead-light">
+                    <tr><th>备份模块</th><th>备份类型</th><th>文件下载工具</th><th>说明</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>相册/视频</td><td>文件/MP4文件</td><td>除<strong>迅雷（下载链接）</strong>外</td><td>不出现打包下载</td></tr>
+                    <tr><td>相册</td><td>文件/MP4文件</td><td><strong>迅雷（下载链接）</strong></td><td>出现，下载链接在备份压缩包中</td></tr>
+                </tbody>
+            </table>
+
+            <h4>下载管理</h4>
+            <p>助手采集数据完成，备份界面下方将出现下载管理与打包下载。一般来说，可以不使用，只有存在添加任务失败异常时需要重试后切换到其它第三方工具时使用。如若需要切换到Aria2，需提前配置好Aria2的相关配置。实际文件下载成功与否，请自行查看文件下载工具的下载情况。</p>
+
+            <h4>合并备份</h4>
+            <p>不出现<strong>打包下载</strong>按钮时，是无需进行合并的。备份完成后，一般会存在两个<strong>QQ空间备份_QQ号</strong>的文件夹，一个是<strong>文案内容备份文件夹</strong>，一个是存放了多媒体文件的<strong>多媒体文件备份文件夹</strong>。分别打开这两个文件夹，就会发现，其中的内容极为相似，所以，只需把其中一个文件夹的所有东西全选，剪切或复制到另外一个文件夹即可。</p>
+            <p>建议把<strong>文案内容备份文件夹</strong>中的东西剪切或复制到<strong>多媒体文件备份文件夹</strong>中，因为一般来说<strong>多媒体文件备份文件夹</strong>都比较大，而且这样也不需要等待文件下载工具下载完<strong>多媒体文件</strong>后才能合并。</p>
+            <p><strong>完整备份文件夹</strong>的目录结构：</p>
+            <pre>├─Albums      相册模块文件夹
+│  ├─Images   相册预览图（多媒体文件备份文件夹）
+│  ├─js       助手展示内容专用（文案内容备份文件夹）
+│  └─json     助手展示内容专用（文案内容备份文件夹）
+├─Blogs       日志模块文件夹
+├─Boards      留言模块文件夹
+├─Common      助手专用
+├─Diaries     私密日记模块文件夹
+├─Favorites   收藏夹模块文件夹
+├─Friends     QQ好友模块文件夹
+├─Messages    说说模块文件夹
+├─Shares      分享模块文件夹
+├─Videos      视频模块文件夹
+└─Visitors    访客模块文件夹</pre>
+
+            <h4>查看备份</h4>
+            <p>根据备份类型的不同，选择不同的查看方式。</p>
+            <table class="table table-bordered table-sm">
+                <thead class="thead-light">
+                    <tr><th>备份类型</th><th>查看方式</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>HTML</td><td>浏览器打开相应的HTML文件即可，比如根目录下的index文件</td></tr>
+                    <tr><td>MarkDown</td><td>使用 Typora 或 Atom 等Markdown编辑器打开QQ空间备份_QQ号文件夹</td></tr>
+                    <tr><td>JSON</td><td>懂的不用说，不懂的说了也没用</td></tr>
+                </tbody>
+            </table>
+
+            <h3 id="增量备份">增量备份</h3>
+            <p><strong>适用于使用助手备份数据后，还需使用QQ空间的人群。</strong></p>
+
+            <h4>原理概述</h4>
+            <ol>
+                <li>全量备份完成后，已采集的文案内容将保存到浏览器中，同时生成数据文件到备份压缩包，数据文件位于 QQ空间备份QQ号 -&gt; Common -&gt; json -&gt; 助手备份数据QQ号。</li>
+                <li>开启增量备份再次备份时，助手将自动读取保存到浏览器中的已备份的文案内容数据。</li>
+                <li><strong>采集数据时，当采集到已备份文案内容的最后一条（或指定时间）时，停止采集文案内容。</strong></li>
+                <li>基于已备份的文案内容数据 + 新采集到文案内容数据，重新生成文案内容文件。</li>
+                <li>已备份的文案内容关联的配图，不再进行下载，因为全量备份完成后已下载到合并的完整备份文件夹中，此时重新生成的已备份的文案内容的配图地址仍是之前的配图地址。</li>
+                <li>新采集的文案内容关联的配图，将会添加到文件下载工具中，新生成新采集的文案内容的配图地址指向刚下载的文件。</li>
+                <li>重新生成的已备份文案内容 + 已备份文案内容的已下载的配图 + 新生成的新采集的文案内容 + 新采集的文案内容的配图 = 新的完整备份内容。</li>
+            </ol>
+
+            <h4>核心逻辑</h4>
+            <p>助手增量备份的逻辑，主要是依赖于最后备份时间跟新采集的数据的最旧条目的发布时间比较，新采集的条目的发布时间在最后备份时间之后或相等的，则会停止采集数据。</p>
+            <ul>
+                <li>当增量备份方式为<strong>上次备份</strong>时，最后备份时间，就是相应模块的最后的备份时间。</li>
+                <li>当增量备份方式为<strong>自定义</strong>时，最后备份时间，就是你自定义的时间。</li>
+            </ul>
+            <p>举个例子：</p>
+            <ol>
+                <li>2022年1月1日，发表了说说A与说说B，进行了全量备份。</li>
+                <li>2022年1月2日，说说A新增了评论、点赞、访客，删除了说说B。</li>
+                <li>2022年1月3日，发表了说说C，也同时新增了点赞、访客。</li>
+                <li>2022年1月4日，进行了增量备份，<strong>最终的备份结果就是新增了说说C以及其评论、点赞、访客</strong>，说说A的新增的评论、点赞、访客不会进行备份，同时，已备份的说说B也不会同步删除。</li>
+            </ol>
+            <p>上面的例子，如果想重新全量备份说说A的东西，含评论、点赞、访客，该如何做呢？<strong>把说说的增量备份方式修改为自定义，然后时间指定为2022年1月1日，然后重新增量备份即可。</strong></p>
+
+            <h4>使用说明</h4>
+            <ol>
+                <li>先进行全量备份，得到完整备份文件夹，此处简称为<strong>文件夹A</strong>，此时，<strong>文件夹A</strong>中，存放了全量备份的文案内容文件与多媒体文件。</li>
+                <li>打开增量备份，<strong>建议所有模块的增量配置设置为上次备份</strong>，再次进行备份，备份前，确定备份管理中存在增量数据，得到完整备份文件夹，此处简称为<strong>文件夹B</strong>。</li>
+                <li>最后，将<strong>文件夹A</strong>与<strong>文件夹B</strong>合并，简单来说，就是将<strong>文件夹B</strong>中的所有东西复制或剪切到<strong>文件夹A</strong>，最后<strong>文件夹A</strong>就是完整备份内容。</li>
+            </ol>
+
+            <h4>常见场景</h4>
+            <ol>
+                <li>进行了全模块的全量备份后，后续继续使用QQ空间，后面想增量备份，把增量备份方式改为增量，然后进行增量备份即可。</li>
+                <li>第一次只全量备份了说说，未备份其它模块，后续想备份日志模块，把说说的增量备份方式改为增量，然后备份时，同时勾选说说和日志备份即可。</li>
+                <li>第一次全量备份时，只勾选了A相册进行备份，后续想B相册，备份前，把相册模块的增量备份方式改为上次备份，然后备份时，勾选相册模块，然后勾选B相册即可；如果A相册需要增量，把A相册同时勾选，A相册不勾选也会默认保留，但是不会增量备份A相册新增的相片。</li>
+            </ol>
+
+            <h3 id="backup-mgmt">备份管理</h3>
+            <p><strong>查看与管理已备份的数据，适用于增量备份，当备份管理中相应模块不存在数据时，哪怕打开增量备份，也是进行全量备份。</strong></p>
+            <h4>导入</h4>
+            <p>导入已备份的数据到浏览器中，比如，备份压缩包中的助手备份数据_QQ号。没有选择模块时，导入所有模块数据，选择了模块时，只导入指定模块数据。</p>
+            <h4>导出</h4>
+            <p>导出浏览器中已备份的数据到本地，避免浏览器清除数据后导致数据丢失。没有选择模块时，导出所有模块数据，选择了模块时，只导出指定模块数据。<em>一般情况来说，不会使用到这个功能，因为助手每次备份，会在备份压缩包生成当前备份的所有数据，位于 QQ空间备份QQ号/Common/json/助手备份数据QQ号。</em></p>
+            <h4>删除</h4>
+            <p>删除浏览器中已备份的数据，删除后，将全量备份数据。没有选择模块时，删除所有模块数据，选择了模块时，只删除指定模块数据，相册模块，可单独删除指定相册，删除后，可重新备份该相册，不支持导出指定相册。</p>
+
+            <p class="mt-4">
+                <a href="about.html" class="btn btn-secondary">&larr; 返回关于</a>
+                <a href="privacy.html" class="btn btn-outline-primary ml-2">查看隐私政策</a>
+                <a href="faq.html" class="btn btn-outline-primary ml-2">查看常见问题</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

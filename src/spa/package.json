@@ -1,0 +1,29 @@
+{
+  "name": "qzone-archive-spa",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "QQ空间档案 SPA 导出前端，供 file:// 协议直接打开",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "build:only": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "pinia": "^2.1.7",
+    "vue-virtual-scroller": "^2.0.0-beta.8",
+    "flexsearch": "^0.7.43",
+    "lightgallery": "^2.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@vitejs/plugin-vue": "^5.0.4",
+    "sass": "^1.72.0",
+    "typescript": "^5.4.3",
+    "vite": "^5.2.6",
+    "vue-tsc": "^2.0.7"
+  }
+}

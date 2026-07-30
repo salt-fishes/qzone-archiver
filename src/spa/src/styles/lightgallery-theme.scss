@@ -1,0 +1,50 @@
+// LightGallery 主题覆盖 —— 与档案风格一致
+// 在 lightgallery 自带 css 之后加载（main.ts 中导入顺序：lightgallery css → 本文件）
+
+.lg-theme-archive {
+  // 背景：墨色半透明（替代默认黑色）
+  background-color: rgba(26, 22, 18, 0.92) !important;
+
+  // 工具栏与按钮：纸张暖色
+  .lg-toolbar,
+  .lg-actions .lg-icon,
+  .lg-footer {
+    color: var(--paper) !important;
+    background-color: transparent !important;
+  }
+
+  .lg-icon {
+    &:hover {
+      color: var(--vermilion) !important;
+    }
+  }
+
+  // 标题与计数：等宽字
+  .lg-sub-html,
+  .lg-counter {
+    font-family: var(--font-mono) !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.1em !important;
+    color: var(--paper-2) !important;
+  }
+
+  // 缩略图条
+  .lg-thumb-outer {
+    background-color: rgba(26, 22, 18, 0.6) !important;
+  }
+
+  .lg-thumb-item {
+    border-color: transparent !important;
+    &.active {
+      border-color: var(--vermilion) !important;
+    }
+  }
+
+  // 进度条
+  .lg-progress-bar {
+    background-color: var(--vermilion) !important;
+    .lg-progress {
+      background-color: var(--vermilion) !important;
+    }
+  }
+}

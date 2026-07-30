@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <link rel="stylesheet" href="../vendor/font-awesome/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="../vendor/jquery-resizable-columns/css/jquery.resizableColumns.css">
+    <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap-table.min.css">
+    <link rel="stylesheet" href="../vendor/tempusdominus/css/tempusdominus-bootstrap-4.min.css">
+    <link rel="stylesheet" href="../vendor/bootstrap-select/css/bootstrap-select.min.css">
+    <link rel="stylesheet" href="../css/options.css">
+    <link rel="icon" href="../img/icon-128.png">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>QQ空间导出助手-选项</title>
+    <script src="../vendor/jquery/jquery.min.js"></script>
+    <script src="../vendor/popper/umd/popper.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script src="../vendor/bootstrap-select/js/bootstrap-select.min.js"></script>
+    <script src="../vendor/bootstrap-select/js/i18n/defaults-zh_CN.min.js"></script>
+    <script src="../vendor/jquery-resizable-columns/js/jquery.resizableColumns.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap-table.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap-table-zh-CN.min.js"></script>
+    <script src="../vendor/moment/moment.min.js"></script>
+    <script src="../vendor/moment/zh-cn.min.js"></script>
+    <script src="../vendor/x-editable-4-bs4/js/bootstrap-editable.min.js"></script>
+    <script src="../vendor/bootstrap/js/bootstrap-table-resizable.min.js"></script>
+    <script src="../vendor/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
+    <script src="../vendor/lodash/lodash.min.js"></script>
+</head>
+
+<body>
+    <header>
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+            <a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mr-auto">
+                    <li class="nav-item active">
+                        <a id="setting-link" class="nav-link" href="options.html">设置<span class="sr-only">(current)</span></a>
+                    </li>
+                    <li class="nav-item">
+                        <a id="about-link" class="nav-link" href="tools.html">工具</a>
+                    </li>
+                    <li class="nav-item">
+                        <a id="about-link" class="nav-link" href="about.html">关于</a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+    <main role="main" style="position: relative;top: 56px;">
+        <div class="tab-content" id="v-pills-tabContent">
+            <div class="tab-pane fade show active" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
+                <div class="container-fluid">
+                    <nav>
+                        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                            <a class="nav-item nav-link active" id="nav-messages-tab" data-toggle="tab" href="#nav-messages" role="tab" aria-controls="nav-messages" aria-selected="false">说说</a>
+                            <a class="nav-item nav-link" id="nav-blogs-tab" data-toggle="tab" href="#nav-blogs" role="tab" aria-controls="nav-blogs" aria-selected="false">日志</a>
+                            <a class="nav-item nav-link" id="nav-diaries-tab" data-toggle="tab" href="#nav-diaries" role="tab" aria-controls="nav-diaries" aria-selected="false">日记</a>
+                            <a class="nav-item nav-link" id="nav-photos-tab" data-toggle="tab" href="#nav-photos" role="tab" aria-controls="nav-photos" aria-selected="false">相册</a>
+                            <a class="nav-item nav-link" id="nav-videos-tab" data-toggle="tab" href="#nav-videos" role="tab" aria-controls="nav-videos" aria-selected="false">视频</a>
+                            <a class="nav-item nav-link" id="nav-boards-tab" data-toggle="tab" href="#nav-boards" role="tab" aria-controls="nav-boards" aria-selected="false">留言</a>
+                            <a class="nav-item nav-link" id="nav-friends-tab" data-toggle="tab" href="#nav-friends" role="tab" aria-controls="nav-friends" aria-selected="false">好友</a>
+                            <a class="nav-item nav-link" id="nav-favorites-tab" data-toggle="tab" href="#nav-favorites" role="tab" aria-controls="nav-favorites" aria-selected="false">收藏</a>
+                            <a class="nav-item nav-link" id="nav-shares-tab" data-toggle="tab" href="#nav-shares" role="tab" aria-controls="nav-shares" aria-selected="false">分享</a>
+                            <a class="nav-item nav-link" id="nav-visitors-tab" data-toggle="tab" href="#nav-visitors" role="tab" aria-controls="nav-visitors" aria-selected="false">访客</a>
+                            <a class="nav-item nav-link " id="nav-common-tab" data-toggle="tab" href="#nav-common" role="tab" aria-controls="nav-common" aria-selected="false">公共</a>
+                            <a class="nav-item nav-link " id="nav-dev-tab" data-toggle="tab" href="#nav-dev" role="tab" aria-controls="nav-dev" aria-selected="false">开发者</a>
+                        </div>
+                    </nav>
+                    <div class="tab-content" id="nav-tabContent">
+                        <div class="tab-pane fade show active" id="nav-messages" role="tabpanel" aria-labelledby="nav-messages-tab">
+                            <br />
+                            <form id="tb_messages" data-module="Messages">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="messages_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="messages_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="messages_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="messages_increment_type" class="custom-select increment_type" data-module="Messages" data-time="#messages_increment_time" data-time-row="#messages_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="messages_increment_time_row">
+                                    <label for="messages_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="messages_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="messages_increment_time" class="form-control datetimepicker-input" data-target="#messages_increment_time_display" />
+                                            <div class="input-group-append" data-target="#messages_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的说说的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">说说选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="messages_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="messages_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="messages_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="20" max="40" class="form-control" id="messages_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">全文说说：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="messages_full">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_full" aria-describedby="messages_full_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="messages_full_help" class="text-muted">默认获取全文，取消勾选不获取全文</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">展开全文：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="messages_full_show">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_full_show" aria-describedby="messages_full_show_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="messages_full_show_help" class="text-muted">默认不自动展开全文，勾选将自动展开全文</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">屏蔽开关：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="message_is_filter">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="message_is_filter" aria-describedby="message_is_filter_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="message_is_filter_help" class="text-muted">默认关闭，勾选开启屏蔽词过滤说说条目</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row managerKeywordsDiv">
+                                    <div class="col-sm-auto" style="line-height: 35px;">屏蔽管理：</div>
+                                    <div class="col-sm-2">
+                                        <button id="managerKeywords" type="button" class="btn btn-outline-primary" data-toggle="tooltip" title="管理屏蔽词" data-module="Messages">添加</button>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">
+                                            过滤含有指定屏蔽词的说说条目，适用于广告类说说，<span class="text-danger">请谨慎使用，避免屏蔽正常说说。</span>
+                                        </small>
+                                    </div>
+                                    <!-- Modal -->
+                                    <div class="modal fade" id="managerKeywordsModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="managerKeywordsLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="managerKeywordsLabel">屏蔽词管理</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+														<span aria-hidden="true">&times;</span>
+													</button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="form-group">
+                                                        <label for="filterKeywords">批量添加：</label>
+                                                        <button type="button" class="btn btn-outline-secondary" id="defaultFilterKeyword">默认配置</button>
+                                                        <small id="emailHelp" class="form-text text-muted">清空输入框可查看使用说明</small>
+                                                        <textarea class="form-control mt-2" id="filterKeywords" rows="10" placeholder="使用说明：
+一行表示一个屏蔽词，可使用多个屏蔽词，即用&&拼接组合，表示同时成立才屏蔽说说
+多个屏蔽词判断条件为或者，即多个屏蔽词，只要包含其中一个，即屏蔽说说
+-----------------------------------------------------------------------------------------------------------------
+说说内容：本助手开源免费，使用简单，广受好评，赶紧安装助手备份QQ空间内容吧~
+-----------------------------------------------------------------------------------------------------------------
+注意：&&符号为助手屏蔽词关键符号，表示单行的&&前后文字同时存在
+-----------------------------------------------------------------------------------------------------------------
+屏蔽词：
+不好评
+不免费&&好评
+免费&&好评
+开源&&好评
+-----------------------------------------------------------------------------------------------------------------
+屏蔽结果：屏蔽
+屏蔽逻辑：
+1、说说内容不存在【不好评】，不屏蔽；
+2、说说内容不同时存在【不免费】与【好评】，只是存在【好评】，不屏蔽；
+3、说说内容同时存在【免费】与【好评】，屏蔽；
+4、说说内容同时存在【开源】与【好评】，但由于第三项已匹配屏蔽，不做处理；"></textarea>
+                                                    </div>
+                                                    <div class="form-group row">
+                                                        <label class="col-sm-2 col-form-label">单个添加：</label>
+                                                        <div class="col-sm-5">
+                                                            <input type="text" class="form-control" id="filterKeyword" placeholder="屏蔽词">
+                                                        </div>
+                                                        <div class="col-sm-2">
+                                                            <button type="button" class="btn btn-outline-primary" id="addFilterKeyword">添加</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-primary" data-dismiss="modal">确定</button>
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">那年今日：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" data-module="Messages" name="hasThatYearToday" id="messages_that_year_today">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_that_year_today" aria-describedby="messages_that_year_today_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="messages_that_year_today_help" class="text-muted">是否生成那年今日，仅适用于HTML备份类型</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">微信坐标：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" data-module="Messages" name="refreshWeChatLbs" id="messages_refreshWeChatLbs">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_refreshWeChatLbs" aria-describedby="messages_refreshWeChatLbs_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="messages_refreshWeChatLbs_help" class="text-muted">刷新微信朋友圈同步到空间的说说的坐标信息，<span style="color:red">需在开发者中维护腾讯地图Key</span></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">语音说说：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" data-module="Messages" name="GetVoice" id="messages_GetVoice">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_GetVoice" aria-describedby="messages_GetVoice_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="messages_GetVoice_help" class="text-muted">是否获取语音说说，默认为关闭，<span style="color:red">因为QQ空间已下线语音说说功能，且历史数据无法正常下载</span></small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">评论选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">所有评论：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" name="QZone_Config.Messages.Comments.isFull" class="custom-control-input" id="messages_download_full_comments" data-hidden="true" data-target-link="messages_comment_link">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="messages_download_full_comments" aria-describedby="messages_comments_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">默认下载前10条评论，勾选下载全部，只获取说说本身评论，不获取说说配图评论</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="messages_comment_link">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="messages_comments_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="messages_comments_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="messages_comment_link">
+                                    <label for="messages_comments_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="20" class="form-control" id="messages_comments_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页评论的条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="message_other_options">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Messages.Like.isGet" class="custom-control-input" id="messages_has_like" data-hidden="true" data-target-link="messages_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="messages_has_like" aria-describedby="messages_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，只获取说说本身赞，不获取说说配图的赞，仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="messages_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="messages_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="messages_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">最近访问：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Messages.Visitor.isGet" class="custom-control-input" id="messages_has_visitor" data-hidden="true" data-target-link="messages_visitor_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="messages_has_visitor" aria-describedby="messages_visitor_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取最近访问，勾选获取，理论上仅支持获取最近1000条访问记录（开通黄钻情况下），仅在备份类型为HTML、JSON时备份</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="messages_visitor_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="messages_visitor_min" name="QZone_Config.Messages.Visitor.randomSeconds.min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="messages_visitor_max" name="QZone_Config.Messages.Visitor.randomSeconds.max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <hr class="my-3">
+                                    <h6 class="text-warning">实验性功能</h6>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">恢复已删除说说：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="messages_recover_deleted" data-module="Messages" name="RecoverDeleted">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="messages_recover_deleted" aria-describedby="messages_recover_deleted_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted" id="messages_recover_deleted_help">
+                                                通过好友互动消息列表（评论/点赞通知）尝试恢复已删除的说说。
+                                                <strong class="text-warning">仅 SPA 导出生效。</strong>
+                                                只能恢复有互动的说说；私密说说无通知故无法恢复；摘要可能被截断；图片链接可能失效。
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-blogs" role="tabpanel" aria-labelledby="nav-blogs-tab">
+                            <br />
+                            <form id="tb_blogs" data-module="Blogs">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="blogs_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="blogs_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="blogs_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="blogs_increment_type" class="custom-select increment_type" data-module="Blogs" data-time="#blogs_increment_time" data-time-row="#blogs_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="blogs_increment_time_row">
+                                    <label for="blogs_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="blogs_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="blogs_increment_time" class="form-control datetimepicker-input" data-target="#blogs_increment_time_display" />
+                                            <div class="input-group-append" data-target="#blogs_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的日志的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">日志选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="blogs_showType" class="col-sm-auto col-form-label">展示方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="blogs_showType" class="custom-select" data-module='Blogs' name="showType">
+											<option value="0">表格</option>
+											<option value="1" selected>列表</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">日志列表的查看/展示方式，表格：列表以表格方式展示；列表：普通列表展示，仅适用HTML备份方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="blogs_viewType" class="col-sm-auto col-form-label">日志视图：</label>
+                                    <div class="col-sm-2">
+                                        <select id="blogs_viewType" class="custom-select" data-module='Blogs' name="viewType">
+											<option value="0">列表</option>
+											<option value="1" selected>摘要</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">列表视图：日志列表仅显示日志标题、摘要视图；日志列表显示日志摘要，可参考QQ空间，仅适用HTML备份方式下的列表展示方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">列表间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="blogs_list_limit" class="col-sm-auto col-form-label">列表条目：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="15" max="100" class="form-control" id="blogs_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">内容间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_info_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_info_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">日志全文请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">评论选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">所有评论：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="blogs_download_full_comments" data-hidden="true" data-target-link="blogs_comment_link">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="blogs_download_full_comments" aria-describedby="blogs_comments_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="blogs_comments_help" class="text-muted">默认下载前50条评论，勾选下载全部</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="blogs_comment_link">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_comments_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="blogs_comments_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="blogs_comment_link">
+                                    <label for="blogs_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="15" max="50" class="form-control" id="blogs_comments_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="blogs_other_options">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Blogs.Like.isGet" class="custom-control-input" id="blogs_has_like" data-hidden="true" data-target-link="blogs_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="blogs_has_like" aria-describedby="blogs_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="blogs_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="blogs_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="blogs_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">最近访问：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Blogs.Visitor.isGet" class="custom-control-input" id="blogs_has_visitor" data-hidden="true" data-target-link="blogs_visitor_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="blogs_has_visitor" aria-describedby="blogs_visitor_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取最近访问，勾选获取，理论上仅支持获取最近1000条访问记录（开通黄钻情况下），仅在备份类型为HTML、JSON时备份</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="blogs_visitor_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="blogs_visitor_min" name="QZone_Config.Blogs.Visitor.randomSeconds.min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="blogs_visitor_max" name="QZone_Config.Blogs.Visitor.randomSeconds.max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-diaries" role="tabpanel" aria-labelledby="nav-diaries-tab">
+                            <br />
+                            <form id="tb_diaries" data-module="Diaries">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="diaries_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="diaries_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="diaries_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="diaries_increment_type" class="custom-select increment_type" data-module="Diaries" data-time="#diaries_increment_time" data-time-row="#diaries_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="diaries_increment_time_row">
+                                    <label for="diaries_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="diaries_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="diaries_increment_time" class="form-control datetimepicker-input" data-target="#diaries_increment_time_display" />
+                                            <div class="input-group-append" data-target="#diaries_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的日记的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">日记选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="diaries_showType" class="col-sm-auto col-form-label">展示方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="diaries_showType" class="custom-select" data-module='Diaries' name="showType">
+											<option value="0">表格</option>
+											<option value="1" selected>列表</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">日记列表列表的查看/展示方式，表格：列表以表格方式展示；列表：普通列表展示，仅适用HTML备份方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">列表间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="diaries_list_limit" class="col-sm-auto col-form-label">列表条目：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="15" max="100" class="form-control" id="diaries_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">内容间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_info_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_info_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">日记全文请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">评论选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">所有评论：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="diaries_download_full_comments" data-hidden="true" data-target-link="diaries_comment_link">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="diaries_download_full_comments" aria-describedby="diaries_comments_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="diaries_comments_help" class="text-muted">默认下载前50条评论，勾选下载全部</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="diaries_comment_link">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_comments_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="diaries_comments_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="diaries_comment_link">
+                                    <label for="diaries_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="15" max="50" class="form-control" id="diaries_comments_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="diaries_other_options">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Diaries.Like.isGet" class="custom-control-input" id="diaries_has_like" data-hidden="true" data-target-link="diaries_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="diaries_has_like" aria-describedby="diaries_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="diaries_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="diaries_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="diaries_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">最近访问：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Diaries.Visitor.isGet" class="custom-control-input" id="diaries_has_visitor" data-hidden="true" data-target-link="diaries_visitor_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="diaries_has_visitor" aria-describedby="diaries_visitor_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取最近访问，勾选获取，理论上仅支持获取最近1000条访问记录（开通黄钻情况下），仅在备份类型为HTML、JSON时备份</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="diaries_visitor_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="diaries_visitor_min" name="QZone_Config.Diaries.Visitor.randomSeconds.min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="diaries_visitor_max" name="QZone_Config.Diaries.Visitor.randomSeconds.max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-photos" role="tabpanel" aria-labelledby="nav-photos-tab">
+                            <br />
+                            <form id="tb_photos" data-module="Photos">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="photos_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="File">文件</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_increment_type" class="custom-select increment_type" data-module="Photos" data-time="#photos_increment_time" data-time-row="#photos_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="photos_increment_time_row">
+                                    <label for="photos_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="photos_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="photos_increment_time" class="form-control datetimepicker-input" data-target="#photos_increment_time_display" />
+                                            <div class="input-group-append" data-target="#photos_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">创建时间大于</span>该时间的相册，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">相册选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="photos_albums_sort_type" class="col-sm-auto col-form-label">排序方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_albums_sort_type" class="custom-select">
+											<option value="4" selected >最新上传在前</option>
+											<option value="1">最新创建在前</option>
+											<option value="0">最新创建在后</option>
+											<option value="2">自定义排序</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">相册的排序方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_albums_folder_rename_type" class="col-sm-auto col-form-label">命名方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_albums_folder_rename_type" class="custom-select">
+											<option value="Default" selected >相册名</option>
+											<option value="Sort">排序号+相册名</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">相册备份文件夹的命名方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="3000" class="form-control" id="photos_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="photos_albums_comments_panel" style="display: none;">
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">获取评论：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="photos_albums_comments_has" data-hidden="true" data-target-link="albums_comment_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="photos_albums_comments_has" aria-describedby="photos_albums_comments_has_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small id="photos_albums_comments_has_help" class="text-muted">默认不获取，勾选获取评论</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="albums_comment_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_albums_comments_cost_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_albums_comments_cost_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="albums_comment_link">
+                                        <label for="photos_albums_comment_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                        <div class="col-sm-2">
+                                            <input type="number" min="10" max="100" class="form-control" id="photos_albums_comments_limit" placeholder="查询每页条数">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">相片选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="photos_file_structure_type" class="col-sm-auto col-form-label">归类方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_file_structure_type" class="custom-select">
+											<option value="File" selected >相册</option>
+											<option value="Year">年份</option>
+											<option value="Month">月份</option>
+											<option value="Date">日期</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">基于相册的相片的文件归类存放方式
+                                            <span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip" data-html="true" title='
+                                            相册：相册/相片<br>
+                                            年份：相册/年/相片<br>
+                                            月份：相册/年/月/相片<br>
+                                            日期：相册/年/月/日/相片<br>
+                                            时间优先取原图的拍摄时间，非原图或无拍摄时间，再取相片上传时间'></span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_images_rename_type" class="col-sm-auto col-form-label">命名方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_images_rename_type" class="form-control selectpicker custom-select" data-actions-box="true">
+                                            <optgroup label="相片名">
+                                                <option value="Name" selected >序号_相片名</option>
+											    <option value="Default" selected >序号_相片名_随机码</option>
+                                            </optgroup>
+                                            <optgroup label="智能合成">
+                                                <option value="Time">序号_相片名_拍摄/上传时间</option>    
+                                                <option value="Time_Lbs1">序号_相片名_拍摄/上传时间_拍摄/上传地点</option>
+                                                <option value="Time_Lbs2">序号_相片名_上传/拍摄时间_上传/拍摄地点</option>
+                                            </optgroup>
+                                            <optgroup label="智能汇总">
+                                                <option value="ALL">序号_相片名_上传时间_上传地点_拍摄时间_拍摄地点</option>
+                                            </optgroup>
+                                            <optgroup label="固定时间">                                        
+                                                <option value="UploadTime">序号_相片名_上传时间</option>
+                                                <option value="ShootTime">序号_相片名_拍摄时间</option>
+                                            </optgroup>
+                                            <optgroup label="拍摄时间">
+                                                <option value="ShootTime_ShootLbs">序号_相片名_拍摄时间_拍摄地点</option>
+                                                <option value="ShootTime_Lbs1">序号_相片名_拍摄时间_拍摄/上传地点</option>
+                                                <option value="ShootTime_Lbs2">序号_相片名_拍摄时间_上传/拍摄地点</option>
+                                            </optgroup>
+                                            <optgroup label="上传时间">
+                                                <option value="UploadTime_UploadLbs">序号_相片名_上传时间_上传地点</option>
+                                                <option value="UploadTime_Lbs1">序号_相片名_上传时间_上传/拍摄地点</option>
+                                                <option value="UploadTime_Lbs2">序号_相片名_上传时间_拍摄/上传地点</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">相片备份文件的命名方式，<span style="color: red;">拍摄地点仅供参考，无法采集精确的拍摄地点</span></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_images_list_type" class="col-sm-auto col-form-label">列表类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_images_list_type" class="custom-select">
+											<option value="Default">默认列表</option>
+											<option value="Detail" selected>详情列表</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">默认列表，即相册列表；详情列表，即QQ空间浏览大图时，下方的缩略图列表
+                                            <span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip" title='默认列表，每页大小有限制，最高不允许超90张照片，相册相片过多时，采集较慢，详情列表，没有大小限制，但也不建议设置过大，助手默认配置为每页1000张相片，当列表类型选择为详情列表时，将不再获取额外相片详情与相片视频，因为详情列表默认有详情信息与视频信息，更多说明，请参考配置项【相片详情】与【相片视频】'></span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_images_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_images_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="photos_images_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="90" class="form-control" id="photos_images_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="photos_images_comments_panel" style="display: none;">
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">获取评论：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="photos_images_comments_has" data-hidden="true" data-target-link="photos_comment_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="photos_images_comments_has" aria-describedby="photos_images_comments_has_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small id="photos_images_comments_has_help" class="text-muted">默认不获取，勾选获取评论</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="photos_comment_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_images_comments_cost_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_images_comments_cost_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="photos_comment_link">
+                                        <label for="photos_images_comment_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                        <div class="col-sm-2">
+                                            <input type="number" min="10" max="100" class="form-control" id="photos_images_comments_limit" placeholder="查询每页条数">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <hr>
+                                <div class="form-group row" id="photos_exifType_panel">
+                                    <label for="photos_exifType" class="col-sm-auto col-form-label">相片质量：</label>
+                                    <div class="col-sm-2">
+                                        <select id="photos_exifType" class="custom-select">
+											<option value="raw" selected>原图</option>
+											<option value="original">高清</option>
+											<option value="normal">一般</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份相片的清晰度、默认原图，(<span class="text-danger">第三方下载</span>)含Exif信息，原图不存在取高清，高清不存在取一般，建议保持默认即可</small>
+                                    </div>
+                                </div>
+                                <div id="photos_images_detail" class="form-group row">
+                                    <div class="col-sm-auto">相片详情：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="photos_isGetDetail" data-module="Photos" data-hidden="true" data-target-link="photos_isGetDetail_page">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="photos_isGetDetail" aria-describedby="photos_isGetDetail_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted isGetDetail-help-tip">是否获取相片详情
+                                            <span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip" data-html="true" title='
+                                                <div class="text-left">
+                                                    <p>照片详情内容包含以下内容或场景：</p>
+                                                    <ul class="list-inline">
+                                                        <li class="list-inline-item">
+                                                            1、用于获取相片关联的视频，不获取详情时，将不下载相册中的视频
+                                                        </li>
+                                                        <li class="list-inline-item">
+                                                            2、用于备份他人空间时，获取相片的原图，不然备份的是高清图
+                                                        </li>
+                                                        <li class="list-inline-item">
+                                                            3、用于备份他人空间时，获取相片的免权限访问的地址，用于使用迅雷下载工具下载文件，不然即使你有权限访问他人空间，下载的相片一样显示为加密照片
+                                                        </li>
+                                                        <li class="list-inline-item">
+                                                            4、相片的上传地点坐标信息，非拍摄地点坐标，拍摄地点的坐标信息包含在原图的Exif信息中
+                                                        </li>
+                                                        <li class="list-inline-item">
+                                                            5、俺也不知道了^_^
+                                                        </li>
+                                                    </ul>
+                                                    <p>如不存在以上场景或不需要以上信息，可以直接取消备份详情加快备份速度，比如：</p>
+                                                    <ul class="list-inline">
+                                                        <li class="list-inline-item">
+                                                            1、相册的备份类型为HTML，且备份的是自己的空间，且无需相片的上传地点坐标信息，且无需备份相册中的视频时，建议取消
+                                                        </li>
+                                                        <li class="list-inline-item">
+                                                            2、相册的备份类型为文件，且备份的是自己的空间，且无需备份相册中的视频时，建议取消
+                                                        </li>
+                                                    </ul>
+                                                    <p>如不存在以上场景或不需要以上信息，可以直接取消备份详情加快备份速度</p>
+                                                </div>'>
+                                            </span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="photos_isGetDetail_page">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_images_detail_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="photos_images_detail_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每次查询相片详情间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="photos_isGetDetail_page">
+                                    <label for="photos_images_detail_limit" class="col-sm-auto col-form-label">查询条目：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="1000" class="form-control" id="photos_images_detail_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每次查询多少张相片的详情，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="photos_images_video" class="form-group row">
+                                    <div class="col-sm-auto">相片视频：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" name="QZone_Config.Photos.Images.isGetVideo" class="custom-control-input" id="photos_isGetVideo" data-module="Photos" name="isGetVideo">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="photos_isGetVideo" aria-describedby="photos_isGetVideo_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted isGetVideo-help-tip">是否获取相片关联的视频，当不获取详情时，可自定义是否下载视频，详情说明参考上一个配置项【相片详情】</small>
+                                    </div>
+                                </div>
+                                <div id="photos_images_preview" class="form-group row">
+                                    <div class="col-sm-auto">相片预览：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" name="QZone_Config.Photos.Images.isGetPreview" class="custom-control-input" id="photos_isGetPreview">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="photos_isGetPreview" aria-describedby="photos_isGetPreview_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">是否获取下载相片缩略图，预览图用于相片列表展示，当相册相片过多时，可加快相册打开顺序</small>
+                                    </div>
+                                </div>
+                                <div id="photos_others_panel">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Photos.Like.isGet" class="custom-control-input" id="photos_has_like" data-hidden="true" data-target-link="photos_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="photos_has_like" aria-describedby="photos_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="photos_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="photos_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">最近访问：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Photos.Visitor.isGet" class="custom-control-input" id="albums_has_visitor" data-hidden="true" data-target-link="albums_visitor_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="albums_has_visitor" aria-describedby="albums_visitor_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取最近访问，勾选获取，理论上仅支持获取最近1000条访问记录（开通黄钻情况下），仅在备份类型为HTML、JSON时备份</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="albums_visitor_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="albums_visitor_min" name="QZone_Config.Photos.Visitor.randomSeconds.min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="albums_visitor_max" name="QZone_Config.Photos.Visitor.randomSeconds.max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-videos" role="tabpanel" aria-labelledby="nav-videos-tab">
+                            <br />
+                            <form id="tb_videos" data-module="Videos">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="videos_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="videos_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="File">MP4文件</option>
+											<option value="Link">下载链接</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移，Link下载链接可用于第三方下载</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="videos_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="videos_increment_type" class="custom-select increment_type" data-module="Videos" data-time="#videos_increment_time" data-time-row="#videos_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="videos_increment_time_row">
+                                    <label for="videos_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="videos_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="videos_increment_time" class="form-control datetimepicker-input" data-target="#videos_increment_time_display" />
+                                            <div class="input-group-append" data-target="#videos_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的视频的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">视频选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="videos_file_structure_type" class="col-sm-auto col-form-label">归类方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="videos_file_structure_type" class="custom-select">
+											<option value="File" selected >默认</option>
+											<option value="Year">年份</option>
+											<option value="Month">月份</option>
+											<option value="Date">日期</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">基于视频文件归类存放方式
+                                            <span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip" data-html="true" title='
+                                            默认：Videos/视频文件<br>
+                                            年份：Videos/年/视频文件<br>
+                                            月份：Videos/年/月/视频文件<br>
+                                            日期：Videos/年/月/日/视频文件<br>
+                                            时间取视频的上传时间'></span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="videos_file_rename_type" class="col-sm-auto col-form-label">命名方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="videos_file_rename_type" class="custom-select">
+											<option value="Default" selected >序号_随机码</option>
+											<option value="Name" selected >序号_视频标题/上传时间</option>
+											<option value="Time">序号_视频标题_上传时间</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">视频备份文件的命名方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="videos_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="videos_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="videos_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="20" class="form-control" id="videos_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="videos_comments_panel">
+                                    <h5 style="color:cadetblue">评论选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">获取评论：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Videos.Comments.isGet" class="custom-control-input" id="videos_has_comments" data-hidden="true" data-target-link="video_comment_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="videos_has_comments" aria-describedby="videos_comments_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取评论，勾选获取</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="video_comment_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="videos_comments_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="videos_comments_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="video_comment_link">
+                                        <label for="videos_comments_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                        <div class="col-sm-2">
+                                            <input type="number" min="10" max="40" class="form-control" id="videos_comments_limit" placeholder="查询每页条数">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">请求每页评论的条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="videos_others_panel">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Videos.Like.isGet" class="custom-control-input" id="videos_has_like" data-hidden="true" data-target-link="videos_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="videos_has_like" aria-describedby="videos_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，仅支持备份关联说说的视频，且仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="videos_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="videos_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="videos_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-boards" role="tabpanel" aria-labelledby="nav-boards-tab">
+                            <br />
+                            <form id="tb_boards" data-module="Boards">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="boards_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="boards_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="boards_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="boards_increment_type" class="custom-select increment_type" data-module="Boards" data-time="#boards_increment_time" data-time-row="#boards_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="boards_increment_time_row">
+                                    <label for="boards_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="boards_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="boards_increment_time" class="form-control datetimepicker-input" data-target="#boards_increment_time_display" />
+                                            <div class="input-group-append" data-target="#boards_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的留言的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">留言选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="boards_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="boards_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="boards_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="20" class="form-control" id="boards_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">那年今日：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" data-module="Boards" name="hasThatYearToday" id="boards_that_year_today">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="boards_that_year_today" aria-describedby="boards_that_year_today_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="boards_that_year_today_help" class="text-muted">是否生成那年今日，默认生成</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-friends" role="tabpanel" aria-labelledby="nav-friends-tab">
+                            <br />
+                            <form id="tb_friends" data-module="Friends">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="friends_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="friends_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="Excel">Excel</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，Excel用WPS或Office打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">增量备份：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="friends_is_increment">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="friends_is_increment" aria-describedby="friends_is_increment_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="friends_is_increment_help" class="text-muted">增量备份QQ好友的<span class="text-danger">互动信息</span>，如若无需获取互动信息，无需勾选；<span class="text-danger">增量维度</span>：QQ号</small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">好友选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="friends_showType" class="col-sm-auto col-form-label">展示方式：</label>
+                                    <div class="col-sm-2">
+                                        <select id="friends_showType" class="custom-select" data-module='Friends' name="showType">
+											<option value="0">表格</option>
+											<option value="1" selected>列表</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">好友列表的查看/展示方式，表格：表格方式展示；列表：普通列表展示，仅适用HTML备份方式</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="friends_list_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="friends_list_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="friends_sortType" class="col-sm-auto col-form-label">分组排序：</label>
+                                    <div class="col-sm-2">
+                                        <select id="friends_sortType" class="custom-select" data-module='Friends' name="SortType">
+											<option value="QQ" selected>QQ排序</option>
+											<option value="default">助手排序</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">QQ分组的排序方式，QQ排序，即使用QQ的排序，助手排序，即使用字母排序</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">互动信息：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="friends_interactive_info">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="friends_interactive_info" aria-describedby="friends_interactive_info_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="friends_interactive_info_help" class="text-muted">与好友互动信息，主要包括：好友添加时间、是否单向好友、亲密度、共同好友、共同群组，互动信息来源于QQ空间，非来源于QQ，仅供参考</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">空间权限：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="friends_access_info" data-module="Friends" name="ZoneAccess">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="friends_access_info" aria-describedby="friends_access_info_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="friends_access_info_help" class="text-muted">判断是否对好友空间有访问权限</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">特别关心：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="friends_care_list" data-module="Friends" name="SpecialCare">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="friends_care_list" aria-describedby="friends_care_list_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="friends_care_list_help" class="text-muted">是否获取个人的特别关心好友，就是你关心了谁</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="friends_special_group" class="col-sm-auto col-form-label">特殊分组：</label>
+                                    <div class="col-sm-2">
+                                        <select id="friends_special_group" class="form-control selectpicker" multiple title="请选择" data-actions-box="true" data-selected-text-format="count > 3">
+                                            <option value="care">特别关心</option>
+                                            <option value="access">无权访问</option>
+                                            <option value="isFriend">单向好友</option>
+                                            <option value="deleted">已删好友</option>
+                                            <option value="5">五年好友</option>
+                                            <option value="10">十年老友</option>
+                                            <option value="20">廿年旧友</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">添加特殊分组，部分分组基于互动信息生成，仅适用HTML备份方式</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-favorites" role="tabpanel" aria-labelledby="nav-favorites-tab">
+                            <br />
+                            <form id="tb_favorites" data-module="Favorites">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="favorites_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="favorites_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="favorites_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="favorites_increment_type" class="custom-select increment_type" data-module="Favorites" data-time="#favorites_increment_time" data-time-row="#favorites_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="favorites_increment_time_row">
+                                    <label for="favorites_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="favorites_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="favorites_increment_time" class="form-control datetimepicker-input" data-target="#favorites_increment_time_display" />
+                                            <div class="input-group-append" data-target="#favorites_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">发表时间大于</span>该时间的收藏的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">收藏选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="favorites_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="favorites_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="favorites_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="20" max="40" class="form-control" id="favorites_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-shares" role="tabpanel" aria-labelledby="nav-shares-tab">
+                            <br />
+                            <form id="tb_shares" data-module="Shares">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="shares_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="shares_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="shares_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="shares_increment_type" class="custom-select increment_type" data-module="Shares" data-time="#shares_increment_time" data-time-row="#shares_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="shares_increment_time_row">
+                                    <label for="shares_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="shares_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="shares_increment_time" class="form-control datetimepicker-input" data-target="#shares_increment_time_display" />
+                                            <div class="input-group-append" data-target="#shares_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">分享时间大于</span>该时间的分享的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">分享选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">列表间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="shares_list_limit" class="col-sm-auto col-form-label">列表条目：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="100" class="form-control" id="shares_list_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">内容间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_info_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_info_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">分享全文请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">来源管理：</label>
+                                    <div class="col-sm-2">
+                                        <button id="managerShareSource" type="button" class="btn btn-outline-primary" data-toggle="tooltip" title="管理分类来源" data-module="Shares">管理</button>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">
+										配置分享来源的显示名称，可基于正则表达式配置，也可直接配置来源URL，默认的配置采集自常见的分享来源，可视个人情况自行修改
+									</small>
+                                    </div>
+                                    <!-- Modal -->
+                                    <div class="modal fade" id="managerShareSourceModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-labelledby="managerShareSourceLabel" aria-hidden="true">
+                                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title" id="managerShareSourceLabel">分享来源管理</h5>
+                                                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+														<span aria-hidden="true">&times;</span>
+													</button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <table id="shareSourceTable"></table>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button id="saveShareSource" type="button" class="btn btn-primary" data-dismiss="modal">确定</button>
+                                                    <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">那年今日：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" data-module="Shares" name="hasThatYearToday" id="shares_that_year_today">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="shares_that_year_today" aria-describedby="shares_that_year_today_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="shares_that_year_today_help" class="text-muted">是否生成那年今日，默认生成</small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">评论选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">获取评论：</div>
+                                    <div class="col-sm-2 custom-control custom-checkbox">
+                                        <input type="checkbox" class="custom-control-input" id="shares_download_full_comments" data-hidden="true" data-target-link="shares_comment_link">
+                                        <label style="margin-left: 14px;" class="custom-control-label" for="shares_download_full_comments" aria-describedby="shares_comments_help"></label>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="shares_comments_help" class="text-muted">默认不获取评论，勾选获取评论</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="shares_comment_link">
+                                    <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_comments_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="shares_comments_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" data-link="shares_comment_link">
+                                    <label for="shares_list_limit" class="col-sm-auto col-form-label">每页条数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" max="20" class="form-control" id="shares_comments_limit" placeholder="查询每页条数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">请求每页条目数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <div id="shares_other_options">
+                                    <h5 style="color:cadetblue">其他选项：</h5>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">点赞列表：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Shares.Like.isGet" class="custom-control-input" id="shares_has_like" data-hidden="true" data-target-link="shares_like_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="shares_has_like" aria-describedby="shares_like_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取赞，勾选获取，仅在备份类型为HTML、JSON时备份赞</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="shares_like_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="shares_like_min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="shares_like_max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <div class="form-group row">
+                                        <div class="col-sm-auto">最近访问：</div>
+                                        <div class="col-sm-2 custom-control custom-checkbox">
+                                            <input type="checkbox" name="QZone_Config.Shares.Visitor.isGet" class="custom-control-input" id="shares_has_visitor" data-hidden="true" data-target-link="shares_visitor_link">
+                                            <label style="margin-left: 14px;" class="custom-control-label" for="shares_has_visitor" aria-describedby="shares_visitor_help"></label>
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">默认不获取最近访问，勾选获取，理论上仅支持获取最近1000条访问记录（开通黄钻情况下），仅在备份类型为HTML、JSON时备份</small>
+                                        </div>
+                                    </div>
+                                    <div class="form-group row" data-link="shares_visitor_link">
+                                        <label class="col-sm-auto col-form-label">查询间隔：</label>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="shares_visitor_min" name="QZone_Config.Shares.Visitor.randomSeconds.min" placeholder="最小间隔">
+                                        </div>
+                                        <div class="col-sm-1">
+                                            <input type="number" min="1" class="form-control" id="shares_visitor_max" name="QZone_Config.Shares.Visitor.randomSeconds.max" placeholder="最大间隔">
+                                        </div>
+                                        <div class="col-sm-auto">
+                                            <small class="text-muted">每页请求的间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-visitors" role="tabpanel" aria-labelledby="nav-visitors-tab">
+                            <br />
+                            <form id="tb_visitors" data-module="Visitors">
+                                <h5 style="color:cadetblue">公共选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="visitors_exportFormat" class="col-sm-auto col-form-label">备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="visitors_exportFormat" class="custom-select">
+											<option value="HTML" selected>HTML</option>
+											<!-- <option value="PDF">PDF</option> -->
+											<option value="MarkDown">MarkDown</option>
+											<option value="JSON">JSON</option>
+											<option value="SPA">SPA</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">HTML可直接用浏览器打开查看，MD用Markdown编辑器打开，JSON适用于开发者数据迁移</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="visitors_increment_type" class="col-sm-auto col-form-label">增量备份：</label>
+                                    <div class="col-sm-2">
+                                        <select id="visitors_increment_type" class="custom-select increment_type" data-module="Visitors" data-time="#visitors_increment_time" data-time-row="#visitors_increment_time_row">
+											<option value="Full" selected>全量</option>
+											<option value="LastTime">上次备份</option>
+											<option value="Custom">自定义</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">更多详情，请查看<a href='usage.html#增量备份' target='_blank'>增量备份配置说明</a></small>
+                                    </div>
+                                </div>
+                                <div class="form-group row" id="visitors_increment_time_row">
+                                    <label for="visitors_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <div class="col-sm-2">
+                                        <div class="input-group date increment_time" id="visitors_increment_time_display" data-target-input="nearest">
+                                            <input type="text" id="visitors_increment_time" class="form-control datetimepicker-input" data-target="#visitors_increment_time_display" />
+                                            <div class="input-group-append" data-target="#visitors_increment_time_display" data-toggle="datetimepicker">
+                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">备份<span class="text-danger">访客时间大于</span>该时间的访客的文件，<span class="text-danger">请保留上次备份文件内容</span></small>
+                                    </div>
+                                </div>
+                                <br>
+                                <h5 style="color:cadetblue">访客选项：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">列表间隔：</label>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="visitors_list_cost_min" placeholder="最小间隔">
+                                    </div>
+                                    <div class="col-sm-1">
+                                        <input type="number" min="1" class="form-control" id="visitors_list_cost_max" placeholder="最大间隔">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">每页请求间隔秒数，一般保持默认即可，如遇获取失败，可做微调</small>
+                                    </div>
+                                </div>
+                                <br>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-common" role="tabpanel" aria-labelledby="nav-common-tab">
+                            <br />
+                            <form id="tb_common" data-module="Common">
+                                <h5 style="color:cadetblue">批量导出方式：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="common_export_format" class="col-sm-auto col-form-label">统一备份类型：</label>
+                                    <div class="col-sm-2">
+                                        <select id="common_export_format" class="custom-select" aria-describedby="common_export_format_help">
+                                            <option value="HTML">HTML</option>
+                                            <option value="MarkDown">MarkDown</option>
+                                            <option value="JSON">JSON</option>
+                                            <option value="SPA" selected>SPA</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <button type="button" id="apply_export_format_all" class="btn btn-outline-info">应用到所有模块</button>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_export_format_help" class="text-muted">一键将所有模块的备份类型同步为此处选择的类型（Photos/Videos 模块的 File 选项需单独设置）</small>
+                                    </div>
+                                </div>
+                                <hr>
+                                <h5 style="color:cadetblue">数据采集：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="common_list_retry_count" class="col-sm-auto col-form-label">列表重试次数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" class="form-control" id="common_list_retry_count" placeholder="列表重试次数" aria-describedby="common_list_retry_count_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_list_retry_count_help" class="text-muted">获取QQ空间数据超时、服务器异常时的重试次数，达到指定次数后数据采集失败，配合列表重试间隔使用。</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="common_list_retry_sleep" class="col-sm-auto col-form-label">列表重试间隔：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="1" class="form-control" id="common_list_retry_sleep" placeholder="列表重试间隔" aria-describedby="common_list_retry_sleep_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_list_retry_sleep_help" class="text-muted">每次重试时的间隔秒数</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="common_rest_sleep_url" class="col-sm-auto col-form-label">稍候重试接口：</label>
+                                    <div class="col-sm-2">
+                                        <select id="common_rest_sleep_url" class="form-control selectpicker" multiple title="请选择" data-actions-box="true" data-selected-text-format="count > 3">
+                                            <optgroup label="说说相关">
+                                                <option value="MESSAGES_LIST_URL">说说列表</option>
+                                                <option value="MESSAGES_DETAIL_URL">说说全文</option>
+                                                <option value="MESSAGES_IMAGES_URL">更多图片</option>
+                                                <option value="MESSAGES_VOICE_INFO_URL">语音详情</option>
+                                            </optgroup>
+                                            <optgroup label="日志相关">
+                                                <option value="BLOGS_LIST_URL">日志列表</option>
+                                                <option value="BLOGS_INFO_URL">日志全文</option>
+                                                <option value="DIARY_LIST_URL">日记列表</option>
+                                                <option value="DIARY_INFO_URL">日记全文</option>
+                                            </optgroup>
+                                            <optgroup label="相册相关">
+                                                <option value="ALBUM_LIST_URL">相册列表</option>
+                                                <option value="IMAGES_LIST_URL">相片列表</option>
+                                                <option value="IMAGES_INFO_URL">相片详情</option>
+                                            </optgroup>
+                                            <optgroup label="好友相关">
+                                                <option value="FRIENDS_LIST_URL">无序好友</option>
+                                                <option value="FRIENDS_SORT_LIST_URL">有序好友</option>
+                                                <option value="FRIENDSHIP_INFO_URL">互动信息</option>
+                                                <option value="SPECIAL_CARE_LIST_URL">特别关心</option>
+                                            </optgroup>
+                                            <optgroup label="评论相关">
+                                                <option value="MESSAGES_VIDEOS_COMMONTS_URL">说说/视频评论</option>
+                                                <option value="BLOGS_COMMENTS_URL">日志/日记评论</option>
+                                                <option value="ALBUM_PHOTOS_COMMENTS_URL">相册/相片评论</option>
+                                                <option value="SHARE_COMMENTS_URL">分享评论</option>
+                                            </optgroup>
+                                            <optgroup label="访客相关">
+                                                <option value="BLOGS_READ_COUNT_URL">日志阅读</option>
+                                                <option value="VISITOR_SINGLE_LIST_URL">说说/日志浏览</option>
+                                                <option value="VISITOR_SIMPLE_LIST_URL">相册浏览</option>
+                                                <option value="VISITOR_MORE_LIST_URL">空间访客</option>
+                                            </optgroup>
+                                            <optgroup label="其它">
+                                                <option value="BOARD_LIST_URL">留言列表</option>
+                                                <option value="VIDEO_LIST_URL">视频列表</option>
+                                                <option value="FAVORITE_LIST_URL">收藏列表</option>
+                                                <option value="SHARE_LIST_URL">分享列表</option>
+                                                <option value="LIKE_LIST_URL">点赞列表</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted">配置的接口，才会使用稍候重试间隔，部分有些接口出现稍候重试后，很快解冻的，这些使用列表重试间隔即可，预留功能，一般不建议配置，建议配置模块的查询间隔</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="common_wait_count" class="col-sm-auto col-form-label">稍候重试次数：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" class="form-control" id="common_wait_count" placeholder="稍候重试次数" aria-describedby="common_wait_count_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_wait_count_help" class="text-muted">获取QQ空间数据，空间返回稍候重试时的重试次数，重试指定次数后数据采集失败并忽略，配合稍候重试间隔使用。</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="common_wait_time" class="col-sm-auto col-form-label">稍候重试间隔：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="1" class="form-control" id="common_wait_time" placeholder="稍候重试间隔" aria-describedby="common_wait_time_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_wait_time_help" class="text-muted">使用人数过多，稍候重试的时间间隔，单位为秒，建议至少半个小时以上，默认配置3600秒，也就是一个小时</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label for="common_avatar_host" class="col-sm-auto col-form-label">头像下载地址：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="0" class="form-control" id="common_avatar_host" placeholder="头像下载地址" aria-describedby="common_avatar_host_help" data-module='Common' name="AvatarHost">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_avatar_host_help" class="text-muted">避免头像服务器挂导致无法下载头像，0为随机，非0为固定，目前好像是1到4，比如<a href="https://qlogo1.store.qq.com/qzone/10010/10010/100" target="_blank">地址1</a>和<a href="https://qlogo2.store.qq.com/qzone/10010/10010/100" target="_blank">地址2</a></small>
+                                    </div>
+                                </div>
+                                <h5 style="color:cadetblue">文件下载：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label for="common_download_type" class="col-sm-auto col-form-label">文件下载工具：</label>
+                                    <div class="col-sm-2">
+                                        <select id="common_download_type" class="custom-select" aria-describedby="common_download_type_help">
+											<option value="Browser">浏览器</option>
+											<option value="Aria2">Aria2/Motrix</option>
+											<option value="Thunder">迅雷（助手唤醒）</option>
+											<option value="Thunder_Clipboard" selected>迅雷（剪切板唤醒）</option>
+											<option value="Thunder_Link">迅雷（下载链接）</option>
+											<option value="QZone">QQ空间外链</option>
+										</select>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_download_type_help" class="text-muted">助手内部目前暂不支持数据容量大于2G的，2G内建议使用助手内部下载，超2G的建议使用其他方式下载</small>
+                                    </div>
+                                </div>
+                                <!-- 下载工具通用配置 -->
+                                <div id="common_file_suffix_row" class="form-group row" style="display: none;">
+                                    <div class="col-sm-auto">图片类型识别：</div>
+                                    <div class="col-sm-2">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="common_file_suffix" data-module="Common" name="isAutoFileSuffix">
+                                            <label class="custom-control-label" for="common_file_suffix" aria-describedby="common_file_suffix_help"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_file_suffix_help" class="text-muted">勾选将自动识别说说、日志、日记、留言、收藏图片文件后缀名，将延长备份时间。</small>
+                                    </div>
+                                </div>
+                                <div id="common_file_suffix_timeout_row" class="form-group row" style="display: none;">
+                                    <label for="common_file_suffix_timeout" class="col-sm-auto col-form-label">类型识别超时：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="10" class="form-control" id="common_file_suffix_timeout" data-module="Common" name="autoFileSuffixTimeOut" placeholder="类型识别超时秒数" aria-describedby="common_file_suffix_timeout_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_file_suffix_timeout_help" class="text-muted">图片类型识别最大超时秒数，识别超该数值时，将取消识别类型，即图片文件无后缀名</small>
+                                    </div>
+                                </div>
+                                <!-- 迅雷下载相关配置 -->
+                                <div id="common_thunder_task_count_row" class="form-group row" style="display: none;">
+                                    <label for="common_thunder_task_count" class="col-sm-auto col-form-label">迅雷最大任务：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="50" class="form-control" id="common_thunder_task_count" placeholder="迅雷任务数" aria-describedby="common_thunder_task_count_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_thunder_task_count_help" class="text-muted">迅雷的最大任务数，当值为5000，照片数量为10000时，则唤起2次迅雷，每次5000个任务，不宜太大，太大将无法唤起迅雷。</small>
+                                    </div>
+                                </div>
+                                <div id="common_thunder_task_sleep_row" class="form-group row" style="display: none;">
+                                    <label for="common_thunder_task_sleep" class="col-sm-auto col-form-label">迅雷唤起间隔：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" class="form-control" id="common_thunder_task_sleep" placeholder="迅雷唤起间隔" aria-describedby="common_thunder_task_sleep_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_thunder_task_sleep_help" class="text-muted">每次唤醒迅雷的间隔秒数，唤起迅雷下载时，迅雷会有任务确认弹窗，请在间隔时间内确认任务，否则无法进行下一次的唤醒！</small>
+                                    </div>
+                                </div>
+                                <!-- 浏览器、Aria2、迅雷下载并发数 -->
+                                <div id="common_download_thread_row" class="form-group row" style="display: none;">
+                                    <label for="common_download_thread" class="col-sm-auto col-form-label" aria-describedby="common_download_thread_help">文件下载并发：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" min="5" class="form-control" id="common_download_thread" placeholder="下载并发量">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_download_thread_help" class="text-muted">下载方式为非QQ空间外链的同时下载文件数，可理解为同时添加任务数，浏览器下载时，建议10以内，原生Aria2建议1000+，Motrix建议100到1000</small>
+                                    </div>
+                                </div>
+                                <!-- 浏览器与Aria2的添加间隔 -->
+                                <div id="common_download_sleep_row" class="form-group row" style="display: none;">
+                                    <label for="common_download_sleep" class="col-sm-auto col-form-label" aria-describedby="common_download_sleep_help">文件下载间隔：</label>
+                                    <div class="col-sm-2">
+                                        <input type="number" class="form-control" id="common_download_sleep" placeholder="下载间隔秒数">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_download_sleep_help" min="1" class="text-muted">添加下载任务的间隔，单位为秒，避免过快导致崩溃，<span style="color: red;">使用第三方Aria2客户端时，比如Motrix，若相片过多，且原图过多，建议设置大点，可结合文件下载并发使用</span>，原生Aria2可设置小点</small>
+                                    </div>
+                                </div>
+                                <!-- 浏览器下载相关配置 -->
+                                <div id="common_download_status_row" class="form-group row" style="display: none;">
+                                    <div class="col-sm-auto">隐藏状态栏：</div>
+                                    <div class="col-sm-2 ml-3">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="common_download_status">
+                                            <label class="custom-control-label" for="common_download_status" aria-describedby="common_download_status_help"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_download_status_help" class="text-muted">勾选将隐藏浏览器底部的下载内容栏，也就隐藏浏览器的下载通知
+                                            <span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip" title="影响范围是全局，也就是说，隐藏后，自己手动下载其它任务也无提醒"></span>
+                                        </small>
+                                    </div>
+                                </div>
+                                <!-- 引用来源 -->
+                                <div id="common_refererUrls_row" class="form-group row">
+                                    <label for="common_refererUrls" class="col-sm-auto col-form-label">追加引用来源：</label>
+                                    <div class="col-sm-2">
+                                        <textarea class="form-control mt-2" id="common_refererUrls" rows="3" placeholder=""></textarea>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_refererUrls_help" class="text-muted">给指定域名的请求自动添加引用来源，主要用于浏览器下载方式，避免视频图片文件无法下载问题，一行一个域名
+                                            <a target="_blank" href="https://developer.chrome.com/docs/extensions/reference/declarativeNetRequest/#type-RulesMatchedDetails"><span class="fa fa-question-circle-o fa-lg" data-toggle="tooltip"></span></a>
+                                        </small>
+                                    </div>
+                                </div>
+                                <!-- Aria2下载相关配置 -->
+                                <div id="common_aria2_rpc_row" class="form-group row" style="display: none;">
+                                    <label for="common_aria2_rpc" class="col-sm-auto col-form-label">Aria2 RPC地址：</label>
+                                    <div class="col-sm-2">
+                                        <input type="text" id="common_aria2_rpc" class="form-control" aria-describedby="common_aria2_rpc_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <button id="aria2_test" type="button" class="btn btn-outline-info" data-module="Common">测试</button>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_aria2_rpc_help" class="text-muted">RPC地址，<span style="color: red;">仅支持HTTP协议</span>，请启用RPC服务！理论支持基于Aria2的第三方下载工具，如Motrix等，Motrix的RPC端口默认为16800</small>
+                                    </div>
+                                </div>
+                                <div id="common_aria2_token_row" class="form-group row" style="display: none;">
+                                    <label for="common_aria2_token" class="col-sm-auto col-form-label">Aria2 认证令牌：</label>
+                                    <div class="col-sm-2">
+                                        <input type="text" class="form-control" id="common_aria2_token" aria-describedby="common_aria2_token_help">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_aria2_token_help" class="text-muted">连接RPC服务的Secret令牌，不开启授权认证的无需填写此项！</small>
+                                    </div>
+                                </div>
+                                <!-- 其他配置 -->
+                                <div class="form-group row">
+                                    <div class="col-sm-auto">空间用户链接：</div>
+                                    <div class="col-sm-2">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="common_user_link">
+                                            <label class="custom-control-label" for="common_user_link" aria-describedby="common_user_link_help"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_user_link_help" class="text-muted">是否生成QQ空间用户链接用于跳转访问QQ空间，如评论者，仅适用备份类型为Markdown，HTML方式默认生成</small>
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="tab-pane fade" id="nav-dev" role="tabpanel" aria-labelledby="nav-dev-tab">
+                            <br />
+                            <form id="tb_dev" data-module="Dev">
+                                <h5 style="color:cadetblue">地图相关：</h5>
+                                <hr>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">腾讯Key：</label>
+                                    <div class="col-sm-auto">
+                                        <input type="text" class="form-control" data-module="Dev" name="Maps.TxKey" id="dev_maps_tx_key">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="dev_maps_tx_key_help" class="text-muted">用于坐标转换、坐标转描述</small>
+                                    </div>
+                                </div>
+                                <!-- <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">百度Key：</label>
+                                    <div class="col-sm-auto">
+                                        <input type="text" class="form-control" data-module="Dev" name="Maps.BdKey" id="dev_maps_bd_key">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="dev_maps_bd_key_help" class="text-muted">用于打卡足迹展示</small>
+                                    </div>
+                                </div>
+                                <div class="form-group row">
+                                    <label class="col-sm-auto col-form-label">高德Key：</label>
+                                    <div class="col-sm-auto">
+                                        <input type="text" class="form-control" data-module="Dev" name="Maps.GdKey" id="dev_maps_gd_key">
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="dev_maps_gd_key_help" class="text-muted">用于打卡足迹展示、坐标转换、坐标转描述</small>
+                                    </div>
+                                </div> -->
+                                <div class="text-center">
+                                    <button class="btn btn-primary submit" data-toggle="tooltip" title="保存所有模块设置项">保存</button>
+                                    <button type="button" class="btn btn-secondary reset" data-toggle="tooltip" title="重置当前配置模块设置项">重置</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
+        <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">
+            <div class="toast-body">
+                Hello, world! This is a toast message.
+            </div>
+        </div>
+    </div>
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/api.js"></script>
+    <script src="../js/options.js"></script>
+</body>
+
+</html>

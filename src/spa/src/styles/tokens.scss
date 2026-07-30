@@ -1,0 +1,44 @@
+// 设计系统 tokens —— Editorial Archive 风格
+// 概念：暖纸张 + 墨水 + 朱砂 + 衬线 + 等宽元数据
+// 与 design-system-preview.html 中的 :root 变量保持一致
+
+:root {
+  /* 色板 —— 暖纸张 + 墨水 + 朱砂 */
+  --paper: #F4ECD8;
+  --paper-2: #EAE0C5;
+  --paper-3: #DFD2B0;
+  --ink: #1A1612;
+  --ink-2: #3D352A;
+  --ink-3: #6B5D49;
+  --vermilion: #C8442A;
+  --vermilion-2: #A33620;
+  --indigo: #2B4A6F;
+  --moss: #5C6B3B;
+  --gold: #B8893A;
+
+  /* 字体 */
+  --font-display: 'Fraunces', 'Noto Serif SC', Georgia, serif;
+  --font-body: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-serif-cn: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+
+  /* 间距尺度（8 的倍数） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+
+  /* 墨水线 */
+  --line: 1px solid var(--ink);
+  --line-2: 1px solid var(--ink-3);
+  --line-double: 3px double var(--ink);
+  --line-dot: 1px dotted var(--ink-3);
+
+  /* 动画 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+	<link rel="icon" href="../Common/images/favicon.ico">
+	<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>QQ空间备份-<%:=blog.custom_title%></title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/bootstrap/4.6.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery-bundle.min.css">
+	<link rel="stylesheet" type="text/css" href="../Common/css/common.css">
+	<script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+	<script src="https://cdn.staticfile.org/lodash.js/4.17.21/lodash.min.js"></script>
+	
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/lightgallery.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/zoom/lg-zoom.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/video/lg-video.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/thumbnail/lg-thumbnail.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/rotate/lg-rotate.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/fullscreen/lg-fullscreen.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/comment/lg-comment.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/autoplay/lg-autoplay.min.js"></script>
+	
+	<script type="text/javascript" src="../Common/json/config.js"></script>
+</head>
+
+<body>
+	<header>
+		<nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
+			<a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<nav aria-label="breadcrumb">
+					<ol class="breadcrumb bg-dark">
+						<li class="breadcrumb-item"><a href="../index.html">个人中心</a></li>
+						<li class="breadcrumb-item"><a href="index.html">日记</a></li>
+						<li class="breadcrumb-item active" aria-current="page">日记详情</li>
+					</ol>
+				</nav>
+			</div>
+		</nav>
+	</header>
+	<main role="main">
+		<div class="container py-5 mt-3" style="max-width: 920px;">
+			<div id="blog_info" class="text-center">
+				<h2 id="blog_title" class="text-warning"><%:=blog.custom_title%></h2>
+				<div>
+					<span id="blog_time" class="text-muted"><%:=API.Utils.formatDate(blog.pubtime)%></span>
+				</div>
+			</div>
+			<article id="blog_content" class="mt-3 p-2">
+				<%:=API.Utils.base64ToUtf8(blog.custom_html)%>
+			</article>
+			<div id="comments_html">
+				<h5 class="mt-3">评论
+					<span class="badge badge-primary badge-pill"><%:=blog.comments && blog.comments.length || 0%></span>
+					<span class="text-primary p-1 float-right fa fa-thumbs-up mr-2 cursor" title="查看点赞" data-field="blogid" data-target="<%:=blog.blogid%>"><%:=blog.likeTotal || 0 %></span>
+					<span class="text-primary p-1 float-right fa fa-eye mr-2 cursor" title="最近访问" data-field="blogid" data-target="<%:=blog.blogid%>"><%:=blog.custom_visitor && blog.custom_visitor.viewCount || 0 %></span>
+				</h5>
+				<%/* 评论 */%>
+				<%/* 遍历评论 */%>
+				<%if(blog.comments){%>
+					<%for (let index = 0; index < blog.comments.length; index++) {%>
+						<%const comment = blog.comments[index];%>
+						<hr>
+						<div class="comments mt-2">
+							<div class="comment">
+								<div class="d-flex justify-content-start ">
+									<div class="comment-avatar">
+										<a class="avatar p-0 m-0" target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(comment).uin)%>">
+											<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(API.Common.getCommentUser(comment).uin, true)%>" >
+										</a>
+									</div>
+									<div class="comment-infos ml-2">
+										<a target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(comment).uin)%>">
+											<span><%:=API.Common.formatContent(API.Common.getCommentUser(comment).name, 'HTML', false, false, false, false, true)%></span>
+										</a>
+										<%if(comment.private){%>
+											<span class="text-warning"> 私密评论 </span>
+										<%}%>
+										<span class="border-warning border rounded text-warning small p-1" title="当前楼层">#<%:=index + 1 %></span>
+										<div class="text-muted small"><%:=API.Utils.formatDate(comment.postTime || comment.create_time)%></div>
+									</div>
+								</div>
+								<div class="comment-text">
+									<div class="messageText">
+										<p><%:=API.Common.formatContent(comment.content, 'HTML', false, false, false, false, true)%></p>
+										<%if(comment.pic){%>
+											<div class="comment-lightgallery">
+												<%for (let cmIdx = 0; cmIdx < comment.pic.length; cmIdx++) {%>
+													<%const image = comment.pic[cmIdx];%>
+													<a class="comment-img-lightbox" data-idx="<%:=cmIdx%>" data-sub-html="<%:=API.Common.formatContent(comment.content, 'HTML', false, false, false, false, true)%>"
+														data-src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>">
+														<img src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>" class="comment-img img-thumbnail">
+													</a>
+												<%}%>
+											</div>
+										<%}%>
+									</div>
+									<% const replies = comment.replies || comment.list_3 || []%>
+									<%if(replies.length > 0){%>
+										<%for(const reply of replies){%>
+											<div class="comments">
+												<div class="comment">
+													<div class="d-flex justify-content-start">
+														<div class="comment-avatar">
+															<a class="avatar p-0 m-0 " target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(reply).uin)%>">
+																<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(API.Common.getCommentUser(reply).uin, true)%>">
+															</a>
+														</div>
+														<div class="comment-infos ml-2">
+															<a target="_blank" href="<%:=API.Common.getUserUrl(API.Common.getCommentUser(reply).uin)%>">
+																<span><%:=API.Common.formatContent(API.Common.getCommentUser(reply).name, 'HTML', false, false, false, false, true)%></span>
+															</a>
+															<%if(reply.private){%>
+																<span class="text-warning"> 私密回复 </span>
+															<%}%>
+															<div class="text-muted small"><%:=API.Utils.formatDate(reply.postTime || reply.create_time)%></div>
+														</div>
+													</div>
+													<div class="comment-text">
+														<div class="messageText">
+															<p><%:=API.Common.formatContent(reply.content, 'HTML', false, false, false, false, true)%></p>
+															<%if(reply.pic){%>
+																<div class="comment-lightgallery">
+																	<%for (let cmIdx = 0; cmIdx < reply.pic.length; cmIdx++) {%>
+																		<%const image = reply.pic[cmIdx];%>
+																		<a class="comment-img-lightbox" data-idx="<%:=cmIdx%>" data-sub-html="<%:=API.Common.formatContent(reply.content, 'HTML', false, false, false, false, true)%>" 
+																			data-src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>">
+																			<img src="<%:=(image.custom_filepath || image.custom_url || image.o_url || image.hd_url || image.b_url || image.s_url || image.url)%>" class="comment-img img-thumbnail">
+																		</a>
+																	<%}%>
+																</div>
+															<%}%>
+														</div>
+													</div>
+												</div>
+											</div>
+										<%}%>
+									<%}%>
+								</div>
+							</div>
+						</div>
+					<%}%>
+				<%}%>
+			</div>
+		</div>
+	</main>
+	<script>
+		$(function() {
+			// 日志中的图片
+			$('#blog_content .QZBLOG_IMG_LOADING').on('click', function() {
+				// 画廊相册DOM
+				const $galleryDom = $('#blog_content').get(0);
+				// 点击的图片的索引位置
+				const imgIdx = $(this).attr('data-idx');
+
+				if ($galleryDom.galleryIns) {
+					$galleryDom.galleryIns.openGallery(imgIdx * 1);
+					return;
+				}
+
+				// 实例化画廊相册
+				const galleryIns = lightGallery($galleryDom, {
+					plugins: [
+						lgZoom,
+						lgFullscreen,
+						lgThumbnail,
+						lgRotate
+					],
+					mode: 'lg-fade',
+					selector: '.lightgallery',
+					download: false,
+					thumbnail: true,
+					loop: false
+				});
+				$galleryDom.galleryIns = galleryIns;
+
+				// 打开画廊
+				galleryIns.openGallery(imgIdx * 1);
+			})
+		});
+	</script>
+</body>
+
+</html>

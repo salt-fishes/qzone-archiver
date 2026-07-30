@@ -1,0 +1,348 @@
+.blocker {
+    z-index: 9999;
+}
+
+/* ========== 终端窗口主题 ========== */
+
+#progressModal {
+    color: #e0e0e0;
+}
+
+#progressModal .modal-content {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#progressModal .modal-header {
+    background: #2d2d2d;
+    border-bottom: 1px solid #3c3c3c;
+    padding: 0.5rem 0.75rem;
+}
+
+#progressModal .modal-title {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+#progressModal .modal-body {
+    background: #1e1e1e;
+    padding: 0.75rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+#progressModal .modal-footer {
+    background: #2d2d2d;
+    border-top: 1px solid #3c3c3c;
+    padding: 0.5rem 0.75rem;
+}
+
+#progressModal .close {
+    color: #999;
+    opacity: 0.7;
+}
+
+#progressModal .close:hover {
+    opacity: 1;
+}
+
+#progressModal a {
+    color: #569cd6 !important;
+    text-decoration: none;
+}
+
+#progressModal a:hover {
+    text-decoration: underline;
+}
+
+#progressModal .skipLink {
+    color: #888;
+}
+
+#progressModal .skipLink:hover {
+    color: #569cd6;
+}
+
+#progressModal hr {
+    border-color: #3c3c3c;
+}
+
+#progressModal p {
+    font-size: inherit;
+    margin-bottom: 0.15rem;
+}
+
+/* 状态提示行 */
+#progressModal #backupStatus {
+    color: #4ec9b0;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    background: #252526;
+    border-left: 3px solid #4ec9b0;
+    margin-bottom: 0.35rem;
+}
+
+#progressModal #backupCurrentTab {
+    color: #888;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.5rem;
+}
+
+#progressModal > .modal-dialog > .modal-content > .modal-body > h6.h6:not(#backupStatus):not(#backupCurrentTab):not(#errorTips) {
+    color: #666;
+    font-size: 0.75rem;
+    padding: 0.1rem 0.5rem;
+}
+
+/* 错误提示行 */
+#progressModal #errorTips {
+    color: #f44747;
+    background: #2d1f1f;
+    border-left: 3px solid #f44747;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.82rem;
+    margin-bottom: 0.35rem;
+    border-radius: 0;
+}
+
+/* ========== 终端窗口容器 ========== */
+
+#progressModal #backupIndicator {
+    background: #181818;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    padding: 0;
+    max-width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* 终端标题栏 */
+#progressModal #backupIndicator .terminal-titlebar {
+    background: #2d2d2d;
+    padding: 0.35rem 0.6rem;
+    border-bottom: 1px solid #3c3c3c;
+    display: flex;
+    align-items: center;
+    font-size: 0.78rem;
+    color: #888;
+}
+
+#progressModal #backupIndicator .terminal-titlebar .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+#progressModal #backupIndicator .terminal-titlebar .dot-red { background: #ff5f56; }
+#progressModal #backupIndicator .terminal-titlebar .dot-yellow { background: #ffbd2e; }
+#progressModal #backupIndicator .terminal-titlebar .dot-green { background: #27c93f; }
+
+#progressModal #backupIndicator .terminal-titlebar .terminal-title {
+    margin-left: 8px;
+    color: #777;
+}
+
+/* 终端内容区 */
+#progressModal #backupIndicator .terminal-body {
+    padding: 0.5rem 0.6rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* 终端滚动条 */
+#progressModal #backupIndicator .terminal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#progressModal #backupIndicator .terminal-body::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+#progressModal #backupIndicator .terminal-body::-webkit-scrollbar-thumb {
+    background: #3c3c3c;
+    border-radius: 4px;
+}
+
+#progressModal #backupIndicator .terminal-body::-webkit-scrollbar-thumb:hover {
+    background: #505050;
+}
+
+/* ========== details 模块块（命令块） ========== */
+
+#progressModal details {
+    font-size: inherit;
+    display: none;
+    margin-bottom: 0.2rem;
+    padding: 0.2rem 0;
+    border-left: 2px solid transparent;
+    padding-left: 0.4rem;
+}
+
+#progressModal details[open],
+#progressModal details:not([style*="display: none"]):not([style*="display:none"]) {
+    border-left-color: #569cd6;
+}
+
+#progressModal details > summary {
+    color: #dcdcaa;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+    padding: 0.1rem 0;
+    font-weight: normal;
+}
+
+#progressModal details > summary::-webkit-details-marker {
+    display: none;
+}
+
+#progressModal details > summary::before {
+    content: '$ ';
+    color: #4ec9b0;
+    font-weight: bold;
+}
+
+#progressModal details > summary::after {
+    content: ' ▸';
+    color: #666;
+    font-size: 0.7rem;
+}
+
+#progressModal details[open] > summary::after {
+    content: ' ▾';
+    color: #666;
+}
+
+#progressModal details > summary .text-primary {
+    color: #569cd6 !important;
+}
+
+#progressModal details > p {
+    margin-left: 1.2rem;
+    color: #cccccc;
+    padding: 0.05rem 0;
+    position: relative;
+}
+
+#progressModal details > p::before {
+    content: '› ';
+    color: #6a9955;
+}
+
+#progressModal details > p:empty {
+    display: none;
+}
+
+/* 顶层 p（非 details 内） */
+#progressModal #backupIndicator > .terminal-body > p {
+    color: #cccccc;
+    padding: 0.05rem 0.4rem;
+    margin-left: 0;
+}
+
+#progressModal #backupIndicator > .terminal-body > p::before {
+    content: '> ';
+    color: #6a9955;
+}
+
+#progressModal #backupIndicator > .terminal-body > p:empty {
+    display: none;
+}
+
+/* ========== 进度条 ========== */
+
+#progressModal #progress {
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 3px;
+    height: 22px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+    position: relative;
+}
+
+#progressModal #progressbar {
+    background: linear-gradient(90deg, #0c7b3a 0%, #4ec9b0 100%);
+    color: #1e1e1e;
+    font-size: 0.75rem;
+    font-weight: bold;
+    line-height: 22px;
+    text-align: center;
+    transition: width 0.3s ease;
+}
+
+#progressModal #progress:not([style*="display: none"]) #progressbar:not([style*="width: 0%"]) {
+    animation: none;
+}
+
+/* ========== 按钮 ========== */
+
+#progressModal .modal-footer .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    border-radius: 3px;
+}
+
+#progressModal .modal-footer .btn-outline-warning {
+    color: #dcdcaa;
+    border-color: #dcdcaa;
+}
+
+#progressModal .modal-footer .btn-outline-warning:hover {
+    background: #dcdcaa;
+    color: #1e1e1e;
+}
+
+#progressModal .modal-footer .btn-outline-success {
+    color: #4ec9b0;
+    border-color: #4ec9b0;
+}
+
+#progressModal .modal-footer .btn-outline-success:hover {
+    background: #4ec9b0;
+    color: #1e1e1e;
+}
+
+#progressModal .modal-footer .btn-outline-danger {
+    color: #f44747;
+    border-color: #f44747;
+}
+
+#progressModal .modal-footer .btn-outline-danger:hover {
+    background: #f44747;
+    color: #1e1e1e;
+}
+
+#progressModal .modal-footer .btn-outline-info {
+    color: #569cd6;
+    border-color: #569cd6;
+}
+
+#progressModal .modal-footer .btn-outline-info:hover {
+    background: #569cd6;
+    color: #1e1e1e;
+}
+
+#progressModal .modal-footer .btn-primary {
+    background: #264f78;
+    border-color: #264f78;
+    color: #e0e0e0;
+}
+
+#progressModal .modal-footer .btn-primary:hover {
+    background: #3a6ea5;
+    border-color: #3a6ea5;
+}
+
+#progressModal .modal-footer .btn-secondary {
+    background: #3c3c3c;
+    border-color: #505050;
+    color: #ccc;
+}

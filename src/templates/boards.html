@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+	<link rel="icon" href="../Common/images/favicon.ico">
+	<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+	<title>QQ空间备份-留言</title>
+	<link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/bootstrap/4.6.1/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery.min.css">
+	<link rel="stylesheet" href="https://cdn.staticfile.org/lightgallery/2.3.0/css/lightgallery-bundle.min.css">
+	<link rel="stylesheet" type="text/css" href="../Common/css/common.css">
+	<script src="https://cdn.staticfile.org/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/bootstrap/4.6.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.staticfile.org/jquery_lazyload/2.0.0-rc.2/lazyload.min.js"></script>
+	<script src="https://cdn.staticfile.org/lodash.js/4.17.21/lodash.min.js"></script>
+	
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/lightgallery.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/zoom/lg-zoom.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/thumbnail/lg-thumbnail.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/rotate/lg-rotate.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/fullscreen/lg-fullscreen.min.js"></script>
+	<script src="https://cdn.staticfile.org/lightgallery/2.3.0/plugins/autoplay/lg-autoplay.min.js"></script>
+	
+	<script src="https://cdn.jsdelivr.net/npm/template_js@2.2.1/dist/index.aio.min.js" integrity="sha256-gnK+GsIXEBgu/mJouMDtUxXvXM3M0jzxNYmjnlsifgY=" crossorigin="anonymous"></script>
+	
+	<script type="text/javascript" src="../Common/json/config.js"></script>
+	<script type="text/javascript" src="json/boards.js"></script>
+	<script type="text/javascript" src="../Common/js/common.js"></script>
+	<script type="text/javascript" src="../Common/js/sidebar.js"></script>
+	<script type="text/javascript" src="js/boards.js"></script>
+</head>
+
+<body>
+	<header>
+		<nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
+			<a class="navbar-brand" target="_blank" href="https://github.com/ShunCai/QZoneExport">QQ空间导出助手</a>
+			<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse" id="navbarSupportedContent">
+				<nav aria-label="breadcrumb">
+					<ol class="breadcrumb bg-dark">
+						<li class="breadcrumb-item"><a href="../index.html">个人中心</a></li>
+						<li class="breadcrumb-item active" aria-current="page">留言</li>
+					</ol>
+				</nav>
+			</div>
+		</nav>
+	</header>
+	<main role="main" class="flex-shrink-0">
+		<div id="boards_html" class="container boards p-3">
+			<h4 class="sidebar-h1 mt-1 boards-slogan" data-tag="h1" data-sidebar="主人寄语">主人寄语</h4>
+			<div class="card border p-2 mt-1">
+				<div class="card-body">
+					<%:=authorInfo.message || '说些寄语，欢迎您的空间访客吧'%>
+				</div>
+			</div>
+			<h4 class="sidebar-h1 mt-3 boards-items" data-tag="h1" data-sidebar="访客留言">留言(<%:=total%>)</h4>
+			<%for (const [year, yearMap] of boardMaps) {%>
+				<span class="sidebar-h1" data-tag="h1" data-sidebar='<%:=year%>年<span class="badge badge-primary badge-pill itemSize"><%:=API.Utils.sumYearItemSize(yearMap)%><span>'></span>
+				<%for (const [month, monthItems] of yearMap) {%>
+					<span class="sidebar-h2" data-tag="h2" data-sidebar='<%:=month%>月<span class="badge badge-secondary badge-pill itemSize"><%:=monthItems.length%><span>'></span>
+					<%for (let index = 0; index < monthItems.length; index++) {%>
+						<%const board = monthItems[index]%>
+						<%total = total -1%>
+						<div class="card border mt-1">
+							<div class="card-body">
+								<div class="comments">
+									<div class="comment p-0">
+										<div class="d-flex justify-content-start ">
+											<div class="comment-avatar">
+												<a class="avatar p-0 m-0" target="_blank" href="<%:=API.Common.getUserUrl(board.uin)%>">
+													<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(board.uin, true)%>" >
+												</a>
+											</div>
+											<div class="comment-infos ml-2">
+												<a target="_blank" href="<%:=API.Common.getUserUrl(board.uin)%>">
+													<span><%:=API.Common.formatContent(API.Boards.getOwner(board), 'HTML', false, false, false, false, true)%></span>
+												</a>
+												<span class="border-warning border rounded text-warning small p-1" title="当前楼层">#<%:=total + 1 %></span>
+												<div class="text-muted small mt-1"><%:=API.Utils.formatDate(board.pubtime)%></div>
+											</div>
+										</div>
+										<div class="messageText ml-5">
+											<%:=API.Common.formatContent(board.htmlContent,'HTML', false, true, false, false, true)%>
+										</div>
+										<%if(board.replyList && board.replyList.length > 0){%>
+											<hr>
+											<div class="comments m-3">
+												<%for (const reply of board.replyList) {%>
+													<div class="comment p-0 mt-2">
+														<div class="d-flex justify-content-start ">
+															<div class="comment-avatar">
+																<a class="avatar p-0 m-0" target="_blank" href="<%:=API.Common.getUserUrl(reply.uin)%>">
+																	<img class="lazyload loading w-100 h-100 border rounded-circle" src="<%:=API.Common.getUserLogoLocalUrl(reply.uin, true)%>" >
+																</a>
+															</div>
+															<div class="comment-infos ml-2">
+																<a target="_blank" href="<%:=API.Common.getUserUrl(reply.uin)%>">
+																	<span><%:=API.Common.formatContent(API.Boards.getOwner(reply), 'HTML', false, false, false, false, true)%></span>
+																</a>
+																<div class="text-muted small"><%:=API.Utils.formatDate(reply.time)%></div>
+															</div>
+														</div>
+														<div class="messageText ml-5">
+															<%:=API.Common.formatContent(reply.content, 'HTML', false, false, false, false, true)%>
+														</div>
+													</div>
+												<%}%>
+											</div>
+										<%}%>
+									</div>
+								</div>
+							</div>
+						</div>
+					<%}%>
+				<%}%>
+			<%}%>
+		</div>
+	</main>
+</body>
+
+</html>
