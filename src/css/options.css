@@ -10,7 +10,7 @@
 }
 
 body::-webkit-scrollbar-track-piece {
-    background-color: white;
+    background-color: var(--paper-bg);
 }
 
 ::-webkit-scrollbar-track-piece:no-button {}

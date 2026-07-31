@@ -2,48 +2,27 @@
 <html lang="zh">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../css/options.css">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="icon" href="../img/icon-128.png">
-    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>qzone-archiver-使用说明</title>
-    <script src="../vendor/jquery/jquery.min.js"></script>
-    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <style>
-        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
-        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
-        .doc-content h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
-        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
-        .doc-content p, .doc-content li { line-height: 1.7; }
-        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
-        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
-        .doc-content .toc ol { margin: 0; }
-        .doc-content table { margin: 0.5rem 0 1rem; }
-        .doc-content pre { background: #f8f9fa; padding: 0.75rem; border-radius: 4px; overflow-x: auto; }
-    </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" target="_blank" href="https://github.com/salt-fishes/qzone-archiver">qzone-archiver</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="options.html">设置</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="tools.html">工具</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="about.html">关于</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div class="container-fluid">
+    <header class="app-header">
+        <a class="app-brand" href="https://github.com/salt-fishes/qzone-archiver" target="_blank">
+            <img src="../img/icon-128.png" alt="logo">
+            <span>qzone-archiver</span>
+        </a>
+        <nav class="app-nav">
+            <a href="options.html">设置</a>
+            <a href="tools.html">工具</a>
+            <a href="about.html" class="active">关于</a>
+        </nav>
+    </header>
+    <main class="app-main">
         <div class="doc-content">
             <h2>qzone-archiver之使用篇</h2>
 
@@ -62,7 +41,7 @@
             <h3 id="terms">相关术语</h3>
             <p>以下表格内容为本文常见术语，请了解并熟记，便于更好的理解本文。</p>
             <table class="table table-bordered table-sm">
-                <thead class="thead-light">
+                <thead>
                     <tr><th style="width:25%">术语</th><th>说明</th></tr>
                 </thead>
                 <tbody>
@@ -120,7 +99,7 @@
             <h4>打包下载</h4>
             <p>一般来说，只要备份都会出现打包下载按钮。当只备份相册/视频模块，且备份类型为文件/MP4文件时，且文件下载工具不是<strong>迅雷下载链接</strong>时，不出现<strong>打包下载</strong>。</p>
             <table class="table table-bordered table-sm">
-                <thead class="thead-light">
+                <thead>
                     <tr><th>备份模块</th><th>备份类型</th><th>文件下载工具</th><th>说明</th></tr>
                 </thead>
                 <tbody>
@@ -154,7 +133,7 @@
             <h4>查看备份</h4>
             <p>根据备份类型的不同，选择不同的查看方式。</p>
             <table class="table table-bordered table-sm">
-                <thead class="thead-light">
+                <thead>
                     <tr><th>备份类型</th><th>查看方式</th></tr>
                 </thead>
                 <tbody>
@@ -222,7 +201,7 @@
                 <a href="faq.html" class="btn btn-outline-primary ml-2">查看常见问题</a>
             </p>
         </div>
-    </div>
+    </main>
 </body>
 
 </html>

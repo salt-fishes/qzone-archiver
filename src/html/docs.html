@@ -2,66 +2,30 @@
 <html lang="zh">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../css/options.css">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="icon" href="../img/icon-128.png">
-    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>qzone-archiver-使用文档</title>
-    <script src="../vendor/jquery/jquery.min.js"></script>
-    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <style>
-        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
-        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
-        .doc-content h3 { margin-top: 1.75rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
-        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
-        .doc-content p, .doc-content li { line-height: 1.7; }
-        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
-        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
-        .doc-content .toc ol { margin: 0; }
-        .doc-content .refactor { background: #f0f7ff; padding: 1rem 1.5rem; border-left: 3px solid #007bff; margin: 1.5rem 0; }
-        .doc-content .refactor h3 { border-bottom: none; color: #0056b3; }
-        .doc-content .notice { background: #fff3f3; padding: 1rem 1.5rem; border-left: 3px solid #dc3545; margin: 1.5rem 0; }
-        .doc-content .notice h3 { border-bottom: none; color: #a71d2a; }
-        .doc-content .original { background: #fffaf0; padding: 1rem 1.5rem; border-left: 3px solid #ff9800; margin: 1.5rem 0; }
-        .doc-content .original h3 { border-bottom: none; color: #b25e00; }
-        .doc-content .original p { color: #663300; }
-        .doc-content .changelog { background: #f8f9fa; padding: 1rem 1.5rem; border-left: 3px solid #28a745; margin: 1rem 0; }
-        .doc-content .changelog h4 { color: #28a745; margin-top: 0; }
-        .doc-content table.compare { margin: 0.5rem 0 1rem; font-size: 0.95rem; }
-        .doc-content table.compare th { background: #e9ecef; }
-        .doc-content .pros-cons { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
-        .doc-content .pros-cons > div { flex: 1; min-width: 280px; padding: 1rem; border-radius: 4px; }
-        .doc-content .pros { background: #e8f5e9; border-left: 3px solid #28a745; }
-        .doc-content .cons { background: #fbe9e7; border-left: 3px solid #ff5722; }
-        .doc-content .pros h4 { color: #28a745; }
-        .doc-content .cons h4 { color: #ff5722; }
-    </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" target="_blank" href="https://github.com/salt-fishes/qzone-archiver">qzone-archiver</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="options.html">设置</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="tools.html">工具</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="about.html">关于</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div class="container-fluid">
+    <header class="app-header">
+        <a class="app-brand" href="https://github.com/salt-fishes/qzone-archiver" target="_blank">
+            <img src="../img/icon-128.png" alt="logo">
+            <span>qzone-archiver</span>
+        </a>
+        <nav class="app-nav">
+            <a href="options.html">设置</a>
+            <a href="tools.html">工具</a>
+            <a href="about.html" class="active">关于</a>
+        </nav>
+    </header>
+    <main class="app-main">
         <div class="doc-content">
             <h2>qzone-archiver</h2>
-            <p class="lead">一键快速备份QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客为文件，便于迁移与保存。</p>
+            <p class="lead" style="font-size:1.1rem;color:var(--ink-light);">一键快速备份QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客为文件，便于迁移与保存。</p>
 
             <div class="toc">
                 <ol>
@@ -234,7 +198,7 @@
                 <a href="privacy.html" class="btn btn-outline-primary ml-2">隐私政策</a>
             </p>
         </div>
-    </div>
+    </main>
 </body>
 
 </html>

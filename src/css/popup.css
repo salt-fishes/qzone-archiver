@@ -1,21 +1,148 @@
 body {
     width: 450px;
-    padding: 20px;
+    padding: 0;
+    background: var(--paper-bg);
+}
+
+.popup-wrap {
+    padding: 1.1rem 1.25rem;
+}
+
+.popup-brand {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin-bottom: .85rem;
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.popup-brand img {
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+}
+
+.popup-info {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    padding: .65rem .85rem;
+    margin-bottom: .85rem;
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius);
+}
+
+.popup-info-item {
+    font-size: .85rem;
+    color: var(--ink-light);
+}
+
+.popup-info-item span {
+    color: var(--accent);
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+.popup-section-label {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--ink-muted);
+    margin-bottom: .4rem;
+}
+
+.popup-modules {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .4rem;
+    margin-bottom: .85rem;
+}
+
+.popup-module {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .35rem .55rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--paper-card);
+    font-size: .83rem;
+    cursor: pointer;
+    transition: all .15s;
+    margin: 0;
+}
+
+.popup-module:hover {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+}
+
+.popup-module input {
+    accent-color: var(--accent);
+    margin: 0;
+    cursor: pointer;
+}
+
+.popup-albums {
+    margin-bottom: .85rem;
+}
+
+.popup-tips {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+    margin-bottom: .85rem;
+    padding: .55rem .75rem;
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.popup-tip {
+    font-size: .78rem;
+    color: var(--ink-light);
+    line-height: 1.5;
+}
+
+.popup-tip a {
+    color: var(--accent);
+    cursor: pointer;
+}
+
+.popup-action {
+    margin-top: .25rem;
+}
+
+.popup-action .btn-block {
+    padding: .55rem 1rem;
+    font-size: .95rem;
+    font-weight: 600;
 }
 
 #export_albums_div .dropdown-header {
-    background-color: #dae0e5;
-    color: black;
+    background-color: var(--paper-dark);
+    color: var(--ink);
     font-size: medium;
     text-align: center;
 }
 
 #export_albums_div .dropdown-item {
     font-size: small;
-    color: #333538;
+    color: var(--ink);
 }
 
 .download_tool {
-    color: red !important;
+    color: var(--red) !important;
     cursor: pointer;
+}
+
+@media (max-width: 420px) {
+    .popup-modules {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }

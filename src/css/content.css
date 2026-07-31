@@ -346,3 +346,104 @@
     border-color: #505050;
     color: #ccc;
 }
+
+/* ========== 文件列表模态窗 ========== */
+
+#modalTable .modal-content {
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+#modalTable .modal-header {
+    background: #2d2d2d;
+    border-bottom: 1px solid #3c3c3c;
+    padding: 0.5rem 0.75rem;
+}
+
+#modalTable .modal-title {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+#modalTable .close { color: #999; opacity: 0.7; }
+#modalTable .close:hover { opacity: 1; }
+
+#modalTable .modal-body {
+    background: #1e1e1e;
+    padding: 0.75rem;
+}
+
+#modalTable .modal-footer {
+    background: #2d2d2d;
+    border-top: 1px solid #3c3c3c;
+    padding: 0.5rem 0.75rem;
+}
+
+#modalTable .modal-footer .btn {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    border-radius: 3px;
+}
+
+#modalTable .modal-footer .btn-outline-success { color: #4ec9b0; border-color: #4ec9b0; }
+#modalTable .modal-footer .btn-outline-success:hover { background: #4ec9b0; color: #1e1e1e; }
+#modalTable .modal-footer .btn-outline-secondary { color: #ccc; border-color: #505050; }
+#modalTable .modal-footer .btn-outline-secondary:hover { background: #3c3c3c; color: #e0e0e0; }
+#modalTable .modal-footer .btn-outline-primary { color: #569cd6; border-color: #569cd6; }
+#modalTable .modal-footer .btn-outline-primary:hover { background: #569cd6; color: #1e1e1e; }
+#modalTable .modal-footer .btn-primary { background: #264f78; border-color: #264f78; color: #e0e0e0; }
+#modalTable .modal-footer .btn-primary:hover { background: #3a6ea5; border-color: #3a6ea5; }
+
+#modalTable .form-control {
+    background: #2d2d2d;
+    border-color: #3c3c3c;
+    color: #e0e0e0;
+    font-size: 0.82rem;
+}
+
+#modalTable .fixed-table-toolbar .search input {
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    color: #e0e0e0;
+    border-radius: 3px;
+}
+
+#modalTable .table {
+    color: #ccc;
+}
+
+#modalTable .table thead th {
+    background: #2d2d2d;
+    border-color: #3c3c3c;
+    color: #e0e0e0;
+}
+
+#modalTable .table td {
+    border-color: #2a2a2a;
+}
+
+#modalTable .table tbody tr:hover {
+    background: #252526;
+}
+
+#modalTable .pagination .page-link {
+    background: #2d2d2d;
+    border-color: #3c3c3c;
+    color: #569cd6;
+}
+
+#modalTable .pagination .page-item.active .page-link {
+    background: #264f78;
+    border-color: #264f78;
+    color: #e0e0e0;
+}
+
+#modalTable .pagination .page-item.disabled .page-link {
+    background: #252526;
+    border-color: #3c3c3c;
+    color: #555;
+}

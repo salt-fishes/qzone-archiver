@@ -3,36 +3,26 @@
 
 <head>
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../css/options.css">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="icon" href="../img/icon-128.png">
-    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
     <title>qzone-archiver-关于</title>
-	<script src="../vendor/jquery/jquery.min.js"></script>
-	<script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script src="../vendor/lodash/lodash.min.js"></script>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" target="_blank" href="https://github.com/salt-fishes/qzone-archiver">qzone-archiver</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-			<span class="navbar-toggler-icon"></span>
-		</button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a id="setting-link" class="nav-link" href="options.html">设置</a>
-                </li>
-                <li class="nav-item">
-                    <a id="setting-link" class="nav-link" href="tools.html">工具</a>
-                </li>
-                <li class="nav-item active">
-                    <a id="about-link" class="nav-link" href="about.html">关于<span class="sr-only">(current)</span></a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div id="about" class="container-fluid">
+    <header class="app-header">
+        <a class="app-brand" href="https://github.com/salt-fishes/qzone-archiver" target="_blank">
+            <img src="../img/icon-128.png" alt="logo">
+            <span>qzone-archiver</span>
+        </a>
+        <nav class="app-nav">
+            <a href="options.html">设置</a>
+            <a href="tools.html">工具</a>
+            <a href="about.html" class="active">关于</a>
+        </nav>
+    </header>
+    <main class="app-main">
+    <div id="about" class="doc-content">
         <ul class="list-group list-group-flush">
             <li class="list-group-item">
                 <div class="row">

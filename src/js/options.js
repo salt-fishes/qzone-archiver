@@ -146,44 +146,24 @@
         $(".toast").toast('show');
     }
 
-    // 初始化日期选择控件
-    $('.increment_time').datetimepicker({
-        locale: 'zh-cn',
-        defaultDate: Default_IncrementTime, // QQ空间正式发行日期？
-        minDate: "2005-04-01 00:00:00", // QQ空间内测发行日期？
-        format: 'YYYY-MM-DD HH:mm:ss',
-        toolbarPlacement: 'top',
-        keepOpen: true,
-        sideBySide: true,
-        buttons: {
-            showToday: true,
-            showClear: true,
-            showClose: true
-        },
-        tooltips: {
-            today: '今天',
-            clear: '清除选择',
-            close: '关闭',
-            selectMonth: '选择月份',
-            prevMonth: '上一月',
-            nextMonth: '下一月',
-            selectYear: '选择年份',
-            prevYear: '上一年',
-            nextYear: '下一年',
-            incrementHour: '增一小时',
-            pickHour: '选择小时',
-            decrementHour: '减一小时',
-            incrementMinute: '增一分钟',
-            pickMinute: '选择分钟',
-            decrementMinute: '减一分钟',
-            pickSecond: "选择秒钟",
-            incrementSecond: "增一秒钟",
-            decrementSecond: "减一秒钟",
-            selectTime: '选择时间',
-            selectDate: '选择日期'
-        },
-        icons: {
-            clear: 'fa fa-trash-o'
+    // 初始化日期选择控件 (flatpickr)
+    $('.increment_time').flatpickr({
+        wrap: true,
+        locale: 'zh',
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'Y-m-d H:i:S',
+        minDate: '2005-04-01 00:00:00',
+        defaultDate: Default_IncrementTime,
+        allowInput: true,
+        clickOpens: false,
+        // wrap 模式下，由 data-toggle 按钮触发打开
+        // 同步外部 .val() 设置的值到 flatpickr 内部状态
+        onOpen: function(selectedDates, dateStr, instance) {
+            const val = instance.input.value;
+            if (val) {
+                try { instance.setDate(val, false); } catch (e) {}
+            }
         }
     })
 
@@ -224,6 +204,12 @@
     $('#nav-tab a').on('click', function(e) {
         e.preventDefault();
         window.location.hash = "#" + this.id;
+    });
+
+    // Tab 切换后重置滚动容器到顶部
+    $('#nav-tab a').on('shown.bs.tab', function() {
+        $('.settings-content').scrollTop(0);
+        window.scrollTo(0, 0);
     });
 
     // 批量应用导出方式到所有模块

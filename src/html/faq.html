@@ -2,46 +2,27 @@
 <html lang="zh">
 
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="../css/options.css">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="icon" href="../img/icon-128.png">
-    <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>qzone-archiver-常见问题</title>
-    <script src="../vendor/jquery/jquery.min.js"></script>
-    <script src="../vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <style>
-        .doc-content { padding: 1rem 1.5rem; max-width: 960px; margin: 0 auto; }
-        .doc-content h2 { margin-top: 1.5rem; margin-bottom: 1rem; font-size: 1.5rem; }
-        .doc-content h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.25rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
-        .doc-content h4 { margin-top: 1rem; margin-bottom: 0.5rem; font-size: 1.05rem; color: #555; }
-        .doc-content p, .doc-content li { line-height: 1.7; }
-        .doc-content ol, .doc-content ul { padding-left: 1.5rem; }
-        .doc-content .toc { background: #f8f9fa; padding: 1rem 1.5rem; border-radius: 4px; margin-bottom: 1.5rem; }
-        .doc-content .toc ol { margin: 0; }
-    </style>
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" target="_blank" href="https://github.com/salt-fishes/qzone-archiver">qzone-archiver</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item">
-                    <a class="nav-link" href="options.html">设置</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="tools.html">工具</a>
-                </li>
-                <li class="nav-item active">
-                    <a class="nav-link" href="about.html">关于</a>
-                </li>
-            </ul>
-        </div>
-    </nav>
-    <div class="container-fluid">
+    <header class="app-header">
+        <a class="app-brand" href="https://github.com/salt-fishes/qzone-archiver" target="_blank">
+            <img src="../img/icon-128.png" alt="logo">
+            <span>qzone-archiver</span>
+        </a>
+        <nav class="app-nav">
+            <a href="options.html">设置</a>
+            <a href="tools.html">工具</a>
+            <a href="about.html" class="active">关于</a>
+        </nav>
+    </header>
+    <main class="app-main">
         <div class="doc-content">
             <h2>qzone-archiver之问题篇</h2>
 
@@ -266,7 +247,7 @@
                 <a href="usage.html" class="btn btn-outline-primary ml-2">查看使用说明</a>
             </p>
         </div>
-    </div>
+    </main>
 </body>
 
 </html>

@@ -6,8 +6,9 @@
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="../vendor/jquery-resizable-columns/css/jquery.resizableColumns.css">
     <link rel="stylesheet" href="../vendor/bootstrap/css/bootstrap-table.min.css">
-    <link rel="stylesheet" href="../vendor/tempusdominus/css/tempusdominus-bootstrap-4.min.css">
+    <link rel="stylesheet" href="../vendor/flatpickr/flatpickr.min.css">
     <link rel="stylesheet" href="../vendor/bootstrap-select/css/bootstrap-select.min.css">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/options.css">
     <link rel="icon" href="../img/icon-128.png">
     <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
@@ -24,53 +25,50 @@
     <script src="../vendor/moment/zh-cn.min.js"></script>
     <script src="../vendor/x-editable-4-bs4/js/bootstrap-editable.min.js"></script>
     <script src="../vendor/bootstrap/js/bootstrap-table-resizable.min.js"></script>
-    <script src="../vendor/tempusdominus/js/tempusdominus-bootstrap-4.min.js"></script>
+    <script src="../vendor/flatpickr/flatpickr.min.js"></script>
+    <script src="../vendor/flatpickr/l10n/zh.js"></script>
     <script src="../vendor/lodash/lodash.min.js"></script>
 </head>
 
 <body>
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-            <a class="navbar-brand" target="_blank" href="https://github.com/salt-fishes/qzone-archiver">qzone-archiver</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-				<span class="navbar-toggler-icon"></span>
-			</button>
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav mr-auto">
-                    <li class="nav-item active">
-                        <a id="setting-link" class="nav-link" href="options.html">设置<span class="sr-only">(current)</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a id="about-link" class="nav-link" href="tools.html">工具</a>
-                    </li>
-                    <li class="nav-item">
-                        <a id="about-link" class="nav-link" href="about.html">关于</a>
-                    </li>
-                </ul>
-            </div>
+    <header class="app-header">
+        <a class="app-brand" href="https://github.com/salt-fishes/qzone-archiver" target="_blank">
+            <img src="../img/icon-128.png" alt="logo">
+            <span>qzone-archiver</span>
+        </a>
+        <nav class="app-nav">
+            <a href="options.html" class="active">设置</a>
+            <a href="tools.html">工具</a>
+            <a href="about.html">关于</a>
         </nav>
     </header>
-    <main role="main" style="position: relative;top: 56px;">
-        <div class="tab-content" id="v-pills-tabContent">
-            <div class="tab-pane fade show active" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
-                <div class="container-fluid">
-                    <nav>
-                        <div class="nav nav-tabs" id="nav-tab" role="tablist">
-                            <a class="nav-item nav-link active" id="nav-messages-tab" data-toggle="tab" href="#nav-messages" role="tab" aria-controls="nav-messages" aria-selected="false">说说</a>
-                            <a class="nav-item nav-link" id="nav-blogs-tab" data-toggle="tab" href="#nav-blogs" role="tab" aria-controls="nav-blogs" aria-selected="false">日志</a>
-                            <a class="nav-item nav-link" id="nav-diaries-tab" data-toggle="tab" href="#nav-diaries" role="tab" aria-controls="nav-diaries" aria-selected="false">日记</a>
-                            <a class="nav-item nav-link" id="nav-photos-tab" data-toggle="tab" href="#nav-photos" role="tab" aria-controls="nav-photos" aria-selected="false">相册</a>
-                            <a class="nav-item nav-link" id="nav-videos-tab" data-toggle="tab" href="#nav-videos" role="tab" aria-controls="nav-videos" aria-selected="false">视频</a>
-                            <a class="nav-item nav-link" id="nav-boards-tab" data-toggle="tab" href="#nav-boards" role="tab" aria-controls="nav-boards" aria-selected="false">留言</a>
-                            <a class="nav-item nav-link" id="nav-friends-tab" data-toggle="tab" href="#nav-friends" role="tab" aria-controls="nav-friends" aria-selected="false">好友</a>
-                            <a class="nav-item nav-link" id="nav-favorites-tab" data-toggle="tab" href="#nav-favorites" role="tab" aria-controls="nav-favorites" aria-selected="false">收藏</a>
-                            <a class="nav-item nav-link" id="nav-shares-tab" data-toggle="tab" href="#nav-shares" role="tab" aria-controls="nav-shares" aria-selected="false">分享</a>
-                            <a class="nav-item nav-link" id="nav-visitors-tab" data-toggle="tab" href="#nav-visitors" role="tab" aria-controls="nav-visitors" aria-selected="false">访客</a>
-                            <a class="nav-item nav-link " id="nav-common-tab" data-toggle="tab" href="#nav-common" role="tab" aria-controls="nav-common" aria-selected="false">公共</a>
-                            <a class="nav-item nav-link " id="nav-dev-tab" data-toggle="tab" href="#nav-dev" role="tab" aria-controls="nav-dev" aria-selected="false">开发者</a>
-                        </div>
-                    </nav>
-                    <div class="tab-content" id="nav-tabContent">
+    <main class="app-main">
+        <div class="settings-layout">
+            <aside class="settings-sidebar">
+                <div class="nav-section">备份模块</div>
+                <nav>
+                    <div class="nav flex-column" id="nav-tab" role="tablist">
+                        <a class="nav-link active" id="nav-messages-tab" data-toggle="tab" href="#nav-messages" role="tab" aria-controls="nav-messages" aria-selected="true">说说</a>
+                        <a class="nav-link" id="nav-blogs-tab" data-toggle="tab" href="#nav-blogs" role="tab" aria-controls="nav-blogs" aria-selected="false">日志</a>
+                        <a class="nav-link" id="nav-diaries-tab" data-toggle="tab" href="#nav-diaries" role="tab" aria-controls="nav-diaries" aria-selected="false">日记</a>
+                        <a class="nav-link" id="nav-photos-tab" data-toggle="tab" href="#nav-photos" role="tab" aria-controls="nav-photos" aria-selected="false">相册</a>
+                        <a class="nav-link" id="nav-videos-tab" data-toggle="tab" href="#nav-videos" role="tab" aria-controls="nav-videos" aria-selected="false">视频</a>
+                        <a class="nav-link" id="nav-boards-tab" data-toggle="tab" href="#nav-boards" role="tab" aria-controls="nav-boards" aria-selected="false">留言</a>
+                        <a class="nav-link" id="nav-friends-tab" data-toggle="tab" href="#nav-friends" role="tab" aria-controls="nav-friends" aria-selected="false">好友</a>
+                        <a class="nav-link" id="nav-favorites-tab" data-toggle="tab" href="#nav-favorites" role="tab" aria-controls="nav-favorites" aria-selected="false">收藏</a>
+                        <a class="nav-link" id="nav-shares-tab" data-toggle="tab" href="#nav-shares" role="tab" aria-controls="nav-shares" aria-selected="false">分享</a>
+                        <a class="nav-link" id="nav-visitors-tab" data-toggle="tab" href="#nav-visitors" role="tab" aria-controls="nav-visitors" aria-selected="false">访客</a>
+                        <div class="nav-divider"></div>
+                        <a class="nav-link" id="nav-common-tab" data-toggle="tab" href="#nav-common" role="tab" aria-controls="nav-common" aria-selected="false">公共</a>
+                        <a class="nav-link" id="nav-dev-tab" data-toggle="tab" href="#nav-dev" role="tab" aria-controls="nav-dev" aria-selected="false">开发者</a>
+                    </div>
+                </nav>
+            </aside>
+            <div class="settings-content">
+                <div class="tab-content" id="v-pills-tabContent">
+                    <div class="tab-pane fade show active" id="v-pills-settings" role="tabpanel" aria-labelledby="v-pills-settings-tab">
+                        <div class="container-fluid">
+                            <div class="tab-content" id="nav-tabContent">
                         <div class="tab-pane fade show active" id="nav-messages" role="tabpanel" aria-labelledby="nav-messages-tab">
                             <br />
                             <form id="tb_messages" data-module="Messages">
@@ -104,12 +102,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="messages_increment_time_row">
-                                    <label for="messages_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="messages_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="messages_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="messages_increment_time" class="form-control datetimepicker-input" data-target="#messages_increment_time_display" />
-                                            <div class="input-group-append" data-target="#messages_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="messages_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -402,12 +400,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="blogs_increment_time_row">
-                                    <label for="blogs_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="blogs_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="blogs_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="blogs_increment_time" class="form-control datetimepicker-input" data-target="#blogs_increment_time_display" />
-                                            <div class="input-group-append" data-target="#blogs_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="blogs_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -596,12 +594,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="diaries_increment_time_row">
-                                    <label for="diaries_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="diaries_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="diaries_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="diaries_increment_time" class="form-control datetimepicker-input" data-target="#diaries_increment_time_display" />
-                                            <div class="input-group-append" data-target="#diaries_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="diaries_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -778,12 +776,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="photos_increment_time_row">
-                                    <label for="photos_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="photos_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="photos_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="photos_increment_time" class="form-control datetimepicker-input" data-target="#photos_increment_time_display" />
-                                            <div class="input-group-append" data-target="#photos_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="photos_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1189,12 +1187,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="videos_increment_time_row">
-                                    <label for="videos_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="videos_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="videos_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="videos_increment_time" class="form-control datetimepicker-input" data-target="#videos_increment_time_display" />
-                                            <div class="input-group-append" data-target="#videos_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="videos_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1359,12 +1357,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="boards_increment_time_row">
-                                    <label for="boards_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="boards_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="boards_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="boards_increment_time" class="form-control datetimepicker-input" data-target="#boards_increment_time_display" />
-                                            <div class="input-group-append" data-target="#boards_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="boards_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1567,12 +1565,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="favorites_increment_time_row">
-                                    <label for="favorites_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="favorites_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="favorites_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="favorites_increment_time" class="form-control datetimepicker-input" data-target="#favorites_increment_time_display" />
-                                            <div class="input-group-append" data-target="#favorites_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="favorites_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1643,12 +1641,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="shares_increment_time_row">
-                                    <label for="shares_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="shares_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="shares_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="shares_increment_time" class="form-control datetimepicker-input" data-target="#shares_increment_time_display" />
-                                            <div class="input-group-append" data-target="#shares_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="shares_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1856,12 +1854,12 @@
                                     </div>
                                 </div>
                                 <div class="form-group row" id="visitors_increment_time_row">
-                                    <label for="visitors_increment_time_display" class="col-sm-auto col-form-label">增量时间：</label>
+                                    <label for="visitors_increment_time" class="col-sm-auto col-form-label">增量时间：</label>
                                     <div class="col-sm-2">
-                                        <div class="input-group date increment_time" id="visitors_increment_time_display" data-target-input="nearest">
-                                            <input type="text" id="visitors_increment_time" class="form-control datetimepicker-input" data-target="#visitors_increment_time_display" />
-                                            <div class="input-group-append" data-target="#visitors_increment_time_display" data-toggle="datetimepicker">
-                                                <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                                        <div class="input-group increment_time" data-wrap="true">
+                                            <input type="text" id="visitors_increment_time" class="form-control" data-input />
+                                            <div class="input-group-append">
+                                                <button type="button" class="input-group-text" data-toggle><i class="fa fa-calendar"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -2202,6 +2200,8 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
     </main>
     <div class="position-fixed bottom-0 right-0 p-3" style="z-index: 5; right: 0; bottom: 0;">
         <div id="liveToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true" data-delay="3000">
