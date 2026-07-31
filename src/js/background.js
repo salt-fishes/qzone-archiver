@@ -251,7 +251,7 @@ chrome.downloads.onDeterminingFilename.addListener(async function(item, __sugges
 
 // 扩展安装时
 chrome.runtime.onInstalled.addListener((details) => {
-    console.info('QQ空间导出助手安装中...', details);
+    console.info('qzone-archiver安装中...', details);
     switch (details.reason) {
         // 安装
         case chrome.runtime.OnInstalledReason.INSTALL:

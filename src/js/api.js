@@ -2851,27 +2851,41 @@ API.Messages = {
      * @param {integer} count 每页数量
      */
     getFeeds(offset, count) {
-        let params = {
-            "uin": QZone.Common.Target.uin || API.Utils.initUin().Target.uin,
-            "begin_time": "0",
-            "end_time": "0",
-            "getappnotification": "1",
-            "getnotifi": "1",
-            "has_get_key": "0",
-            "offset": offset,
-            "set": "0",
-            "count": count,
-            "useutf8": "1",
-            "outputhtmlfeed": "1",
-            "scope": "1",
-            "format": "jsonp",
-            "g_tk": QZone.Common.Config.gtk || API.Utils.initGtk()
-        };
-        return API.Utils.get(REST_URLS.FEEDS_LIST_URL, params);
+        const gtk = QZone.Common.Config.gtk || API.Utils.initGtk();
+        const uin = QZone.Common.Target.uin || API.Utils.initUin().Target.uin;
+        // 注意：g_tk 必须重复两次（与浏览器实际请求一致）
+        // 不能用数组传参，jQuery 会编码成 g_tk[]=xxx 导致 403
+        const queryString = [
+            'uin=' + uin,
+            'begin_time=0',
+            'end_time=0',
+            'getappnotification=1',
+            'getnotifi=1',
+            'has_get_key=0',
+            'offset=' + offset,
+            'set=0',
+            'count=' + count,
+            'useutf8=1',
+            'outputhtmlfeed=1',
+            'grz=' + Math.random(),
+            'scope=1',
+            'format=jsonp',
+            'g_tk=' + gtk,
+            'g_tk=' + gtk
+        ].join('&');
+        const fullUrl = REST_URLS.FEEDS_LIST_URL + '?' + queryString;
+        // 复用 API.Utils.get 的重试逻辑，params 传空对象避免重复序列化
+        return API.Utils.get(fullUrl, {});
     },
 
     /**
      * 解析单条 feed 的 HTML 内容，提取被操作说说的信息
+     * HTML 结构参照 GetQQzonehistory Python 实现：
+     *   <li class="f-single f-s-s">
+     *     <a class="f-name q_namecard" link="...">好友昵称</a>
+     *     <div class="info-detail">时间文本</div>
+     *     <p class="txt-box-title ellipsis-one">说说内容</p>
+     *     <a class="img-item"><img src="..."></a>
      * @param {string} htmlText feed.html 字段（含 \xXX 转义）
      * @param {object} feedMeta feed 顶层元数据（uin/nickname/appid/abstime/feedstime 等）
      * @returns {object} 解析结果 { origtid, origUin, abstime, content, imageUrl, feedType, operator, commentContent }
@@ -2879,39 +2893,61 @@ API.Messages = {
     parseFeedHtml(htmlText, feedMeta) {
         if (!htmlText) return null;
         try {
-            // 1. 解码 \xXX 十六进制转义
+            // 1. 解码 \xXX 十六进制转义（参照 Python process_old_html）
             const decoded = htmlText.replace(/\\x([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
             // 2. 还原被转义的引号和反斜杠
             const html = decoded.replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\');
             // 3. DOMParser 解析
             const doc = new DOMParser().parseFromString(html, 'text/html');
-            // 4. 提取被操作说说的元数据
-            const feedData = doc.querySelector('i[name="feed_data"]');
-            if (!feedData) return null;
-            const origtid = feedData.getAttribute('data-origtid') || feedData.getAttribute('data-tid');
-            const origUin = feedData.getAttribute('data-origuin') || feedData.getAttribute('data-uin');
-            const abstime = feedData.getAttribute('data-abstime');
-            // 5. 提取说说摘要文本
-            const titleEl = doc.querySelector('p.txt-box-title');
+            // 4. 定位 feed 根元素 li.f-single
+            const feedRoot = doc.querySelector('li.f-single') || doc.querySelector('li');
+            if (!feedRoot) return null;
+            // 5. 尝试从多个来源提取 origtid
+            let origtid = '';
+            // 5a. 从 feed JSON 元数据中提取
+            const metaKeys = ['origtid', 'origfid', 'tid', 'fid', 'cellid'];
+            for (const key of metaKeys) {
+                if (feedMeta[key]) { origtid = String(feedMeta[key]); break; }
+            }
+            // 5b. 从 HTML data-* 属性中提取
+            if (!origtid) {
+                const dataEl = feedRoot.querySelector('[data-origtid]') || doc.querySelector('[data-origtid]');
+                if (dataEl) origtid = dataEl.getAttribute('data-origtid');
+            }
+            if (!origtid) {
+                // 5c. 从 HTML 中正则提取
+                const m = html.match(/data-origtid=["']([^"']+)["']/);
+                if (m) origtid = m[1];
+            }
+            // 6. 提取 origUin
+            let origUin = '';
+            if (feedMeta.origuin) {
+                origUin = String(feedMeta.origuin);
+            } else {
+                const uinEl = feedRoot.querySelector('[data-origuin]') || doc.querySelector('[data-origuin]');
+                if (uinEl) origUin = uinEl.getAttribute('data-origuin');
+            }
+            // 7. 提取说说摘要文本（p.txt-box-title.ellipsis-one）
+            const titleEl = feedRoot.querySelector('p.txt-box-title') || feedRoot.querySelector('p.txt-box-title.ellipsis-one');
             let content = '';
             if (titleEl) {
-                // 去掉昵称和冒号前缀，保留正文
                 content = titleEl.textContent.replace(/\s+/g, ' ').trim();
-                // 如果是评论通知，正文里会包含 || 分隔的多段内容
-                // 第 1 段是被评论的说说内容
-                const parts = content.split('||');
-                if (parts.length >= 2) {
-                    // 取最后一段作为被评论说说的内容
-                    content = parts[parts.length - 1].replace(/^.*?：/, '').trim();
-                } else {
-                    // 单段：去掉"昵称：" 前缀
-                    content = content.replace(/^[^：]+：/, '').trim();
-                }
+                // 去掉"昵称：" 前缀
+                content = content.replace(/^[^：]+：/, '').trim();
             }
-            // 6. 提取图片URL
-            const imgEl = doc.querySelector('div.img-box img');
+            // 8. 提取图片URL
+            const imgEl = feedRoot.querySelector('a.img-item img') || feedRoot.querySelector('img');
             const imageUrl = imgEl ? imgEl.getAttribute('src') : '';
-            // 7. 识别 feed 类型
+            // 9. 提取操作者信息
+            const nameEl = feedRoot.querySelector('a.f-name') || feedRoot.querySelector('a.q_namecard');
+            const operatorNickname = nameEl ? nameEl.textContent.trim() : (feedMeta.nickname || '');
+            let operatorUin = feedMeta.uin || '';
+            if (!operatorUin && nameEl) {
+                const link = nameEl.getAttribute('link') || '';
+                const m = link.match(/(\d+)/);
+                if (m) operatorUin = m[1];
+            }
+            // 10. 识别 feed 类型
             let feedType = 'unknown';
             const appid = String(feedMeta.appid || '');
             const typeid = String(feedMeta.typeid || '');
@@ -2920,31 +2956,30 @@ API.Messages = {
             } else if (appid === '217' && typeid === '3') {
                 feedType = 'like';
             }
-            // 8. 提取评论文本（仅评论通知有）
+            // 11. 提取评论文本
             let commentContent = '';
             if (feedType === 'comment') {
-                const commentEl = doc.querySelector('.comments-item .comments-content');
+                const commentEl = feedRoot.querySelector('.comments-content') || feedRoot.querySelector('.comments-item');
                 if (commentEl) {
-                    // 去掉昵称和 ": " 前缀
                     commentContent = commentEl.textContent.replace(/\s+/g, ' ').replace(/^[^:]*:\s*/, '').trim();
                 }
             }
             return {
                 origtid,
                 origUin,
-                abstime: abstime ? parseInt(abstime) : 0,
+                abstime: feedMeta.abstime ? parseInt(feedMeta.abstime) : 0,
                 content,
                 imageUrl,
                 feedType,
                 operator: {
-                    uin: feedMeta.uin,
-                    nickname: feedMeta.nickname,
+                    uin: operatorUin,
+                    nickname: operatorNickname,
                     time: feedMeta.abstime ? parseInt(feedMeta.abstime) : 0
                 },
                 commentContent
             };
         } catch (e) {
-            console.warn('解析 feed HTML 失败', e);
+            console.warn('[parseFeedHtml] 解析失败', e);
             return null;
         }
     },
@@ -2952,32 +2987,78 @@ API.Messages = {
     /**
      * 获取好友互动消息总数（二分查找）
      * 该接口不返回 total 字段，需二分查找探测边界
+     * 参照 GetQQzonehistory 的 Python 实现：检查响应是否含 feeds 数据
+     * @param {function} onProgress 进度回调 (message: string) => void
      * @returns {Promise<integer>}
      */
-    getFeedsCount() {
+    getFeedsCount(onProgress) {
+        const log = (msg) => {
+            console.info('[getFeedsCount]', msg);
+            if (typeof onProgress === 'function') onProgress(msg);
+        };
         return new Promise(async (resolve) => {
             let lowerBound = 0;
-            let upperBound = 100000;
+            // 上限与 Python 版一致（1000 万），实际互动消息总数小，二分查找 ~23 次即可收敛
+            let upperBound = 10000000;
             let total = Math.floor(upperBound / 2);
+            // log2(1000万) ≈ 23，留余量到 30
             const maxRetries = 30;
             let retry = 0;
-            while (lowerBound <= upperBound && retry < maxRetries) {
+            let blocked = false;
+            log('开始二分查找互动消息总数...');
+            while (lowerBound <= upperBound && retry < maxRetries && !blocked) {
                 retry++;
                 try {
-                    const response = await API.Messages.getFeeds(total, 10);
-                    const data = API.Utils.toJson(response, /^_Callback\(/);
-                    const hasData = data && data.data && data.data.data && data.data.data.length > 0;
+                    // count=100 对齐 Python RequestUtil.py:91，避免 count 太小误判无数据
+                    const response = await API.Messages.getFeeds(total, 100);
+                    // WAF 拦截检测：响应为 HTML 且含 waf.tencent.com
+                    if (typeof response === 'string' && response.indexOf('waf.tencent.com') > -1) {
+                        log(`第${retry}次探测被 WAF 拦截，停止探测避免加重风控`);
+                        blocked = true;
+                        break;
+                    }
+                    // 检查是否有数据：优先解析 JSON 判断 data.data 数组，文本兜底
+                    let hasData = false;
+                    let sample = '';
+                    if (response && typeof response === 'string') {
+                        // 文本兜底：参照 Python 检查 "li"（HTML 标签 <li 被转义后 li 字符仍存在）
+                        const textHasLi = response.indexOf('li') > -1;
+                        // 尝试 JSON 解析判断 data.data 是否非空
+                        try {
+                            const data = API.Utils.toJson(response, /^_Callback\(/);
+                            const feeds = data && data.data && (data.data.data || data.data.feeds);
+                            hasData = Array.isArray(feeds) && feeds.length > 0;
+                            sample = `JSON解析成功 code=${data.code} feeds=${hasData ? feeds.length : 0}`;
+                        } catch (e) {
+                            // JSON 解析失败，用文本兜底
+                            hasData = textHasLi;
+                            sample = `JSON解析失败，文本检查li=${textHasLi}`;
+                        }
+                    } else if (response && typeof response === 'object') {
+                        // 响应已被解析为对象
+                        const data = response.data || response;
+                        const feeds = data && (data.data || data.feeds);
+                        hasData = Array.isArray(feeds) && feeds.length > 0;
+                        sample = `对象响应 feeds=${hasData ? feeds.length : 0}`;
+                    }
+                    log(`第${retry}次探测 offset=${total} → ${hasData ? '有数据' : '无数据'} (${sample})`);
                     if (hasData) {
                         lowerBound = total + 1;
                     } else {
                         upperBound = total - 1;
                     }
                     total = Math.floor((lowerBound + upperBound) / 2);
+                    // 参照 Python RequestUtil.py:66 每次探测后 sleep，避免触发 WAF
+                    await API.Utils.sleep(3000);
                 } catch (e) {
-                    console.warn('二分查找 feeds 总数异常', e);
+                    log(`第${retry}次探测异常: ${e.message || e}`);
                     break;
                 }
             }
+            if (blocked) {
+                log('已被 WAF 拦截，建议稍后再试或降低请求频率');
+            }
+            log(`二分查找完成，互动消息总数约 ${Math.max(0, lowerBound)}`);
             resolve(Math.max(0, lowerBound));
         });
     },

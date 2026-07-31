@@ -48,7 +48,7 @@ API.Shares.getAllList = async() => {
 
     // 分享状态更新器
     const indicator = new StatusIndicator('Shares');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     const CONFIG = QZone_Config.Shares;
@@ -182,7 +182,7 @@ API.Shares.getItemsAllCommentList = async(items) => {
         const item = items[i];
 
         // 更新当前位置
-        indicator.setIndex(i + 1);
+        await indicator.setIndex(i + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -239,7 +239,7 @@ API.Shares.getAllLikeList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Shares).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -340,7 +340,7 @@ API.Shares.getAllVisitorList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Shares.getItemAllVisitorsList(item).then((visitor) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -450,7 +450,7 @@ API.Shares.exportAllListToFiles = async(items) => {
 API.Shares.exportToSpa = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Shares_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -525,7 +525,7 @@ API.Shares.exportToSpa = async(items) => {
  */
 API.Shares.exportToHtml = async(shares) => {
     const indicator = new StatusIndicator('Shares_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
         // 模块文件夹路径
@@ -651,7 +651,7 @@ API.Shares.getMarkdown = (share) => {
 API.Shares.exportToMarkdown = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Shares_Export_Other');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 汇总内容
@@ -705,7 +705,7 @@ API.Shares.exportToMarkdown = async(items) => {
 API.Shares.exportToJson = async(items) => {
     // 进度功能性期
     const indicator = new StatusIndicator('Shares_Export_Other');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     // 生成年份JSON
     // 分享数据根据年份分组

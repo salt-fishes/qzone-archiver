@@ -1,8 +1,9 @@
-# QQ空间导出助手 — Code Wiki
+# qzone-archiver — Code Wiki
 
-> 项目仓库：[https://github.com/ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
-> 官方说明：[https://lvshuncai.com/archives/qzone-export.html](https://lvshuncai.com/archives/qzone-export.html)
-> 版本：2.0（Manifest V2）
+> 本项目仓库：[https://github.com/salt-fishes/qzone-archiver](https://github.com/salt-fishes/qzone-archiver)
+> 原项目：[https://github.com/ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
+> 原作者博客：[https://lvshuncai.com/archives/qzone-export.html](https://lvshuncai.com/archives/qzone-export.html)
+> 版本：3.0（Manifest V3 + SPA）
 
 ---
 
@@ -23,7 +24,7 @@
 
 ## 1. 项目概述
 
-**QQ空间导出助手** 是一款基于 Chrome 扩展（Manifest V2）的浏览器插件，用于将用户在 QQ 空间中的隐私数据（说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客等）一键导出为本地文件，便于永久保存、迁移与归档。
+**qzone-archiver** 是一款基于 Chrome 扩展（Manifest V3）的浏览器插件，用于将用户在 QQ 空间中的数据（说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客等）一键导出为本地文件，便于永久保存、迁移与归档。
 
 ### 核心能力
 
@@ -810,7 +811,7 @@ QQ空间备份_{QQ号}/
 2. 右上角开启「开发者模式」
 3. 点击「加载已解压的扩展程序」
 4. 选择项目下的 `src/` 目录
-5. 浏览器工具栏出现「QQ空间导出助手」图标
+5. 浏览器工具栏出现「qzone-archiver」图标
 
 ### 9.2 触发备份
 
@@ -938,9 +939,10 @@ QQ空间备份_{QQ号}/
 
 ### 10.5 相关链接
 
-- 项目主页：[https://github.com/ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
-- 作者博客：[https://lvshuncai.com/archives/qzone-export.html](https://lvshuncai.com/archives/qzone-export.html)
-- Chrome 扩展开发文档：[https://developer.chrome.com/docs/extensions/mv2/](https://developer.chrome.com/docs/extensions/mv2/)
+- 本项目主页：[https://github.com/salt-fishes/qzone-archiver](https://github.com/salt-fishes/qzone-archiver)
+- 原项目：[https://github.com/ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
+- 原作者博客：[https://lvshuncai.com/archives/qzone-export.html](https://lvshuncai.com/archives/qzone-export.html)
+- Chrome 扩展开发文档：[https://developer.chrome.com/docs/extensions/mv3/](https://developer.chrome.com/docs/extensions/mv3/)
 
 ---
 

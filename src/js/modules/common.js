@@ -553,7 +553,7 @@ API.Common.invokeThunder = async(thunderInfo) => {
     const _tasks = _.chunk(tasks, QZone_Config.Common.thunderTaskNum);
     for (let i = 0; i < _tasks.length; i++) {
         const index = i + 1;
-        indicator.setIndex(index);
+        await indicator.setIndex(index);
 
         const list = _tasks[i];
         let taskGroupName = _thunderInfo.taskGroupName;
@@ -603,7 +603,7 @@ API.Common.copyThunderTasksToClipboard = async(thunderInfo) => {
     const _tasks = _.chunk(tasks, QZone_Config.Common.thunderTaskNum);
     for (let i = 0; i < _tasks.length; i++) {
         const index = i + 1;
-        indicator.setIndex(index);
+        await indicator.setIndex(index);
 
         const list = _tasks[i];
         let taskGroupName = _thunderInfo.taskGroupName;
@@ -677,7 +677,7 @@ API.Common.writeThunderTaskToFile = async(thunderInfo) => {
     const _tasks = _.chunk(tasks, QZone_Config.Common.thunderTaskNum);
     for (let i = 0; i < _tasks.length; i++) {
         const index = i + 1;
-        indicator.setIndex(index);
+        await indicator.setIndex(index);
 
         const list = _tasks[i];
         let taskGroupName = _thunderInfo.taskGroupName;

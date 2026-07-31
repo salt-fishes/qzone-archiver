@@ -60,7 +60,7 @@ API.Blogs.getAllContents = async(items) => {
         let item = items[index];
 
         // 更新状态-当前位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -167,7 +167,7 @@ API.Blogs.getAllList = async() => {
 
     // 日志状态更新器
     const indicator = new StatusIndicator('Blogs');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     const CONFIG = QZone_Config.Blogs;
@@ -233,7 +233,7 @@ API.Blogs.getItemsAllCommentList = async(items) => {
         const item = items[i];
 
         // 更新当前位置
-        indicator.setIndex(i + 1);
+        await indicator.setIndex(i + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -366,7 +366,7 @@ API.Blogs.exportAllListToFiles = async(items) => {
 API.Blogs.exportToSpa = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Blogs_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -436,7 +436,7 @@ API.Blogs.exportToSpa = async(items) => {
 API.Blogs.exportToHtml = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Blogs_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -479,7 +479,7 @@ API.Blogs.exportToHtml = async(items) => {
 API.Blogs.exportToPDF = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Blogs_Export_Other');
-    indicator.setIndex('PDF');
+    await indicator.setIndex('PDF');
 
     // 每篇日志生成单独的HTML
     for (let i = 0; i < items.length; i++) {
@@ -773,7 +773,7 @@ API.Blogs.handerMedias = async(item, embeds) => {
  */
 API.Blogs.exportToJson = async(items) => {
     let indicator = new StatusIndicator('Blogs_Export_Other');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
     let json = JSON.stringify(items);
     await API.Utils.writeText(json, API.Common.getModuleRoot('Blogs') + '/blogs.json');
     indicator.complete();
@@ -841,7 +841,7 @@ API.Blogs.getAllLikeList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Blogs).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -943,7 +943,7 @@ API.Blogs.getAllVisitorList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Blogs.getItemAllVisitorsList(item).then((visitor) => {
                 // 获取完成
                 indicator.addSuccess(item);

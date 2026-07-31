@@ -255,7 +255,7 @@ const MAX_MSG = {
         '已恢复 <span style="color: #1ca5fc;">{downloaded}</span> 条',
         '已失败 <span style="color: red;">{downloadFailed}</span> 条',
         '总共 <span style="color: #1ca5fc;">{total}</span> 条',
-        '请稍候..'
+        '{nextTip}'
     ],
     Messages_Export_Other: [
         '正在导出说说到 <span style="color: #1ca5fc;">{index}</span> 文件',
@@ -808,11 +808,18 @@ class StatusIndicator {
 
     /**
      * 设置当前位置
+     * 注入暂停/取消检查点：每条记录处理前先等待状态
      * @param {object} index 当前位置
      */
-    setIndex(index) {
+    async setIndex(index) {
         this.index = index
         this.print()
+        // 检查点：暂停时等待唤醒；取消时抛出异常中止循环
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
     }
 
     /**
@@ -1081,11 +1088,11 @@ class QZoneOperator {
                 // 流程完成，隐藏暂停/取消按钮
                 hideExportButtons();
                 if (API.Common.isOnlyFileExport()) {
-                    API.Utils.notification("QQ空间导出助手通知", "不涉及文案内容备份，多媒体文件下载任务已添加完成！");
+                    API.Utils.notification("qzone-archiver通知", "不涉及文案内容备份，多媒体文件下载任务已添加完成！");
                 } else {
                     $("#downloadBtn").show();
                     $("#backupStatus").html("数据采集完成，请点击下方<span style='color:red'>打包下载</span>按钮下载备份压缩包。");
-                    API.Utils.notification("QQ空间导出助手通知", "数据采集完成，请打包下载文案内容！");
+                    API.Utils.notification("qzone-archiver通知", "数据采集完成，请打包下载文案内容！");
                 }
                 break;
             default:
@@ -1225,7 +1232,7 @@ class QZoneOperator {
                 $downloadBtn.attr('disabled', false);
                 $fileListBtn.attr('disabled', false);
                 $("#showFolder").show();
-                API.Utils.notification("QQ空间导出助手通知", "文案内容压缩包下载完成！");
+                API.Utils.notification("qzone-archiver通知", "文案内容压缩包下载完成！");
             });
 
         });

@@ -672,6 +672,8 @@
         $("#messages_has_visitor").prop("checked", options.Messages.Visitor.isGet).change();
         $("#messages_visitor_min").val(options.Messages.Visitor.randomSeconds.min);
         $("#messages_visitor_max").val(options.Messages.Visitor.randomSeconds.max);
+        // [实验性] 恢复已删除说说
+        $("#messages_recover_deleted").prop("checked", !!options.Messages.RecoverDeleted).change();
 
         // 日志模块赋值
         $("#blogs_exportFormat").val(options.Blogs.exportType).change();
@@ -969,6 +971,8 @@
         QZone_Config.Messages.Visitor.isGet = $("#messages_has_visitor").prop("checked");
         QZone_Config.Messages.Visitor.randomSeconds.min = $("#messages_visitor_min").val() * 1;
         QZone_Config.Messages.Visitor.randomSeconds.max = $("#messages_visitor_max").val() * 1;
+        // [实验性] 恢复已删除说说
+        QZone_Config.Messages.RecoverDeleted = $("#messages_recover_deleted").prop("checked");
 
         // 日志模块赋值
         QZone_Config.Blogs.exportType = $("#blogs_exportFormat").val();
@@ -1261,6 +1265,22 @@
         event.stopPropagation();
         return;
     })
+
+    // 自动保存：任何表单控件变更后自动持久化，仅提示需刷新空间页面生效
+    let autoSaveTimer = null;
+    const autoSave = () => {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(() => {
+            try {
+                setOptions();
+                tips('<span class="text-success">已自动保存</span>，<span class="text-danger">刷新空间</span>页面后生效');
+            } catch (e) {
+                console.warn('自动保存失败', e);
+            }
+        }, 500);
+    };
+    // input/change 事件覆盖文本框、下拉、复选框、单选等所有表单控件
+    $('form').on('input change', 'input, select, textarea', autoSave);
 
     // 重置按钮
     $('.reset').click(function() {

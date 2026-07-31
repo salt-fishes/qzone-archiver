@@ -58,7 +58,7 @@
         class="entry-cell"
         :class="{ 'entry-cell-empty': !m.count }"
       >
-        <div class="entry-num">{{ formatStatNum(m.count || 0) }}</div>
+        <div class="entry-num" v-html="formatStatNum(m.count || 0)"></div>
         <div class="entry-label">{{ m.label }}</div>
         <div class="entry-desc">{{ m.desc }}</div>
       </RouterLink>
@@ -184,42 +184,15 @@ function formatStatNum(n: number): string {
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 0;
-  border: var(--line);
+  gap: 1px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
   margin: var(--sp-5) 0;
 }
 
 .stat-cell {
   padding: var(--sp-5);
-  border-right: var(--line);
-  border-bottom: var(--line);
-  background: rgba(255, 255, 255, 0.2);
-}
-
-/* 每行最后一个 cell 不显示右边框，避免与外框重叠 */
-.stat-cell:last-child {
-  border-right: none;
-}
-
-/* 响应式：≥4 列时一行内最后一个 cell 隐藏右边框 */
-@media (min-width: 1024px) {
-  .stat-cell:nth-child(4n) {
-    border-right: none;
-  }
-}
-
-/* 响应式：2 列布局（平板） */
-@media (max-width: 1023px) and (min-width: 640px) {
-  .stat-cell:nth-child(2n) {
-    border-right: none;
-  }
-}
-
-/* 响应式：1 列布局（手机） */
-@media (max-width: 639px) {
-  .stat-cell {
-    border-right: none;
-  }
+  background: var(--paper);
 }
 
 .stat-num {
@@ -256,49 +229,27 @@ function formatStatNum(n: number): string {
   color: var(--ink-3);
 }
 
-/* 模块入口网格 */
+/* 模块入口网格 —— gap+背景色方案，任意列数下分界线均稳定 */
 .entry-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 0;
-  border: var(--line);
+  gap: 1px;
+  background: var(--ink);
+  border: 1px solid var(--ink);
   margin: var(--sp-5) 0;
 }
 
 .entry-cell {
   display: block;
   padding: var(--sp-5);
-  border-right: var(--line);
-  border-bottom: var(--line);
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--paper);
   color: var(--ink);
-  border-top: none;
-  border-left: none;
   transition: background 0.15s, transform 0.15s;
 }
 
 .entry-cell:hover {
-  background: rgba(200, 68, 42, 0.06);
+  background: var(--paper-2);
   transform: translateY(-2px);
-}
-
-.entry-cell:nth-child(4n) {
-  border-right: none;
-}
-
-@media (max-width: 1023px) and (min-width: 640px) {
-  .entry-cell:nth-child(2n) {
-    border-right: none;
-  }
-  .entry-cell:nth-child(4n) {
-    border-right: var(--line);
-  }
-}
-
-@media (max-width: 639px) {
-  .entry-cell {
-    border-right: none;
-  }
 }
 
 .entry-cell-empty {

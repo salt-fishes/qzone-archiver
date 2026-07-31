@@ -257,7 +257,7 @@ body {
 }
 
 .html_header span::after {
-    content: "QQ空间导出助手";
+    content: "qzone-archiver";
     font-size: 17px;
     font-weight: bold;
 }

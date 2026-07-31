@@ -1,12 +1,12 @@
 {
     "manifest_version": 3,
-    "name": "QQ空间导出助手",
-    "description": "QQ空间导出助手，用于导出备份QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客为文件，便于迁移与保存",
+    "name": "qzone-archiver",
+    "description": "qzone-archiver：将QQ空间的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客备份到本地，并配套SPA档案浏览器离线浏览。基于 ShunCai/QZoneExport 二次开发。",
     "version": "3.0.0",
     "icons": {
         "128": "img/icon-128.png"
     },
-    "homepage_url": "https://github.com/ShunCai/QZoneExport",
+    "homepage_url": "https://github.com/salt-fishes/qzone-archiver",
     "background": {
         "service_worker": "js/background.js"
     },
@@ -56,7 +56,7 @@
     ],
     "action": {
         "default_icon": "img/icon-128.png",
-        "default_title": "QQ空间导出助手",
+        "default_title": "qzone-archiver",
         "default_popup": "html/popup.html"
     },
     "options_ui": {

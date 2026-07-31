@@ -39,7 +39,7 @@ API.Favorites.export = async() => {
 API.Favorites.getPageList = async(pageIndex, indicator) => {
 
     // 状态更新器当前页
-    indicator.setIndex(pageIndex + 1);
+    await indicator.setIndex(pageIndex + 1);
 
     // 更新获取中提示
     indicator.addDownload(QZone_Config.Favorites.pageSize);
@@ -74,7 +74,7 @@ API.Favorites.getAllList = async() => {
 
     // 进度更新器
     const indicator = new StatusIndicator('Favorites');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     const CONFIG = QZone_Config.Favorites;
@@ -151,7 +151,7 @@ API.Favorites.exportAllToFiles = async(favorites) => {
 API.Favorites.exportToSpa = async(favorites) => {
     // 进度更新器
     const indicator = new StatusIndicator('Favorites_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -214,7 +214,7 @@ API.Favorites.exportToSpa = async(favorites) => {
 API.Favorites.exportToHtml = async(favorites) => {
     // 进度更新器
     const indicator = new StatusIndicator('Favorites_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -263,7 +263,7 @@ API.Favorites.exportToHtml = async(favorites) => {
 API.Favorites.exportToMarkdown = async(favorites) => {
     // 进度更新器
     const indicator = new StatusIndicator('Favorites_Export_Other');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 汇总内容
@@ -461,7 +461,7 @@ API.Favorites.getMarkdown = (favorite) => {
 API.Favorites.exportToJson = async(favorites) => {
     // 进度更新器
     const indicator = new StatusIndicator('Favorites_Export_Other');
-    indicator.setIndex(year);
+    await indicator.setIndex(year);
     // 收藏根据年份分组
     let yearDataMap = API.Utils.groupedByTime(favorites, "create_time");
     for (let yearEntry of yearDataMap) {

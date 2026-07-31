@@ -56,7 +56,7 @@ const Default_Config = {
     },
     // 说说模块
     Messages: {
-        exportType: "HTML", // 内容备份类型
+        exportType: "SPA", // 内容备份类型
         pageSize: 20,
         randomSeconds: {
             min: 1,
@@ -133,15 +133,15 @@ const Default_Config = {
         RecoverDeleted: false,
         Feeds: {
             pageSize: 30,        // 互动消息每页数量
-            randomSeconds: {     // 请求间隔
-                min: 1,
-                max: 2
+            randomSeconds: {     // 请求间隔（参照 Python main.py 3 秒间隔）
+                min: 3,
+                max: 5
             }
         }
     },
     // 日志模块
     Blogs: {
-        exportType: "HTML", // 内容备份类型
+        exportType: "SPA", // 内容备份类型
         showType: '1', // HTML查看方式，0:表格视图，1:列表视图
         viewType: '1', // 视图类型，0:列表视图，1:摘要视图
         pageSize: 15,
@@ -184,7 +184,7 @@ const Default_Config = {
     },
     // 日记模块
     Diaries: {
-        exportType: "HTML", // 内容备份类型
+        exportType: "SPA", // 内容备份类型
         showType: '1', // HTML查看方式，0:表格视图，1:列表视图
         pageSize: 15,
         randomSeconds: {
@@ -226,7 +226,7 @@ const Default_Config = {
     },
     // 相册模块
     Photos: {
-        exportType: "HTML",
+        exportType: "SPA",
         pageSize: 3000,
         randomSeconds: {
             min: 1,
@@ -292,7 +292,7 @@ const Default_Config = {
     },
     // 视频模块
     Videos: {
-        exportType: "HTML",
+        exportType: "SPA",
         fileStructureType: 'File', // 文件夹结构类型
         RenameType: "Default", // 视频命名规则
         randomSeconds: {
@@ -321,7 +321,7 @@ const Default_Config = {
     },
     // 留言模块
     Boards: {
-        exportType: "HTML",
+        exportType: "SPA",
         randomSeconds: {
             min: 1,
             max: 2
@@ -334,7 +334,7 @@ const Default_Config = {
     },
     // 好友模块
     Friends: {
-        exportType: "HTML", // 导出类型
+        exportType: "SPA", // 导出类型
         randomSeconds: {
             min: 1,
             max: 2
@@ -349,7 +349,7 @@ const Default_Config = {
     },
     // 收藏模块
     Favorites: {
-        exportType: "HTML",
+        exportType: "SPA",
         randomSeconds: {
             min: 1,
             max: 2
@@ -361,7 +361,7 @@ const Default_Config = {
     },
     // 分享模块
     Shares: {
-        exportType: "HTML", // 内容备份类型
+        exportType: "SPA", // 内容备份类型
         pageSize: 10,
         randomSeconds: {
             min: 1,
@@ -590,7 +590,7 @@ const Default_Config = {
     },
     // 访客模块
     Visitors: {
-        exportType: "HTML", // 内容备份类型
+        exportType: "SPA", // 内容备份类型
         randomSeconds: {
             min: 1,
             max: 2
@@ -602,7 +602,7 @@ const Default_Config = {
 
     // 访客模块
     Statistics: {
-        exportType: "HTML" // 内容备份类型
+        exportType: "SPA" // 内容备份类型
     }
 };
 

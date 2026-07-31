@@ -42,7 +42,7 @@ API.Boards.export = async() => {
 API.Boards.getPageList = async(pageIndex, indicator) => {
 
     // 状态更新器当前页
-    indicator.setIndex(pageIndex + 1);
+    await indicator.setIndex(pageIndex + 1);
 
     // 更新获取中提示
     indicator.addDownload(QZone_Config.Boards.pageSize);
@@ -82,7 +82,7 @@ API.Boards.getAllList = async() => {
 
     // 进度更新器
     const indicator = new StatusIndicator('Boards');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     // 配置项
@@ -258,7 +258,7 @@ API.Boards.exportAllToFiles = async(boardInfo) => {
 API.Boards.exportToSpa = async(boardInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Boards_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -333,7 +333,7 @@ API.Boards.exportToSpa = async(boardInfo) => {
 API.Boards.exportToHtml = async(boardInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Boards_Export_Other');
-    indicator.setIndex("HTML");
+    await indicator.setIndex("HTML");
     try {
 
         // 模块文件夹路径
@@ -384,7 +384,7 @@ API.Boards.exportToHtml = async(boardInfo) => {
 API.Boards.exportToMarkdown = async(boardInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Boards_Export_Other');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 总数，用于计算楼层
@@ -506,7 +506,7 @@ API.Boards.getMarkdown = (board) => {
 API.Boards.exportToJson = async(boardInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Boards_Export_Other');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     // 根据年份分组
     const yearDataMap = API.Utils.groupedByTime(boardInfo.items, "pubtime", 'year');

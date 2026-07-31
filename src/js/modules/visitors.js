@@ -42,7 +42,7 @@ API.Visitors.getAllList = async() => {
 
     // 访客状态更新器
     const indicator = new StatusIndicator('Visitors');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     const CONFIG = QZone_Config.Visitors;
@@ -51,7 +51,7 @@ API.Visitors.getAllList = async() => {
 
         // 下一页索引
         const nextPageIndex = pageIndex + 1;
-        indicator.setIndex(nextPageIndex);
+        await indicator.setIndex(nextPageIndex);
 
         return await API.Visitors.getList(nextPageIndex).then(async(data) => {
 
@@ -187,7 +187,7 @@ API.Visitors.exportAllListToFiles = async(visitorInfo) => {
 API.Visitors.exportToSpa = async(visitorInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Visitors_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -248,7 +248,7 @@ API.Visitors.exportToSpa = async(visitorInfo) => {
 API.Visitors.exportToHtml = async(visitorInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Visitors_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -366,7 +366,7 @@ API.Visitors.getMarkdown = (item) => {
 API.Visitors.exportToMarkdown = async(visitorInfo) => {
     // 进度更新器
     const indicator = new StatusIndicator('Visitors_Export_Other');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 汇总内容
@@ -420,7 +420,7 @@ API.Visitors.exportToMarkdown = async(visitorInfo) => {
 API.Visitors.exportToJson = async(visitorInfo) => {
     // 进度功能性期
     const indicator = new StatusIndicator('Visitors_Export_Other');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     // 生成年份JSON
     // 访客数据根据年份分组

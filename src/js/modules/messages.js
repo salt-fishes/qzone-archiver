@@ -105,7 +105,7 @@ API.Messages.getAllList = async() => {
 
     // 说说状态更新器
     const indicator = new StatusIndicator('Messages');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     // 说说配置项
@@ -168,7 +168,7 @@ API.Messages.getAllFullContent = async(items) => {
         const item = items[i];
 
         // 更新状态-当前位置
-        indicator.setIndex(i + 1);
+        await indicator.setIndex(i + 1);
 
         // 是否有全文
         const hasMoreContent = item.has_more_con === 1 || item.rt_has_more_con === 1;
@@ -318,7 +318,7 @@ API.Messages.getItemsAllCommentList = async(items) => {
         const item = items[i];
 
         // 更新当前位置
-        indicator.setIndex(i + 1);
+        await indicator.setIndex(i + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -369,7 +369,7 @@ API.Messages.exportAllListToFiles = async(items) => {
  */
 API.Messages.exportToHtml = async(messages) => {
     const indicator = new StatusIndicator('Messages_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -422,7 +422,7 @@ API.Messages.exportToHtml = async(messages) => {
 API.Messages.exportToMarkdown = async(items) => {
     // 进度更新器
     const indicator = new StatusIndicator('Messages_Export_Other');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 汇总内容
@@ -477,7 +477,7 @@ API.Messages.exportToMarkdown = async(items) => {
 API.Messages.exportToJson = async(items) => {
     // 进度功能性期
     const indicator = new StatusIndicator('Messages_Export_Other');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     // 生成年份JSON
     // 说说数据根据年份分组
@@ -521,7 +521,7 @@ API.Messages.exportToJson = async(items) => {
 API.Messages.exportToSpa = async(messages) => {
     // 进度更新器
     const indicator = new StatusIndicator('Messages_Export_Other');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -614,41 +614,60 @@ API.Messages.getDeletedMessages = async(existingItems) => {
     // 1. 现有 tid 集合（用于去重）
     const existingTids = new Set(existingItems.map(m => m.tid));
 
-    // 2. 二分查找获取互动消息总数
+    // 2. 二分查找获取互动消息总数（进度回调显示到终端面板）
     indicator.setNextTip('探测互动消息总数...');
-    const totalCount = await API.Messages.getFeedsCount();
+    const totalCount = await API.Messages.getFeedsCount((msg) => {
+        indicator.setNextTip('探测互动消息总数：' + msg);
+    });
     console.info('互动消息总数', totalCount);
     if (totalCount === 0) {
+        // complete 会把 {nextTip} 替换为 nextTip 内容，并把"正在"→"已"
+        indicator.setNextTip('探测结果：0 条（互动消息为空或接口异常）');
         indicator.complete();
         return [];
     }
+    indicator.setNextTip(`探测完成：约 ${totalCount} 条互动消息，开始分页拉取...`);
     indicator.setTotal(totalCount);
 
-    // 3. 分页拉取所有 feeds，按 origtid 聚合
-    //    聚合结果：Map<origtid, { abstime, content, imageUrl, comments: [], likes: [] }>
+    // 3. 分页拉取所有 feeds，按 origtid（或文本内容）聚合
+    //    聚合结果：Map<key, { tid, abstime, content, imageUrl, comments: [], likes: [] }>
     const aggregated = new Map();
     const totalPages = Math.ceil(totalCount / pageSize);
-    for (let page = 0; page < totalPages; page++) {
+    let firstFeedLogged = false;
+    let wafBlocked = false;
+    for (let page = 0; page < totalPages && !wafBlocked; page++) {
         const offset = page * pageSize;
         try {
             const response = await API.Messages.getFeeds(offset, pageSize);
+            // WAF 拦截检测
+            if (typeof response === 'string' && response.indexOf('waf.tencent.com') > -1) {
+                console.error('[getDeletedMessages] 分页拉取被 WAF 拦截，停止拉取', { page, offset });
+                indicator.setNextTip(`第 ${page + 1}/${totalPages} 页被 WAF 拦截，已停止`);
+                wafBlocked = true;
+                break;
+            }
             const data = API.Utils.toJson(response, /^_Callback\(/);
-            if (!data || data.code !== 0 || !data.data || !data.data.data) {
-                console.warn('拉取互动消息分页异常', { page, data });
+            if (!data || data.code !== 0 || !data.data) {
+                console.warn('[getDeletedMessages] 拉取互动消息分页异常', { page, data });
                 continue;
             }
-            const feeds = data.data.data;
+            // 兼容 data.data.data 和 data.data.feeds 两种结构
+            const feeds = data.data.data || data.data.feeds || [];
+            if (!feeds.length) continue;
+            // 首次成功拉取时记录样本，便于后续调试
+            if (!firstFeedLogged) {
+                console.info('[getDeletedMessages] 首条 feed 样本', JSON.stringify(feeds[0]).substring(0, 500));
+                firstFeedLogged = true;
+            }
             for (const feed of feeds) {
                 const parsed = API.Messages.parseFeedHtml(feed.html, feed);
-                if (!parsed || !parsed.origtid) continue;
-                // 跳过自己对自己的操作（不太可能恢复已删除）
-                if (parsed.origUin && QZone.Common.Target.uin &&
-                    String(parsed.origUin) !== String(QZone.Common.Target.uin)) {
-                    continue;
-                }
-                if (!aggregated.has(parsed.origtid)) {
-                    aggregated.set(parsed.origtid, {
-                        tid: parsed.origtid,
+                if (!parsed) continue;
+                // 聚合 key：优先用 origtid，为空时用文本内容前 80 字符回退
+                const aggKey = parsed.origtid || (parsed.content ? parsed.content.substring(0, 80) : '');
+                if (!aggKey) continue;
+                if (!aggregated.has(aggKey)) {
+                    aggregated.set(aggKey, {
+                        tid: parsed.origtid || '',
                         abstime: parsed.abstime || 0,
                         content: parsed.content || '',
                         imageUrl: parsed.imageUrl || '',
@@ -656,7 +675,7 @@ API.Messages.getDeletedMessages = async(existingItems) => {
                         likes: []
                     });
                 }
-                const entry = aggregated.get(parsed.origtid);
+                const entry = aggregated.get(aggKey);
                 // 聚合评论/点赞信息（来自通知）
                 if (parsed.feedType === 'comment' && parsed.commentContent) {
                     entry.comments.push({
@@ -677,22 +696,31 @@ API.Messages.getDeletedMessages = async(existingItems) => {
                     entry.abstime = parsed.abstime;
                 }
             }
-            indicator.setIndex(offset + feeds.length);
+            await indicator.setIndex(offset + feeds.length);
         } catch (e) {
-            console.error('拉取互动消息分页异常', { page, error: e });
+            console.error('[getDeletedMessages] 拉取互动消息分页异常', { page, error: e });
         }
         // 请求间隔
         await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
     }
 
-    // 4. 与现有说说列表按 tid 对比，差集 = 已删除候选
+    // 4. 与现有说说列表对比，差集 = 已删除候选
+    //    对比策略：origtid 存在时按 tid 对比；origtid 为空时按文本内容对比
+    const existingContents = new Set(
+        existingItems.map(m => (m.content || m.custom_content || '').replace(/\s+/g, ' ').trim().substring(0, 80))
+            .filter(s => s.length > 0)
+    );
     const deletedCandidates = [];
-    for (const [tid, entry] of aggregated) {
-        if (!existingTids.has(tid)) {
-            deletedCandidates.push(entry);
+    for (const [key, entry] of aggregated) {
+        if (entry.tid && existingTids.has(entry.tid)) continue;
+        // tid 为空时用文本内容对比
+        if (!entry.tid && entry.content) {
+            const normalized = entry.content.replace(/\s+/g, ' ').trim().substring(0, 80);
+            if (existingContents.has(normalized)) continue;
         }
+        deletedCandidates.push(entry);
     }
-    console.info('已删除说说候选数', deletedCandidates.length);
+    console.info('[getDeletedMessages] 已删除说说候选数', deletedCandidates.length, '聚合总数', aggregated.size);
     if (deletedCandidates.length === 0) {
         indicator.complete();
         return [];
@@ -701,13 +729,16 @@ API.Messages.getDeletedMessages = async(existingItems) => {
     // 5. 对每个候选尝试获取完整详情、评论、点赞
     indicator.setNextTip('尝试获取已删除说说详情...');
     indicator.setTotal(deletedCandidates.length);
-    indicator.setIndex(0);
+    await indicator.setIndex(0);
     const result = [];
     for (let i = 0; i < deletedCandidates.length; i++) {
         const entry = deletedCandidates[i];
-        indicator.setIndex(i);
+        await indicator.setIndex(i);
+        // tid 为空时生成唯一标识（基于时间+内容），用于 SPA 端 key
+        const contentSig = (entry.content || '').replace(/\s+/g, '').substring(0, 20);
+        const finalTid = entry.tid || `deleted_${entry.abstime || 0}_${contentSig}`;
         const message = {
-            tid: entry.tid,
+            tid: finalTid,
             isDeleted: true,
             created_time: entry.abstime,
             custom_create_time: API.Utils.formatDate(entry.abstime),
@@ -720,11 +751,12 @@ API.Messages.getDeletedMessages = async(existingItems) => {
             likes: [],
             pic_list: [],
             custom_images: [],
-            uniKey: API.Messages.getUniKey(entry.tid)
+            uniKey: API.Messages.getUniKey(finalTid)
         };
 
-        // 尝试获取完整说说详情
+        // 尝试获取完整说说详情（tid 为空时跳过）
         try {
+            if (!entry.tid) throw new Error('无 tid，跳过详情获取');
             const detailResp = await API.Messages.getFullContent(entry.tid);
             const detailData = API.Utils.toJson(detailResp, /^_Callback\(/);
             if (detailData && (!detailData.code || detailData.code === 0) && detailData.content) {
@@ -746,8 +778,9 @@ API.Messages.getDeletedMessages = async(existingItems) => {
             console.debug('获取已删除说说详情失败（已用摘要回退）', entry.tid);
         }
 
-        // 尝试获取评论列表
+        // 尝试获取评论列表（tid 为空时跳过）
         try {
+            if (!entry.tid) throw new Error('无 tid，跳过评论获取');
             const comments = await API.Messages.getItemCommentList({ tid: entry.tid }, 0);
             if (comments && comments.length > 0) {
                 message.commentlist = comments;
@@ -815,6 +848,7 @@ API.Messages.getDeletedMessages = async(existingItems) => {
     }
 
     console.info('已删除说说恢复完成', { count: result.length });
+    indicator.nextTip = '';
     indicator.complete();
     return result;
 }
@@ -1003,7 +1037,7 @@ API.Messages.getAllImages = async(items) => {
         const item = items[index];
 
         // 当前处理位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -1075,7 +1109,7 @@ API.Messages.getAllVoices = async(items) => {
         const item = items[index];
 
         // 当前处理位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份数据跳过不处理
@@ -1255,7 +1289,7 @@ API.Messages.getAllLikeList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Messages).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -1357,7 +1391,7 @@ API.Messages.getAllVisitorList = async(items) => {
                 await Promise.all(tasks);
                 break end;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Messages.getItemAllVisitorsList(item).then((visitor) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -1421,7 +1455,7 @@ API.Messages.refreshWeChatLbsInfo = async items => {
 
     for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
-        indicator.setIndex(idx + 1);
+        await indicator.setIndex(idx + 1);
 
         if (!API.Common.isNewItem(item)) {
             // 已备份的，跳过

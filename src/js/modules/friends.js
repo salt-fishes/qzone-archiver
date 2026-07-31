@@ -44,7 +44,7 @@ API.Friends.getAllList = async() => {
 
     // 进度更新器
     const indicator = new StatusIndicator('Friends');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     // 接口
@@ -263,7 +263,7 @@ API.Friends.exportAllToFiles = async(friends) => {
 API.Friends.exportToSpa = async(friends) => {
     // 进度更新器
     const indicator = new StatusIndicator('Friends_Export');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -333,7 +333,7 @@ API.Friends.exportToSpa = async(friends) => {
 API.Friends.exportToExcel = async(friends) => {
     // 进度更新器
     const indicator = new StatusIndicator('Friends_Export');
-    indicator.setIndex('Excel');
+    await indicator.setIndex('Excel');
 
     // Excel数据
     let ws_data = [
@@ -391,7 +391,7 @@ API.Friends.exportToExcel = async(friends) => {
 API.Friends.exportToHtml = async(friends) => {
     // 进度更新器
     const indicator = new StatusIndicator('Friends_Export');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -423,7 +423,7 @@ API.Friends.exportToHtml = async(friends) => {
 API.Friends.exportToMarkDown = async(friends) => {
     // 进度更新器
     const indicator = new StatusIndicator('Friends_Export');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     // 群组分组
     const groupMaps = API.Utils.groupedByField(friends, 'groupName');
@@ -479,7 +479,7 @@ API.Friends.exportToMarkDown = async(friends) => {
 API.Friends.exportToJson = async(friends) => {
     // 状态更新器
     const indicator = new StatusIndicator('Friends_Export');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     let json = JSON.stringify(friends);
     await API.Utils.writeText(json, API.Common.getModuleRoot('Friends') + '/friends.json').then((fileEntry) => {

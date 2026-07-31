@@ -52,7 +52,7 @@ API.Videos.export = async() => {
 API.Videos.getPageList = async(pageIndex, indicator) => {
 
     // 状态更新器当前页
-    indicator.setIndex(pageIndex + 1);
+    await indicator.setIndex(pageIndex + 1);
 
     // 更新获取中提示
     indicator.addDownload(QZone_Config.Videos.pageSize);
@@ -90,7 +90,7 @@ API.Videos.getPageList = async(pageIndex, indicator) => {
 API.Videos.getAllList = async() => {
     // 进度更新器
     const indicator = new StatusIndicator('Videos');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     // 视频配置项
@@ -154,7 +154,7 @@ API.Videos.getAllComments = async(videos) => {
         const video = videos[index];
 
         // 当前位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (!API.Common.isNewItem(video)) {
             // 已备份数据跳过不处理
@@ -336,7 +336,7 @@ API.Videos.exportAllToFiles = async(videos) => {
 API.Videos.exportToSpa = async(videos) => {
     // 进度更新器
     const indicator = new StatusIndicator('Videos_Export');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -409,7 +409,7 @@ API.Videos.exportToSpa = async(videos) => {
 API.Videos.exportToHtml = async(videos) => {
     // 进度更新器
     const indicator = new StatusIndicator('Videos_Export');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
 
     try {
 
@@ -448,7 +448,7 @@ API.Videos.exportToMarkdown = async(videos) => {
 
     // 进度更新器
     const indicator = new StatusIndicator('Videos_Export');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     try {
         // 汇总内容
@@ -577,7 +577,7 @@ API.Videos.getMarkdowns = (videos) => {
 API.Videos.exportToLink = async(videos) => {
     // 进度更新器
     const indicator = new StatusIndicator('Videos_Export');
-    indicator.setIndex('下载链接');
+    await indicator.setIndex('下载链接');
 
     let videoUrls = [];
     for (const video of videos) {
@@ -602,7 +602,7 @@ API.Videos.exportToLink = async(videos) => {
 API.Videos.exportToJson = async(videos) => {
     // 状态更新器
     const indicator = new StatusIndicator('Videos_Export');
-    indicator.setIndex('JSON');
+    await indicator.setIndex('JSON');
 
     let json = JSON.stringify(videos);
     await API.Utils.writeText(json, API.Common.getModuleRoot('Videos') + '/videos.json').then((file) => {
@@ -741,7 +741,7 @@ API.Videos.getAllLikeList = async(items) => {
             }
 
 
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Videos).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);

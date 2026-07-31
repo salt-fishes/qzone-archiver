@@ -99,7 +99,7 @@ API.Photos.getAllImagesInfos = async(albumList) => {
         indicator.print();
 
         // 设置当前相册
-        indicator.setIndex(album.name);
+        await indicator.setIndex(album.name);
 
         const photos = album.photoList || [];
 
@@ -237,7 +237,7 @@ API.Photos.refreshPhotoAlbumInfo = (album, photos) => {
 API.Photos.getAlbumPageList = async(pageIndex, indicator) => {
 
     // 状态更新器当前页
-    indicator.setIndex(pageIndex + 1);
+    await indicator.setIndex(pageIndex + 1);
 
     // 更新获取中数据
     indicator.addDownload(QZone_Config.Photos.pageSize);
@@ -278,7 +278,7 @@ API.Photos.getAlbumPageList = async(pageIndex, indicator) => {
 API.Photos.getAllAlbumList = async() => {
     // 进度更新器
     const indicator = new StatusIndicator('Photos');
-    indicator.setIndex(1);
+    await indicator.setIndex(1);
     indicator.print();
 
     const CONFIG = QZone_Config.Photos;
@@ -335,7 +335,7 @@ API.Photos.getAllAlbumList = async() => {
  */
 API.Photos.getAlbumImagePageList = async(item, pageIndex, indicator) => {
     // 显示当前处理相册
-    indicator && indicator.setIndex(item.name);
+    indicator && await indicator.setIndex(item.name);
 
     // 更新获取中数据
     indicator && indicator.addDownload(QZone_Config.Photos.Images.pageSize);
@@ -454,7 +454,7 @@ API.Photos.getAlbumImageAllListByDetail = async(album) => {
     indicator.print();
 
     // 当前相册
-    indicator.setIndex(album.name);
+    await indicator.setIndex(album.name);
 
     // 相册配置项
     const ALBUM_CONFIG = QZone_Config.Photos
@@ -663,7 +663,7 @@ API.Photos.getAllAlbumsComments = async(items) => {
         const item = items[index];
 
         // 更新当前位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (!API.Photos.isNewAlbum(item.id)) {
             // 已备份数据跳过不处理
@@ -760,7 +760,7 @@ API.Photos.getAllImagesComments = async(items) => {
         const item = items[index];
 
         // 当前位置
-        indicator.setIndex(index + 1);
+        await indicator.setIndex(index + 1);
 
         if (item.cmtTotal === 0) {
             // 没评论时，跳过
@@ -867,7 +867,7 @@ API.Photos.addPhotosDownloadTasks = async(album, photos) => {
     // 相片评论进度更新器
     const indicator = new StatusIndicator('Photos_Images_Mime');
     // 设置当前位置
-    indicator.setIndex(album.name);
+    await indicator.setIndex(album.name);
 
     // 设置总数
     indicator.setTotal(photos.length);
@@ -1013,7 +1013,7 @@ API.Photos.exportAlbumsToFiles = async(albums) => {
 API.Photos.exportAlbumsToHtml = async(albums) => {
     // 进度器
     const indicator = new StatusIndicator('Photos_Export');
-    indicator.setIndex('HTML')
+    await indicator.setIndex('HTML')
     try {
         // 根据类别分组
         const albumsMapping = API.Utils.groupedByField(albums, 'className');
@@ -1039,7 +1039,7 @@ API.Photos.exportAlbumsToHtml = async(albums) => {
 API.Photos.exportAlbumsToMarkdown = async(albums) => {
     // 进度器
     const indicator = new StatusIndicator('Photos_Export');
-    indicator.setIndex('Markdown');
+    await indicator.setIndex('Markdown');
 
     // 根据类别分组
     const albumsMapping = API.Utils.groupedByField(albums, 'className');
@@ -1148,7 +1148,7 @@ API.Photos.getAlbumsMarkdown = (albums) => {
  */
 API.Photos.exportAlbumsToJson = async(albums) => {
     const indicator = new StatusIndicator('Photos_Export');
-    indicator.setIndex('JSON')
+    await indicator.setIndex('JSON')
     let json = JSON.stringify(albums);
     await API.Utils.writeText(json, API.Common.getModuleRoot('Photos') + '/albums.json').then((fileEntry) => {
         console.info('导出相册JSON文件到FileSystem完成', albums, fileEntry);
@@ -1207,7 +1207,7 @@ API.Photos.exportPhotosToFiles = async(albums) => {
 API.Photos.exportToSpa = async(albums) => {
     // 进度更新器
     const indicator = new StatusIndicator('Photos_Export');
-    indicator.setIndex('SPA');
+    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -1283,7 +1283,7 @@ API.Photos.exportToSpa = async(albums) => {
  */
 API.Photos.exportPhotosToHtml = async(albums) => {
     let indicator = new StatusIndicator('Photos_Images_Export_Other');
-    indicator.setIndex('HTML');
+    await indicator.setIndex('HTML');
     try {
 
         // 模块文件夹路径
@@ -1322,7 +1322,7 @@ API.Photos.exportPhotosToMarkdown = async(albums) => {
 
         // 每个相册的进度器
         const indicator = new StatusIndicator('Photos_Images_Export');
-        indicator.setIndex(album.name);
+        await indicator.setIndex(album.name);
         indicator.setTotal(photos.length);
         indicator.addDownload(photos);
 
@@ -1613,7 +1613,7 @@ API.Photos.getAlbumsLikeList = async(items) => {
                 continue;
             }
 
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Photos).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -1669,7 +1669,7 @@ API.Photos.getPhotosLikeList = async(items) => {
                 break end;
             }
 
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Photos).then((likes) => {
                 // 获取完成
                 indicator.addSuccess(item);
@@ -1780,7 +1780,7 @@ API.Photos.getAllVisitorList = async(items) => {
                 // 已备份跳过
                 continue;
             }
-            indicator.setIndex(++count);
+            await indicator.setIndex(++count);
             tasks.push(API.Photos.getItemAllVisitorsList(item).then((visitor) => {
                 // 获取完成
                 indicator.addSuccess(item);

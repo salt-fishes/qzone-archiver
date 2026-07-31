@@ -1,10 +1,12 @@
-# ZoneExport
+# qzone-archiver
 
 > QQ 空间本地化备份与档案浏览工具，基于 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 二次开发，新增 SPA 单页应用档案浏览器。
 
 ## 项目简介
 
-ZoneExport 是一个 Chrome 扩展（Manifest V3），用于将 QQ 空间内容（说说、日志、日记、相册、视频、留言、收藏、分享、好友、访客）备份到本地，并配套一个独立的 SPA 单页应用，以"档案馆"风格离线浏览备份数据。
+**qzone-archiver** 是一个 Chrome 扩展（Manifest V3），用于将 QQ 空间内容（说说、日志、日记、相册、视频、留言、收藏、分享、好友、访客）备份到本地，并配套一个独立的 SPA 单页应用，以"档案馆"风格离线浏览备份数据。
+
+- 项目地址：https://github.com/salt-fishes/qzone-archiver
 
 ### 主要特性
 
@@ -24,7 +26,7 @@ ZoneExport 是一个 Chrome 扩展（Manifest V3），用于将 QQ 空间内容�
 ## 目录结构
 
 ```
-zoneexport/
+qzone-archiver/
 ├── src/                        # Chrome 扩展源码
 │   ├── manifest.json           # MV3 清单
 │   ├── html/                   # 扩展页面（options/popup/about/docs/faq 等）
