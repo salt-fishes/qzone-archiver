@@ -696,50 +696,108 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 }
 .tooltip .arrow::before { border-top-color: var(--ink); }
 
-/* --- Doc Content (static pages) --- */
-.doc-content {
-    max-width: 820px;
+/* --- Doc Layout (static pages, PC 宽屏适配) --- */
+.doc-content, .doc-body { position: relative; z-index: 1; }
+.doc-content { max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+/* 双栏：左侧固定目录 + 右侧正文 */
+.doc-layout {
+    max-width: 1320px;
     margin: 0 auto;
     padding: 2rem 1.5rem 4rem;
     position: relative; z-index: 1;
+    display: flex;
+    gap: 1.75rem;
+    align-items: flex-start;
 }
-.doc-content h2 { font-size: 1.6rem; margin-bottom: 1rem; }
-.doc-content h3 {
-    font-size: 1.25rem; margin-top: 2rem; margin-bottom: .75rem;
-    padding-bottom: .35rem; border-bottom: 1px solid var(--border);
-}
-.doc-content h4 { font-size: 1.05rem; margin-top: 1.25rem; margin-bottom: .5rem; color: var(--ink); }
-.doc-content p, .doc-content li { line-height: 1.75; }
-.doc-content ol, .doc-content ul { padding-left: 1.5rem; margin-bottom: 1rem; }
-.doc-content .toc {
+.doc-layout .doc-toc {
+    width: 230px; flex-shrink: 0;
+    position: sticky; top: calc(var(--header-h) + 1.25rem);
+    max-height: calc(100vh - var(--header-h) - 2.5rem);
+    overflow-y: auto;
     background: var(--paper-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1rem 1.5rem;
-    margin-bottom: 2rem;
+    padding: .9rem 1rem;
 }
-.doc-content .toc ol { margin: 0; }
-.doc-content .refactor, .doc-content .notice, .doc-content .original, .doc-content .changelog {
+.doc-layout .doc-toc::before {
+    content: '目录';
+    display: block;
+    font-family: var(--font-heading);
+    font-size: .95rem; font-weight: 700;
+    color: var(--accent);
+    padding: .15rem .6rem .55rem;
+    margin-bottom: .35rem;
+    border-bottom: 1px solid var(--border);
+}
+.doc-layout .doc-toc .toc {
+    background: transparent; border: none; padding: 0; margin: 0;
+}
+.doc-layout .doc-toc .toc ol {
+    list-style: none; padding-left: 0; margin: 0;
+}
+.doc-layout .doc-toc .toc li { margin-bottom: .25rem; }
+.doc-layout .doc-toc .toc li a {
+    display: block;
+    color: var(--ink-light); font-size: .86rem;
+    padding: .3rem .6rem;
+    border-radius: var(--radius);
+    transition: all .15s;
+    text-decoration: none;
+}
+.doc-layout .doc-toc .toc li a:hover {
+    color: var(--accent);
+    background: var(--accent-bg);
+}
+.doc-layout .doc-body {
+    flex: 1; min-width: 0;
+    max-width: 100%;
+}
+
+/* 正文排版 */
+.doc-content h2, .doc-body h2 { font-size: 1.6rem; margin-bottom: 1rem; }
+.doc-content h3, .doc-body h3 {
+    font-size: 1.25rem; margin-top: 2rem; margin-bottom: .75rem;
+    padding-bottom: .35rem; border-bottom: 1px solid var(--border);
+}
+.doc-content h4, .doc-body h4 { font-size: 1.05rem; margin-top: 1.25rem; margin-bottom: .5rem; color: var(--ink); }
+.doc-content p, .doc-content li, .doc-body p, .doc-body li { line-height: 1.75; }
+.doc-content ol, .doc-content ul, .doc-body ol, .doc-body ul { padding-left: 1.5rem; margin-bottom: 1rem; }
+.doc-content .refactor, .doc-content .notice, .doc-content .original, .doc-content .changelog,
+.doc-body .refactor, .doc-body .notice, .doc-body .original, .doc-body .changelog {
     padding: 1rem 1.5rem;
     border-radius: var(--radius);
     margin: 1.5rem 0;
     border-left: 3px solid;
 }
-.doc-content .refactor { background: var(--accent-bg); border-left-color: var(--accent); }
-.doc-content .refactor h3 { border: none; color: var(--accent); }
-.doc-content .notice { background: var(--red-light); border-left-color: var(--red); }
-.doc-content .notice h3 { border: none; color: var(--red); }
-.doc-content .original { background: var(--amber-light); border-left-color: var(--amber); }
-.doc-content .original h3 { border: none; color: var(--amber); }
-.doc-content .changelog { background: var(--green-light); border-left-color: var(--green); }
-.doc-content .changelog h4 { color: var(--green); }
-.doc-content table.compare th { background: var(--paper-dark); }
-.doc-content .pros-cons { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
-.doc-content .pros-cons > div { flex: 1; min-width: 280px; padding: 1rem 1.25rem; border-radius: var(--radius); }
-.doc-content .pros { background: var(--green-light); border-left: 3px solid var(--green); }
-.doc-content .cons { background: var(--red-light); border-left: 3px solid var(--red); }
-.doc-content .pros h4 { color: var(--green); }
-.doc-content .cons h4 { color: var(--red); }
+.doc-content .refactor, .doc-body .refactor { background: var(--accent-bg); border-left-color: var(--accent); }
+.doc-content .refactor h3, .doc-body .refactor h3 { border: none; color: var(--accent); }
+.doc-content .notice, .doc-body .notice { background: var(--red-light); border-left-color: var(--red); }
+.doc-content .notice h3, .doc-body .notice h3 { border: none; color: var(--red); }
+.doc-content .original, .doc-body .original { background: var(--amber-light); border-left-color: var(--amber); }
+.doc-content .original h3, .doc-body .original h3 { border: none; color: var(--amber); }
+.doc-content .changelog, .doc-body .changelog { background: var(--green-light); border-left-color: var(--green); }
+.doc-content .changelog h4, .doc-body .changelog h4 { color: var(--green); }
+.doc-content table.compare th, .doc-body table.compare th { background: var(--paper-dark); }
+.doc-content .pros-cons, .doc-body .pros-cons { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+.doc-content .pros-cons > div, .doc-body .pros-cons > div { flex: 1; min-width: 280px; padding: 1rem 1.25rem; border-radius: var(--radius); }
+.doc-content .pros, .doc-body .pros { background: var(--green-light); border-left: 3px solid var(--green); }
+.doc-content .cons, .doc-body .cons { background: var(--red-light); border-left: 3px solid var(--red); }
+.doc-content .pros h4, .doc-body .pros h4 { color: var(--green); }
+.doc-content .cons h4, .doc-body .cons h4 { color: var(--red); }
+
+/* --- About 双栏（本项目 / 原项目） --- */
+.about-layout {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1.55fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+.about-col-side { position: sticky; top: calc(var(--header-h) + 1.25rem); }
 
 /* --- Popup --- */
 .popup-wrap { width: 400px; padding: 1.25rem; }
@@ -836,4 +894,12 @@ hr { border: 0; border-top: 1px solid var(--border); margin: 1.5rem 0; }
     .settings-content { padding: 1rem; }
     .doc-content { padding: 1.25rem 1rem 3rem; }
     .popup-modules { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* 文档/关于双栏在中等屏幕以下退化为单栏 */
+@media (max-width: 992px) {
+    .doc-layout { flex-direction: column; padding: 1.25rem 1rem 3rem; }
+    .doc-layout .doc-toc { position: static; width: 100%; max-height: none; }
+    .about-layout { grid-template-columns: 1fr; padding: 1.25rem 1rem 3rem; }
+    .about-col-side { position: static; }
 }
