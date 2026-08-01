@@ -250,6 +250,10 @@
         // Aria2
         const $common_aria2_rpc_row = $('#common_aria2_rpc_row');
         const $common_aria2_token_row = $('#common_aria2_token_row');
+        // [实验性] 图片代理网关（仅 Aria2 模式显示）
+        const $common_use_image_proxy_row = $('#common_use_image_proxy_row');
+        // 迅雷改版提示（选择迅雷类下载方式时显示）
+        const $common_thunder_deprecated_row = $('#common_thunder_deprecated_row');
 
         // 提示信息
         const $download_type_help = $('#common_download_type_help');
@@ -370,6 +374,10 @@
             default:
                 break;
         }
+        // [实验性] 图片代理网关开关仅 Aria2 模式下显示
+        $common_use_image_proxy_row.toggle(value === 'Aria2');
+        // 迅雷改版提示：选择迅雷类下载方式时显示
+        $common_thunder_deprecated_row.toggle(['Thunder', 'Thunder_Clipboard', 'Thunder_Link'].indexOf(value) > -1);
     })
 
     // 说说备份类型改变事件
@@ -858,6 +866,9 @@
         // 图片类型识别
         renderValueToDom(options, 'isAutoFileSuffix');
 
+        // [实验性] Aria2 图片代理网关
+        renderValueToDom(options, 'useImageProxyGateway');
+
         // 图片类型识别超时时间
         renderValueToDom(options, 'autoFileSuffixTimeOut');
 
@@ -1155,6 +1166,9 @@
 
         // 图片类型识别
         setValueByFrom(QZone_Config, 'isAutoFileSuffix');
+
+        // [实验性] Aria2 图片代理网关
+        setValueByFrom(QZone_Config, 'useImageProxyGateway');
 
         // 图片类型识别超时时间
         setValueByFrom(QZone_Config, 'autoFileSuffixTimeOut');

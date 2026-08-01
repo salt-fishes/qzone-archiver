@@ -2017,16 +2017,23 @@
                                     <label for="common_download_type" class="col-sm-auto col-form-label">文件下载工具：</label>
                                     <div class="col-sm-2">
                                         <select id="common_download_type" class="custom-select" aria-describedby="common_download_type_help">
-											<option value="Browser">浏览器</option>
+											<option value="Browser" selected>浏览器</option>
 											<option value="Aria2">Aria2/Motrix</option>
 											<option value="Thunder">迅雷（助手唤醒）</option>
-											<option value="Thunder_Clipboard" selected>迅雷（剪切板唤醒）</option>
+											<option value="Thunder_Clipboard">迅雷（剪切板唤醒）</option>
 											<option value="Thunder_Link">迅雷（下载链接）</option>
 											<option value="QZone">QQ空间外链</option>
 										</select>
                                     </div>
                                     <div class="col-sm-auto">
                                         <small id="common_download_type_help" class="text-muted">助手内部目前暂不支持数据容量大于2G的，2G内建议使用助手内部下载，超2G的建议使用其他方式下载</small>
+                                    </div>
+                                </div>
+                                <!-- 迅雷改版提示（选择迅雷类下载方式时显示） -->
+                                <div id="common_thunder_deprecated_row" class="form-group row" style="display: none;">
+                                    <div class="col-sm-auto"></div>
+                                    <div class="col-sm-auto">
+                                        <small class="text-muted" style="color: #c8442a;">⚠ 由于迅雷改版，已无法使用新版迅雷下载，建议使用浏览器或 Aria2/Motrix 下载。</small>
                                     </div>
                                 </div>
                                 <!-- 下载工具通用配置 -->
@@ -2137,6 +2144,19 @@
                                     </div>
                                     <div class="col-sm-auto">
                                         <small id="common_aria2_token_help" class="text-muted">连接RPC服务的Secret令牌，不开启授权认证的无需填写此项！</small>
+                                    </div>
+                                </div>
+                                <!-- [实验性] Aria2 图片走 QQ 官方图片代理网关 -->
+                                <div id="common_use_image_proxy_row" class="form-group row" style="display: none;">
+                                    <div class="col-sm-auto">Aria2 图片代理网关（实验性）：</div>
+                                    <div class="col-sm-2">
+                                        <div class="custom-control custom-checkbox">
+                                            <input type="checkbox" class="custom-control-input" id="common_use_image_proxy" data-module="Common" name="useImageProxyGateway">
+                                            <label class="custom-control-label" for="common_use_image_proxy" aria-describedby="common_use_image_proxy_help"></label>
+                                        </div>
+                                    </div>
+                                    <div class="col-sm-auto">
+                                        <small id="common_use_image_proxy_help" class="text-muted">实验性：Aria2 下载图片时改为走 QQ 官方图片代理网关（p.qpimg.cn/cgi-bin/cgi_imgproxy），对防盗链更宽容、可能走更优 CDN 路径；仅对图片任务生效，视频不受影响。若下载异常请关闭此选项。</small>
                                     </div>
                                 </div>
                                 <!-- 其他配置 -->

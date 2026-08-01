@@ -18,8 +18,8 @@ const Default_Config = {
         RestSleepUrls: [],
         // 头像下载地址
         AvatarHost: 1,
-        // 文件下载类型
-        downloadType: 'Thunder_Link',
+        // 文件下载类型（迅雷改版后已无法用新版迅雷下载，默认改回浏览器）
+        downloadType: 'Browser',
         Aria2: {
             rpc: 'http://localhost:6800/jsonrpc',
             token: undefined
@@ -28,6 +28,8 @@ const Default_Config = {
         isAutoFileSuffix: true,
         // 后缀识别超时秒数
         autoFileSuffixTimeOut: 30,
+        // [实验性] Aria2 下载图片时走 QQ 官方图片代理网关（防盗链更宽容）
+        useImageProxyGateway: false,
         // 迅雷任务数        
         thunderTaskNum: 1500,
         // 唤起迅雷间隔        

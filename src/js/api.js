@@ -1448,20 +1448,43 @@ API.Utils = {
     },
 
     /**
+     * [实验性] 图片下载链接转换为 QQ 官方图片代理网关地址
+     * QQ 官方图片代理（p.qpimg.cn/cgi-bin/cgi_imgproxy）对防盗链更宽容、
+     * 可能走更优 CDN 路径。仅对图片类任务生效（视频等仍走原始链接），
+     * 识别依据：任务文件名后缀（addDownloadTasks 已按 MIME 补全后缀）。
+     * @param {DownloadTask} task 下载任务
+     * @returns {string} 代理 URL；未开启或非图片时返回原始 URL
+     */
+    getImageProxyUrl(task) {
+        if (!QZone_Config.Common.useImageProxyGateway) {
+            return task.url;
+        }
+        // 仅图片后缀走代理网关
+        if (!/\.(jpe?g|png|gif|bmp|webp)$/i.test(task.name || '')) {
+            return task.url;
+        }
+        const proxyUrl = 'https://p.qpimg.cn/cgi-bin/cgi_imgproxy?url=' + encodeURIComponent(task.url);
+        console.info('[ImageProxy] 图片任务走 QQ 官方代理网关：', task.name);
+        return proxyUrl;
+    },
+
+    /**
      * Aria2下载
      * @param {DownloadTask} task
      */
     downloadByAria2(task) {
         const Aria2Setting = QZone_Config.Common.Aria2;
         const token = "token:" + Aria2Setting.token;
+        // [实验性] 图片任务优先走 QQ 官方代理网关；aria2 按数组顺序尝试，
+        // 代理失败时自动回退到原始链接（downloadByAria2 前请勿覆盖 task.url）
+        const proxyUrl = API.Utils.getImageProxyUrl(task);
+        const uris = proxyUrl === task.url ? [task.url] : [proxyUrl, task.url];
         const data = {
             "jsonrpc": "2.0",
             "method": "aria2.addUri",
             "id": Date.now(),
             "params": [
-                token, [
-                    task.url
-                ],
+                token, uris,
                 {
                     "referer": 'https://user.qzone.qq.com/',
                     'header': ['Cookie: ' + document.cookie],

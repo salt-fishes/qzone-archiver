@@ -153,6 +153,9 @@
     padding: 0.5rem 0.6rem;
     max-height: 400px;
     overflow-y: auto;
+    /* 日志字号调小（继承自 modal-body 0.85rem） */
+    font-size: 0.74rem;
+    line-height: 1.5;
 }
 
 /* 终端滚动条 */
@@ -263,6 +266,12 @@
 
 #progressModal .tip-line.tip-done {
     color: #7a7a7a;
+}
+
+/* 行内警示（续在已完成日志行末尾，不换行） */
+#progressModal .tip-inline-warn {
+    color: #eab535;
+    font-weight: bold;
 }
 
 /* ========== 进度条 ========== */

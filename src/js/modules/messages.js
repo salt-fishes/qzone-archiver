@@ -171,7 +171,9 @@ API.Messages.getAllFullContent = async(items) => {
         await indicator.setIndex(i + 1);
 
         // 当前处理说说（更详细的进度提示：内容摘要前 20 字）
-        const contentSnippet = (item.content || item.custom_content || '').replace(/\s+/g, ' ').substring(0, 20);
+        // 先剥掉 HTML 标签再截断，避免日志里显示原始标签
+        const contentSnippet = (item.content || item.custom_content || '')
+            .replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').substring(0, 20);
         indicator.setItem(contentSnippet || item.tid);
 
         // 是否有全文

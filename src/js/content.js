@@ -694,7 +694,9 @@ class StatusIndicator {
      * @param {string} name 当前项名称
      */
     setItem(name) {
-        this.item = name || ''
+        // 转义用户内容：jQuery .html() 会执行字符串中的 <script>，被页面 CSP 拦截，
+        // 说说内容/昵称等可能含 HTML，必须先转义再注入日志
+        this.item = _.escape(String(name == null ? '' : name))
         this.print()
     }
 
@@ -754,12 +756,6 @@ class StatusIndicator {
             // 展开
             $tip_dom.find('summary').click();
         }
-
-        // 终端窗口自动滚动到底部
-        const $terminal = $("#progressModal .terminal-body");
-        if ($terminal.length) {
-            $terminal.scrollTop($terminal[0].scrollHeight);
-        }
     }
 
     /**
@@ -780,14 +776,6 @@ class StatusIndicator {
         if ($tip_dom.is('details') && this.id !== 'Common_Row_Infos_Tips') {
             // 收起
             $tip_dom.find('summary').click();
-        }
-
-        // 终端窗口自动滚动到底部
-        const $terminal = $("#progressModal .terminal-body");
-        if ($terminal.length) {
-            $terminal.animate({ scrollTop: $terminal[0].scrollHeight });
-        } else {
-            $("#progressModal .modal-body").animate({ scrollTop: 1000 });
         }
     }
 
@@ -869,7 +857,8 @@ class StatusIndicator {
      * @param {object} index 当前位置
      */
     async setIndex(index) {
-        this.index = index
+        // 数字原样保留；字符串（如相册名）转义后再插入模板，避免 HTML/脚本注入
+        this.index = typeof index === 'number' ? index : _.escape(String(index))
         this.print()
         // 检查点：暂停时等待唤醒；取消时抛出异常中止循环
         if (await checkExportState()) {
@@ -893,7 +882,8 @@ class StatusIndicator {
      * @param {string} tip
      */
     setNextTip(tip) {
-        this.nextTip = tip
+        // 转义后注入模板，避免含 HTML 的提示被当作脚本执行
+        this.nextTip = _.escape(String(tip == null ? '' : tip))
         this.print()
     }
 

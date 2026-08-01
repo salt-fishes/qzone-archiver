@@ -505,6 +505,8 @@ API.Common.downloadByAria2 = async(tasks) => {
     // 进度更新器
     const indicator = new StatusIndicator('Common_Aria2');
     indicator.setTotal(tasks.length);
+    // 成功添加的任务计数（用于触发 RPC 上限提示）
+    let addedCount = 0;
 
     // 开始下载
     const _tasks = _.chunk(tasks, QZone_Config.Common.downloadThread);
@@ -521,6 +523,7 @@ API.Common.downloadByAria2 = async(tasks) => {
                     task.setState('complete');
                     // 添加成功
                     indicator.addSuccess(task);
+                    addedCount++;
                 }
             }).catch((error) => {
                 console.error('添加到Aria2异常', error, task);
@@ -534,6 +537,13 @@ API.Common.downloadByAria2 = async(tasks) => {
 
     // 完成
     indicator.complete();
+
+    // Aria2/Motrix 默认 max-download-result=1000，超过后旧结果被清除，
+    // 在「打包下载」之前续在已完成日志行末尾（不换行、文案精简）
+    if (addedCount > 1000) {
+        $('<span class="tip-inline-warn">　·　⚠ 超过结果保留上限 1000，仅显示最近任务，下载仍在继续（可在 Motrix 设置调大）</span>')
+            .appendTo(indicator._line);
+    }
 
     return true;
 }
