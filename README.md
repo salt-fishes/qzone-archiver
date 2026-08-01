@@ -111,6 +111,30 @@ npm run build     # 构建到 src/export/spa-dist/
 2. 将 `src/` 目录打包为 zip（排除 `node_modules` / 测试数据）
 3. 打 tag 并创建 GitHub Release（参考 [v3.0.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.0.0)）
 
+## 未来升级方向（Roadmap）
+
+以下为规划中的升级方向，按优先级排列，尚未实施：
+
+### 近期（P0）
+
+- **SPA「那年今日」**：新增 `/today` 视图，按"今天"日期筛出历年同一天的说说/留言/分享记录，数据已在现有索引中，纯前端实现
+- **下载失败自动重试**：`downloadsByBrowser` / `downloadByAria2` 增加按模块配置的 `retryCount`，失败项自动重试（带退避），降低备份遗漏
+- **Aria2 任务状态回查**：任务添加完成后通过 RPC `tellStatus` 批量查询，日志汇总"成功 X / 失败 Y / 等待 Z"，替代仅报"已添加 N 条"
+
+### 中期（P1）
+
+- **安全模式**：为方便将备份部署到服务器，提供"安全模式"开关——开启后采集阶段**不获取评论 / 点赞 / 访客 / 好友等他人互动数据**，备份仅包含自己的内容（最彻底的脱敏口径）
+- **SPA 足迹地图**：将 HTML 版 ECharts 足迹地图迁移接入 SPA
+
+### 长期（P2）
+
+- **SPA 编辑与再导出**：浏览 → 导出 Markdown / JSON
+- **跨会话断点续传**：将检查点持久化到 `chrome.storage.local`，关闭浏览器后可从断点继续备份
+- **备份加密与完整性校验**：可选 AES 压缩密码、导出文件哈希校验
+- **大数据量性能优化**：10 万+ 记录下的虚拟滚动、FlexSearch 索引内存与 Web Worker
+- **更多下载工具支持**：如 IDM（需支持目录结构）
+- **剔除扩展端 jQuery / Bootstrap 依赖**：将 options / popup / tools 等页面迁移到原生 JS + CSS（或轻量替代），减小 vendor 体积、降低加载与维护成本
+
 ## 致谢
 
 - 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) —— Apache-2.0，感谢原作者 ShunCai
