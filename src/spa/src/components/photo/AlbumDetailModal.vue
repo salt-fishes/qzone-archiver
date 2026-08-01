@@ -40,10 +40,11 @@
             @click="previewPhoto(photo, i)"
           >
             <img
-              v-if="photoSrc(photo)"
+              v-if="photoSrc(photo) && !photoErrors[i]"
               :src="photoSrc(photo)"
               :alt="photo.name || `照片 ${i + 1}`"
               loading="lazy"
+              @error="photoErrors[i] = true"
             />
             <span v-else class="photo-placeholder">无图</span>
           </button>
@@ -179,6 +180,9 @@ const likesVisible = ref(false)
 
 const MODULE = 'Albums'
 
+/** 照片加载失败状态：按索引跟踪，文件缺失时显示「无图」占位符 */
+const photoErrors = ref<Record<number, boolean>>({})
+
 const titleText = computed(() => {
   const name = props.album?.name || props.index?.name || '相册'
   const time = props.index?.createTime || (props.album?.createtime ? formatUnixTime(props.album.createtime) : '')
@@ -248,6 +252,7 @@ watch(visible, v => {
   if (!v) {
     likesVisible.value = false
     closePreview()
+    photoErrors.value = {}
   }
 })
 </script>

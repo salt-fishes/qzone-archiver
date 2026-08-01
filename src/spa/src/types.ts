@@ -154,6 +154,8 @@ export interface VisitorIndex {
   uin: number | string
   name: string
   time: string
+  /** 原始 unix 秒，用于与全量数据精确匹配 */
+  ts: number
   src: number
   platformSrc: number
   isHideVisit: boolean

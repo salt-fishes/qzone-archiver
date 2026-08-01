@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { BoardIndex, Board, BoardAuthor } from '@/types'
-import { loadBoardsIndex, loadBoardsAuthor, loadBoardsByYear } from '@/api/data-loader'
-import { formatUnixTime } from '@/utils/formatContent'
+import { loadBoardsIndex, loadBoardsByYear, loadBoardsAuthor } from '@/api/data-loader'
 
 export const useBoardsStore = defineStore('boards', () => {
   /** 轻量索引（启动时加载） */
@@ -82,7 +81,7 @@ export const useBoardsStore = defineStore('boards', () => {
   /**
    * 根据索引项获取单条留言全量数据。
    * 索引项的 time 为 'YYYY-MM-DD HH:mm:ss'，全量数据 pubtime 为 unix 秒，
-   * 通过 formatUnixTime(b.pubtime) 转换后与索引项的 time 比较以定位。
+   * 索引项 pubtime 与全量数据 pubtime 均为 unix 秒，直接数值比较。
    * 留言无唯一 tid，用 uin + pubtime 双重匹配。
    */
   async function getBoardByIndex(idx: BoardIndex): Promise<Board | undefined> {
@@ -90,7 +89,7 @@ export const useBoardsStore = defineStore('boards', () => {
     if (!year) return undefined
     const items = await loadYear(year)
     return items.find(b =>
-      String(b.uin) === String(idx.uin) && formatUnixTime(b.pubtime) === idx.time
+      String(b.uin) === String(idx.uin) && Number(b.pubtime) === Number(idx.pubtime)
     )
   }
 

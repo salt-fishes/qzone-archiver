@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { DiaryIndex, Diary } from '@/types'
 import { loadDiariesIndex, loadDiariesByYear } from '@/api/data-loader'
-import { formatUnixTime } from '@/utils/formatContent'
 
 export const useDiariesStore = defineStore('diaries', () => {
   /** 轻量索引（启动时加载） */
@@ -72,18 +71,15 @@ export const useDiariesStore = defineStore('diaries', () => {
 
   /**
    * 根据索引项获取单条日记全量数据。
-   * 索引项的 time 为 'YYYY-MM-DD HH:mm:ss'，全量数据 pubTime 为 unix 秒，
-   * 通过 formatUnixTime(d.pubTime) 转换后与索引项的 time 比较以定位。
    * blogId 为唯一标识，优先用 blogId/blogid 精确匹配。
+   * 注意：不使用时间作为匹配条件——扩展端索引 time 用 12 小时制格式化，
+   * SPA 端 formatUnixTime 用 24 小时制，两者不一致会导致匹配失败。
    */
   async function getDiaryByIndex(idx: DiaryIndex): Promise<Diary | undefined> {
     const year = (idx.time || '').substring(0, 4)
     if (!year) return undefined
     const items = await loadYear(year)
-    return items.find(d =>
-      (d.blogId === idx.blogId || d.blogid === idx.blogId) &&
-      formatUnixTime(d.pubTime || d.pubtime || 0) === idx.time
-    )
+    return items.find(d => d.blogId === idx.blogId || d.blogid === idx.blogId)
   }
 
   return {

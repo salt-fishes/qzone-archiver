@@ -203,6 +203,7 @@ API.Visitors.exportToSpa = async(visitorInfo) => {
             uin: v.uin,
             name: v.name || '',
             time: API.Utils.formatDate(v.time),
+            ts: v.time || 0,
             src: v.src || 0,
             platformSrc: v.platform_src || 0,
             isHideVisit: v.is_hide_visit === 1,

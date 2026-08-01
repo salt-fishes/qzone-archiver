@@ -57,6 +57,13 @@ export function resolveModulePath(filepath: string, module = 'Messages'): string
   const base = MODULE_BASE[module] || MODULE_BASE.Messages
   // 去掉开头的 ./ 或 /
   const clean = filepath.replace(/^\.?\//, '')
+  // custom_filepath 可能已含模块前缀（如 "Albums/生活/xxx.jpeg"），
+  // 此时 base（如 "../../Albums/"）已含模块名，直接拼接会重复。
+  // 检测并去除 filepath 中的模块前缀，避免路径重复。
+  const modulePrefix = module + '/'
+  if (clean.toLowerCase().startsWith(modulePrefix.toLowerCase())) {
+    return base + clean.substring(modulePrefix.length)
+  }
   return base + clean
 }
 

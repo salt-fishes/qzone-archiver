@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { VisitorIndex, Visitor } from '@/types'
 import { loadVisitorsIndex, loadVisitorsByYear } from '@/api/data-loader'
-import { formatUnixTime } from '@/utils/formatContent'
 
 export const useVisitorsStore = defineStore('visitors', () => {
   /** 轻量索引（启动时加载） */
@@ -72,8 +71,8 @@ export const useVisitorsStore = defineStore('visitors', () => {
 
   /**
    * 根据索引项（uin + 已格式化 time 字符串）获取单条访客全量数据。
-   * 索引中 time 为 'YYYY-MM-DD HH:mm:ss' 字符串，全量数据 time 为 unix 秒，
-   * 通过 formatUnixTime(v.time) 转换后与索引项的 time 比较以定位。
+   * 索引项 ts 为 unix 秒，全量数据 time 也为 unix 秒，直接数值比较。
+   * uin + ts 双重匹配以确保唯一性（同一访客可能多次访问）。
    */
   async function getVisitorByIndex(idx: VisitorIndex): Promise<Visitor | undefined> {
     const year = (idx.time || '').substring(0, 4)
@@ -81,7 +80,7 @@ export const useVisitorsStore = defineStore('visitors', () => {
     const items = await loadYear(year)
     return items.find(v =>
       String(v.uin) === String(idx.uin) &&
-      formatUnixTime(v.time) === idx.time
+      Number(v.time) === Number(idx.ts)
     )
   }
 

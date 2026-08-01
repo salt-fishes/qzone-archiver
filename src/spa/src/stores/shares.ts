@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { ShareIndex, Share } from '@/types'
 import { loadSharesIndex, loadSharesByYear } from '@/api/data-loader'
-import { formatUnixTime } from '@/utils/formatContent'
 
 export const useSharesStore = defineStore('shares', () => {
   /** 轻量索引（启动时加载） */
@@ -72,17 +71,15 @@ export const useSharesStore = defineStore('shares', () => {
 
   /**
    * 根据索引项获取单条分享全量数据。
-   * 索引项的 time 为 'YYYY-MM-DD HH:mm:ss'，全量数据 shareTime 为 unix 秒，
-   * 通过 formatUnixTime(s.shareTime) 转换后与索引项的 time 比较以定位。
-   * id 为唯一标识，优先用 id 精确匹配，time 作为二次校验。
+   * id 为唯一标识，优先用 id 精确匹配。
+   * 注意：不使用时间作为匹配条件——扩展端索引 time 用 12 小时制格式化，
+   * SPA 端 formatUnixTime 用 24 小时制，两者不一致会导致匹配失败。
    */
   async function getShareByIndex(idx: ShareIndex): Promise<Share | undefined> {
     const year = (idx.time || '').substring(0, 4)
     if (!year) return undefined
     const items = await loadYear(year)
-    return items.find(s =>
-      s.id === idx.id && formatUnixTime(s.shareTime) === idx.time
-    )
+    return items.find(s => s.id === idx.id)
   }
 
   return {

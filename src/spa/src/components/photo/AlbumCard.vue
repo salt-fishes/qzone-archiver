@@ -4,14 +4,18 @@
       <span class="entry-type-tag">相册</span>
     </template>
 
-    <!-- 封面缩略图 -->
+    <!-- 封面缩略图：文件缺失时显示占位符，避免 broken image 影响虚拟滚动高度 -->
     <img
-      v-if="index.hasCover && coverSrc"
+      v-if="index.hasCover && coverSrc && !coverError"
       :src="coverSrc"
       class="album-cover"
       :alt="index.name || '相册封面'"
       loading="lazy"
+      @error="coverError = true"
     />
+    <div v-else class="album-cover album-cover-placeholder">
+      <span class="album-cover-icon">▣</span>
+    </div>
 
     <!-- 相册名 -->
     <p class="entry-text" :class="{ 'entry-text-empty': !index.name }">{{ displayName }}</p>
@@ -44,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
 import { stripFormatting, resolveModulePath } from '@/utils/formatContent'
 import type { AlbumIndex } from '@/types'
@@ -71,6 +75,10 @@ const coverSrc = computed(() => {
   return resolveModulePath(props.index.coverUrl, MODULE)
 })
 
+/** 封面图加载失败标志：文件缺失或路径错误时显示占位符 */
+const coverError = ref(false)
+watch(coverSrc, () => { coverError.value = false })
+
 function handleClick() {
   if (props.clickable) emit('open', props.index)
 }
@@ -85,13 +93,29 @@ function handleClick() {
   padding: 1px 8px;
 }
 
-/* 相册封面缩略图：限制高度，object-fit 裁剪 */
+/* 相册封面缩略图：固定高度预留空间，避免图片异步加载导致高度变化
+   造成 vue-virtual-scroller 的 DynamicScrollerItem 定位错乱重叠 */
 .album-cover {
   display: block;
   width: 100%;
-  max-height: 120px;
+  height: 120px;
   object-fit: cover;
   border: var(--line);
   margin-bottom: var(--sp-2);
+}
+
+/* 封面图缺失时的占位符：保持相同高度，避免虚拟滚动抖动 */
+.album-cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--paper-2);
+  border: var(--line-dot);
+}
+
+.album-cover-icon {
+  font-size: 2rem;
+  color: var(--ink-3);
+  opacity: 0.5;
 }
 </style>

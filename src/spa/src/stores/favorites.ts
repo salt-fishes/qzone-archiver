@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { FavoriteIndex, Favorite } from '@/types'
 import { loadFavoritesIndex, loadFavoritesByYear } from '@/api/data-loader'
-import { formatUnixTime } from '@/utils/formatContent'
 
 export const useFavoritesStore = defineStore('favorites', () => {
   /** 轻量索引（启动时加载） */
@@ -72,17 +71,15 @@ export const useFavoritesStore = defineStore('favorites', () => {
 
   /**
    * 根据索引项（id + 已格式化 time 字符串）获取单条收藏全量数据。
-   * 索引中 time 为 'YYYY-MM-DD HH:mm:ss' 字符串，全量数据 create_time 为 unix 秒，
-   * 通过 formatUnixTime(v.create_time) 转换后与索引项的 time 比较以定位。
-   * id 为唯一标识，优先用 id 精确匹配，time 作为二次校验。
+   * id 为唯一标识，优先用 id 精确匹配。
+   * 注意：不使用时间作为匹配条件——扩展端索引 time 用 12 小时制格式化，
+   * SPA 端 formatUnixTime 用 24 小时制，两者不一致会导致匹配失败。
    */
   async function getFavoriteByIndex(idx: FavoriteIndex): Promise<Favorite | undefined> {
     const year = (idx.time || '').substring(0, 4)
     if (!year) return undefined
     const items = await loadYear(year)
-    return items.find(v =>
-      v.id === idx.id && formatUnixTime(v.create_time) === idx.time
-    )
+    return items.find(v => v.id === idx.id)
   }
 
   return {
