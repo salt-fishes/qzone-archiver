@@ -78,6 +78,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../export/spa-dist',
+    // outDir 位于项目根之外，默认不清空，须显式开启避免旧产物（含测试数据）残留
     emptyOutDir: true,
     // target 不能高于 es2018（IIFE 兼容性）
     target: 'es2018',
