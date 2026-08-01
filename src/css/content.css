@@ -255,6 +255,16 @@
     display: none;
 }
 
+/* 导出阶段实例的独立日志行（追加模式：每个阶段/相册一行，上一步日志不消失） */
+#progressModal .tip-line {
+    display: block;
+    margin: 0.15rem 0;
+}
+
+#progressModal .tip-line.tip-done {
+    color: #7a7a7a;
+}
+
 /* ========== 进度条 ========== */
 
 #progressModal #progress {

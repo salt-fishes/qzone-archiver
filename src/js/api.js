@@ -378,6 +378,13 @@ API.Utils = {
      * @param {string} url 文件地址
      */
     async autoFileSuffix(url) {
+        // 检查点：每个媒体文件类型识别（网络请求）前检查暂停/取消
+        // 覆盖 boards/photos/blogs/diaries 等 hander 循环中原本无检查点的识别阶段
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
         let suffix = API.Utils.getFileSuffixByUrl(url);
         if (!QZone_Config.Common.isAutoFileSuffix) {
             return suffix;

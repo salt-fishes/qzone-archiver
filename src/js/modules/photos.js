@@ -117,6 +117,12 @@ API.Photos.getAllImagesInfos = async(albumList) => {
 
         // 遍历所有的照片信息
         for (const [picKey, photo] of picKeyMaps) {
+            // 检查点：每张相片处理前检查暂停/取消（原本仅按相册有检查点）
+            if (await checkExportState()) {
+                const err = new Error('[ExportState] 导出已取消')
+                err.__exportCancelled = true
+                throw err
+            }
             // 增量备份判断
             if (!API.Photos.isNewItem(album.id, photo)) {
                 // 已备份数据跳过不处理
@@ -887,6 +893,9 @@ API.Photos.addPhotosDownloadTasks = async(album, photos) => {
 
         // 序号，便于排序
         const orderNumber = API.Utils.prefixNumber(index + 1, photos.length.toString().length);
+
+        // 当前处理相片（更详细的进度提示）
+        indicator.setItem(photo.name || orderNumber);
 
         // 相册文件夹
         const albumFolder = API.Photos.getAlbumFolderPath(album, QZone.Photos.Album.Data.length);

@@ -152,6 +152,14 @@ API.Friends.getFriendsTime = async(data, friends) => {
     }
     // 遍历
     for (const friend of friends) {
+        // 检查点：每条好友处理前检查暂停/取消（该循环原本无检查点）
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
+        // 当前处理好友（更详细的进度提示）
+        indicator.setItem(friend.nickname || friend.uin);
         // 设置默认值
         friend.isMe = friend.uin === QZone.Common.Owner.uin;
         if (friend.isMe || !API.Friends.isNewItem(friend)) {
@@ -510,6 +518,12 @@ API.Friends.getZoneAccessList = async(friends) => {
 
     // 遍历
     for (const friend of friends) {
+        // 检查点：每条好友处理前检查暂停/取消（该循环原本无检查点）
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
         if (friend.isMe || !API.Friends.isNewItem(friend)) {
             indicator.addSkip(friend);
             continue;

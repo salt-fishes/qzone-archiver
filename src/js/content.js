@@ -675,6 +675,51 @@ class StatusIndicator {
         this.downloading = 0
         this.downloadFailed = 0
         this.skip = 0;
+        // 更详细的进度信息：当前处理项、阶段开始时间（用于耗时统计）
+        this.item = ''
+        this.startTime = Date.now()
+        // 渲染节流时间戳（避免高频循环逐条重绘 DOM）
+        this._lastRenderAt = 0
+        // 每个实例拥有独立的日志行，追加到目标槽位而不是整体替换
+        // 修复：相册等模块多个阶段/多个相册复用同一槽位，整体替换会导致上一步日志消失
+        this._slot = $("#" + this.id)
+        this._line = $('<span class="tip-line"></span>')
+        if (this._slot.length && !this._slot.is('details')) {
+            this._line.appendTo(this._slot)
+        }
+    }
+
+    /**
+     * 设置当前处理项（显示在提示信息末尾，如当前相片/文件/好友名）
+     * @param {string} name 当前项名称
+     */
+    setItem(name) {
+        this.item = name || ''
+        this.print()
+    }
+
+    /**
+     * 组装提示内容：模板 + 附加的耗时/百分比/当前项
+     * @returns {string} 完整提示 HTML
+     */
+    _formatTip() {
+        // 动态字段：百分比与耗时
+        this.percent = this.total > 0 ? Math.min(100, Math.round((this.downloaded / this.total) * 100)) : 0;
+        const seconds = Math.floor((Date.now() - this.startTime) / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        this.elapsed = (minutes > 0 ? minutes + '分' : '') + secs + '秒';
+
+        const extras = [];
+        if (this.total > 0) {
+            extras.push('已完成 <span style="color: #4ec9b0;">' + this.percent + '%</span>');
+        }
+        extras.push('已用 <span style="color: #d7ba7d;">' + this.elapsed + '</span>');
+        if (this.item) {
+            extras.push('当前：<span style="color: #eab535;">' + this.item + '</span>');
+        }
+        const suffix = extras.length ? '　·　' + extras.join('　·　') : '';
+        return this.tip.join('，').format(this) + suffix;
     }
 
     /**
@@ -689,10 +734,20 @@ class StatusIndicator {
      * 输出提示信息
      */
     print() {
-        const $tip_dom = $("#" + this.id);
+        // 渲染节流：高频循环（逐条/逐相片）时最多每 150ms 刷新一次 DOM，
+        // 计数/耗时字段仍实时累加，渲染稍后合并，避免逐条重绘 + 强制滚底拖慢采集
+        const now = Date.now();
+        if (this._lastRenderAt && now - this._lastRenderAt < 150) {
+            return;
+        }
+        this._lastRenderAt = now;
+
+        const $tip_dom = this._slot;
+        if (!$tip_dom.length) return;
         $tip_dom.show();
         if (this.tip && this.tip.length > 0) {
-            $tip_dom.html(this.tip.join('，').format(this));
+            // 只更新当前实例的日志行，避免覆盖同槽位中上一步的日志
+            this._line.html(this._formatTip());
         }
 
         if ($tip_dom.is('details')) {
@@ -712,13 +767,15 @@ class StatusIndicator {
      * @param {object} params 格式化参数
      */
     complete() {
-        const $tip_dom = $("#" + this.id)
+        const $tip_dom = this._slot;
+        if (!$tip_dom.length) return;
         $tip_dom.show()
-        let showTip = $tip_dom.html() || '';
         if (this.tip && this.tip.length > 0) {
-            showTip = this.tip.join('，').format(this);
+            // 仅更新当前实例日志行并冻结，不再整体重写槽位（防止清空 details 内上一步日志）
+            let showTip = this._formatTip();
+            this._line.html(showTip.replace('正在', '已').replace('请稍候', '已完成').replace('...', ''));
+            this._line.addClass('tip-done');
         }
-        $tip_dom.html(showTip.replace('正在', '已').replace('请稍候', '已完成').replace('...', ''));
 
         if ($tip_dom.is('details') && this.id !== 'Common_Row_Infos_Tips') {
             // 收起
@@ -971,6 +1028,8 @@ class QZoneOperator {
     async next(moduleType) {
         // 取消短路：导出已取消时不再推进任何后续阶段
         if (exportState.cancelled) {
+            // 确认取消 UI（阶段边界可能不再经过检查点）
+            finalizeCancelUi();
             console.warn('[Operator] 导出已取消，跳过阶段:', moduleType);
             return;
         }
@@ -1498,56 +1557,91 @@ const browserTasks = new Array();
  * - paused: 暂停标志，循环检查点会等待 resume 唤醒
  * - cancelled: 取消标志，循环检查点收到后立即返回并中止后续步骤
  * - pauseToken: 暂停时创建的 Promise resolver，resume 时调用以唤醒
+ * - pausing: 已收到暂停请求、尚未被检查点确认生效（用于「暂停中…」反馈）
+ * - cancelling: 已收到取消请求、尚未被检查点确认生效（用于「取消中…」反馈）
  */
 const exportState = {
     paused: false,
     cancelled: false,
-    pauseToken: null
+    pauseToken: null,
+    pausing: false,
+    cancelling: false
 };
+
+/** 默认顶部状态文案（与 indicator.html 一致） */
+const DEFAULT_BACKUP_STATUS = '正在采集QQ空间数据中，请勿<span style="color:red">关闭、刷新、或打开新的</span>QQ空间页面。';
+
+/** 更新顶部状态提示（弹窗未渲染时忽略） */
+function setBackupStatus(html) {
+    const $el = $('#backupStatus');
+    if ($el.length) $el.html(html);
+}
 
 /** 暂停导出 */
 function pauseExport() {
-    if (exportState.cancelled || exportState.paused) return;
+    if (exportState.cancelled || exportState.paused || exportState.pausing) return;
+    // 立即置暂停标志：下一次检查点生效；pausing 表示「已请求、未确认」
     exportState.paused = true;
-    console.info('[ExportState] 已暂停导出');
+    exportState.pausing = true;
+    console.info('[ExportState] 已收到暂停请求，等待当前操作完成…');
     updateExportButtons();
+    setBackupStatus('正在暂停…等待当前步骤完成后生效');
 }
 
 /** 继续导出 */
 function resumeExport() {
     if (!exportState.paused) return;
     exportState.paused = false;
+    exportState.pausing = false;
     if (exportState.pauseToken) {
         exportState.pauseToken.resolve();
         exportState.pauseToken = null;
     }
     console.info('[ExportState] 已继续导出');
     updateExportButtons();
+    setBackupStatus(DEFAULT_BACKUP_STATUS);
 }
 
 /** 取消导出 */
 function cancelExport() {
-    if (exportState.cancelled) return;
+    if (exportState.cancelled || exportState.cancelling) return;
+    // 立即置取消标志；cancelling 表示「已请求、未被检查点确认」
+    exportState.cancelling = true;
     exportState.cancelled = true;
     // 若处于暂停状态，先唤醒以让等待中的检查点退出
     if (exportState.pauseToken) {
         exportState.pauseToken.resolve();
         exportState.pauseToken = null;
     }
-    console.warn('[ExportState] 已取消导出，正在中止后续步骤…');
+    console.warn('[ExportState] 已收到取消请求，正在中止后续步骤…');
     updateExportButtons();
-    $('#backupStatus').html('已取消导出。已完成的部分仍可点击下方<span style="color:red">打包下载</span>按钮保存。');
+    setBackupStatus('正在取消…等待当前操作结束后立即中止');
+}
+
+/** 取消确认：检查点或阶段入口确认取消生效后，刷新最终 UI */
+function finalizeCancelUi() {
+    if (!exportState.cancelling) return;
+    exportState.cancelling = false;
+    updateExportButtons();
+    setBackupStatus('已取消导出。已完成的部分仍可点击下方<span style="color:red">打包下载</span>按钮保存。');
 }
 
 /**
  * 检查点：在分页循环 / 批次循环中调用
- * - 若已取消返回 true（调用方应中止循环）
- * - 若已暂停则等待 resume 唤醒
+ * - 若已取消返回 true（调用方应中止循环），并确认取消 UI
+ * - 若已暂停则等待 resume 唤醒，并确认暂停 UI
  * @returns {Promise<boolean>} 是否应中止
  */
 async function checkExportState() {
-    if (exportState.cancelled) return true;
+    if (exportState.cancelled) {
+        finalizeCancelUi();
+        return true;
+    }
     if (exportState.paused) {
+        // 检查点确认：暂停生效，切换「暂停中…」→「已暂停」
+        exportState.pausing = false;
+        updateExportButtons();
+        setBackupStatus('已暂停，可点击「继续」恢复导出');
         await new Promise((resolve) => {
             exportState.pauseToken = { resolve };
         });
@@ -1560,6 +1654,8 @@ async function checkExportState() {
 function resetExportState() {
     exportState.paused = false;
     exportState.cancelled = false;
+    exportState.pausing = false;
+    exportState.cancelling = false;
     if (exportState.pauseToken) {
         exportState.pauseToken.resolve();
         exportState.pauseToken = null;
@@ -1579,15 +1675,32 @@ function updateExportButtons() {
     const $pause = $('#btnPauseExport');
     const $resume = $('#btnResumeExport');
     const $cancel = $('#btnCancelExport');
+    if (exportState.cancelling && !exportState.paused) {
+        // 取消请求已发出，尚未被检查点确认
+        $pause.hide(); $resume.hide();
+        $cancel.show().prop('disabled', true).text('取消中…');
+        return;
+    }
     if (exportState.cancelled) {
+        // 取消已确认，隐藏全部控制按钮
         $pause.hide(); $resume.hide(); $cancel.hide();
         return;
     }
     if (exportState.paused) {
         $pause.hide(); $resume.show(); $cancel.show();
-    } else {
-        $pause.show(); $resume.hide(); $cancel.show();
+        return;
     }
+    if (exportState.pausing) {
+        // 暂停请求已发出，尚未被检查点确认
+        $pause.show().prop('disabled', true).text('暂停中…');
+        $resume.hide();
+        $cancel.show();
+        return;
+    }
+    // 正常运行状态
+    $pause.show().prop('disabled', false).text('暂停');
+    $resume.hide();
+    $cancel.show();
 }
 
 /**
@@ -1670,6 +1783,14 @@ function updateExportButtons() {
  * @param {string} suffix 文件后缀
  */
 API.Utils.addDownloadTasks = async(module, item, url, module_dir, source, FILE_URLS, suffix) => {
+    // 检查点：每个下载任务（含「识别文件类型」网络请求）前检查暂停/取消
+    // 修复：采集阶段 addMediaToTasks / addCommentImageDownloadTasks 等循环
+    // 原本无检查点，媒体文件逐个网络识别时暂停/取消长时间无法生效
+    if (await checkExportState()) {
+        const err = new Error('[ExportState] 导出已取消')
+        err.__exportCancelled = true
+        throw err
+    }
     url = API.Utils.toHttp(url);
     item.custom_url = url;
     if (API.Common.isQzoneUrl()) {

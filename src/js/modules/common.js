@@ -428,6 +428,7 @@ API.Common.downloadsByAjax = async(tasks) => {
             }
             down_tasks.push(API.Utils.downloadToFile(task.url, filepath).then(() => {
                 task.setState('complete');
+                indicator.setItem(task.name);
                 indicator.addSuccess(task);
             }).catch((error) => {
                 indicator.addFailed(task);
@@ -473,6 +474,7 @@ API.Common.downloadsByBrowser = async(tasks) => {
             await API.Utils.timeoutPromise(API.Utils.downloadByBrowser(task), 60 * 1000 * 5).then((downloadTask) => {
                 if (downloadTask.id > 0) {
                     task.setState('complete');
+                    indicator.setItem(task.name);
                     indicator.addSuccess(task);
                 } else {
                     console.error('添加到浏览器下载异常', task);
@@ -1266,16 +1268,17 @@ API.Common.callNextPage = async(pageIndex, moduleConfig, total, items, call, ...
     // 是否存在下一页
     const hasNextPage = API.Common.hasNextPage(pageIndex, moduleConfig.pageSize, total, items);
     if (hasNextPage) {
+        // 暂停 / 取消 检查点：必须在随机间隔 sleep 之前检查，
+        // 否则暂停/取消会被下一页的等待间隔拖住，无法实时响应
+        if (await checkExportState()) {
+            console.info('[callNextPage] 导出已中止，停止翻页');
+            return items;
+        }
         // 请求一页成功后等待一秒再请求下一页
         const min = moduleConfig.randomSeconds.min;
         const max = moduleConfig.randomSeconds.max;
         const seconds = API.Utils.randomSeconds(min, max);
         await API.Utils.sleep(seconds * 1000);
-        // 暂停 / 取消 检查点：已暂停则等待唤醒；已取消则停止翻页
-        if (await checkExportState()) {
-            console.info('[callNextPage] 导出已中止，停止翻页');
-            return items;
-        }
         return await call.apply(undefined, args);
     }
     return items;
@@ -1334,6 +1337,12 @@ API.Common.getModulesLikeList = async(item, moduleConfig) => {
     }
     let hasNext = true;
     while (hasNext) {
+        // 检查点：每页点赞记录前检查暂停/取消（该循环原本无检查点）
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
         await API.Common.getLikeList(item.uniKey, nextUin).then(async(data) => {
             data = API.Utils.toJson(data, /^_Callback\(/);
             if (data.code && data.code != 0) {

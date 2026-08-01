@@ -170,6 +170,10 @@ API.Messages.getAllFullContent = async(items) => {
         // 更新状态-当前位置
         await indicator.setIndex(i + 1);
 
+        // 当前处理说说（更详细的进度提示：内容摘要前 20 字）
+        const contentSnippet = (item.content || item.custom_content || '').replace(/\s+/g, ' ').substring(0, 20);
+        indicator.setItem(contentSnippet || item.tid);
+
         // 是否有全文
         const hasMoreContent = item.has_more_con === 1 || item.rt_has_more_con === 1;
 
@@ -1013,6 +1017,13 @@ API.Messages.addMediaToTasks = async(dataList) => {
 
         // 添加评论的配图下载任务
         await API.Common.addCommentImageDownloadTasks(item, 'Messages', indicator)
+
+        // 检查点：每条说说处理完（含视频/表情等同步任务）检查暂停/取消
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
     }
 
     // 完成
