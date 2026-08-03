@@ -1,6 +1,6 @@
 {
   "name": "qzone-archiver-spa",
-  "version": "1.0.0",
+  "version": "3.1.0",
   "private": true,
   "type": "module",
   "description": "QQ空间档案 SPA 导出前端，供 file:// 协议直接打开",
