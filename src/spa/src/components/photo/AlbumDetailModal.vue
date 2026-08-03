@@ -27,28 +27,34 @@
         v-html="formatContent(album.desc)"
       ></div>
 
-      <!-- 照片网格 -->
+      <!-- 照片网格（分批渲染：先渲染前 BATCH 张，滚动到末尾自动加载下一批） -->
       <section v-if="photoList.length" class="detail-section">
         <h4 class="section-title">照片 · {{ photoList.length }}</h4>
         <div class="photo-grid">
           <button
-            v-for="(photo, i) in photoList"
-            :key="`p-${i}`"
+            v-for="item in mediaList"
+            :key="`p-${item.index}`"
             type="button"
             class="photo-cell"
-            :title="photo.name || `照片 ${i + 1}`"
-            @click="previewPhoto(photo, i)"
+            :class="{ 'photo-cell-video': item.isVideo }"
+            :title="item.photo.name || `照片 ${item.index + 1}`"
+            @click="previewPhoto(item)"
           >
             <img
-              v-if="photoSrc(photo) && !photoErrors[i]"
-              :src="photoSrc(photo)"
-              :alt="photo.name || `照片 ${i + 1}`"
+              v-if="item.src && !photoErrors[item.index]"
+              :src="coverOverrides[item.index] || item.src"
+              :alt="item.photo.name || `照片 ${item.index + 1}`"
               loading="lazy"
-              @error="photoErrors[i] = true"
+              decoding="async"
+              @error="photoErrors[item.index] = true"
+              @load="(e) => handleCoverLoad(item, e)"
             />
-            <span v-else class="photo-placeholder">无图</span>
+            <span v-else class="photo-placeholder">{{ item.isVideo ? '无封面' : '无图' }}</span>
+            <span v-if="item.isVideo" class="photo-video-badge">▶ 视频</span>
           </button>
         </div>
+        <!-- 分批加载哨兵：进入视口时加载下一批 -->
+        <div v-if="hasMore" ref="sentinelEl" class="grid-sentinel" aria-hidden="true"></div>
       </section>
 
       <!-- 互动数据 -->
@@ -131,11 +137,19 @@
       :count="likeCount"
     />
 
-    <!-- 内嵌图片预览：点击切换大图显示，再次点击关闭 -->
+    <!-- 内嵌媒体预览：图片点击切换大图，视频点击就地播放，再次点击关闭 -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="previewSrc" class="photo-preview-overlay" @click="closePreview">
-          <img :src="previewSrc" class="photo-preview-img" :alt="previewAlt" />
+          <video
+            v-if="previewIsVideo"
+            :src="previewSrc"
+            controls
+            autoplay
+            playsinline
+            class="photo-preview-video"
+          ></video>
+          <img v-else :src="previewSrc" class="photo-preview-img" :alt="previewAlt" />
           <span class="photo-preview-tip">{{ previewIndex + 1 }} / {{ photoList.length }} · 点击关闭</span>
         </div>
       </Transition>
@@ -144,10 +158,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
+import { repairBlackCover } from '@/utils/coverRepair'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
 /** 相册评论（结构沿用扩展端，与 ShareComment/VideoComment 兼容） */
@@ -199,6 +214,88 @@ const modifyTimeText = computed(() => {
 
 const photoList = computed<Photo[]>(() => props.album?.photoList || [])
 
+// ============ 分批渲染（大相册性能优化） ============
+/** 每批渲染的照片数量 */
+const BATCH = 120
+/** 当前已渲染数量 */
+const visibleCount = ref(BATCH)
+/** 是否还有未渲染的照片 */
+const hasMore = computed(() => visibleCount.value < photoList.value.length)
+
+/** 网格条目：预计算好展示所需字段，避免模板内重复调用函数 */
+interface PhotoMedia {
+  index: number
+  photo: Photo
+  isVideo: boolean
+  /** 缩略图/封面 URL */
+  src: string
+  /** 视频源（仅视频条目有效） */
+  videoSrc: string
+}
+
+const mediaList = computed<PhotoMedia[]>(() => {
+  const list = photoList.value
+  const end = Math.min(visibleCount.value, list.length)
+  const out: PhotoMedia[] = []
+  for (let i = 0; i < end; i++) {
+    const p = list[i]
+    out.push({
+      index: i,
+      photo: p,
+      isVideo: isVideoPhoto(p),
+      src: photoSrc(p),
+      videoSrc: videoSrc(p)
+    })
+  }
+  return out
+})
+
+/** 加载下一批 */
+function loadMore() {
+  if (hasMore.value) {
+    visibleCount.value += BATCH
+  }
+}
+
+// ============ 视频黑封面：检测 + 本地首帧替换（复用 utils/coverRepair 工具） ============
+/** 本组件内封面替换结果（照片索引 → dataURL），驱动模板响应式更新 */
+const coverOverrides = ref<Record<number, string>>({})
+
+/**
+ * 封面加载完成回调：
+ * 视频封面若为黑帧（QQ 端导出的黑帧封面），用本地已下载 mp4 的首帧替换为封面
+ */
+async function handleCoverLoad(item: PhotoMedia, event: Event) {
+  if (!item.isVideo || !item.videoSrc) return
+  if (coverOverrides.value[item.index]) return
+  const img = event.target as HTMLImageElement
+  const frame = await repairBlackCover(img, item.videoSrc)
+  if (frame) {
+    coverOverrides.value[item.index] = frame
+  }
+}
+
+// 分批加载哨兵：IntersectionObserver 检测滚动到网格末尾
+const sentinelEl = ref<HTMLElement | null>(null)
+let observer: IntersectionObserver | null = null
+
+function setupObserver() {
+  observer?.disconnect()
+  observer = null
+  if (!sentinelEl.value || !hasMore.value) return
+  observer = new IntersectionObserver(entries => {
+    if (entries.some(e => e.isIntersecting)) {
+      loadMore()
+      // 加载下一批后 sentinel 下移，重新触发检测
+      nextTick(() => observer?.disconnect())
+      nextTick(setupObserver)
+    }
+  }, { rootMargin: '600px 0px' })
+  observer.observe(sentinelEl.value)
+}
+
+onBeforeUnmount(() => observer?.disconnect())
+
 const comments = computed<AlbumComment[]>(() => (props.album?.comments as AlbumComment[]) || [])
 const commentCount = computed(() => props.album?.comments?.length || props.index?.commentCount || comments.value.length)
 
@@ -206,31 +303,55 @@ const likeList = computed<LikeItem[]>(() => props.album?.likes || props.album?.l
 const likeCount = computed(() => props.album?.like?.total || props.index?.likeCount || likeList.value.length)
 
 /**
- * 单张照片可访问 URL：优先本地 custom_filepath，回退 s_url / t_url
- * 本地路径相对 Albums/ 模块根，经 resolveModulePath 转换（生产模式即 ../../Albums/ 前缀）
+ * 是否为视频条目（相册视频：photo.is_video + video_info）
+ */
+function isVideoPhoto(photo: Photo): boolean {
+  return !!(photo.is_video && (photo.video_info || photo.custom_filepath))
+}
+
+/**
+ * 缩略图可访问 URL：
+ * - 视频条目：封面用本地预览图 custom_pre_filepath，回退在线预览图 custom_url
+ * - 图片条目：本地原图 custom_filepath，回退 s_url / t_url
  */
 function photoSrc(photo: Photo): string {
+  if (isVideoPhoto(photo)) {
+    const cover = photo.custom_pre_filepath || photo.custom_url || ''
+    return cover ? resolveModulePath(cover, MODULE) : ''
+  }
   const raw = photo.custom_filepath || photo.s_url || photo.t_url || ''
   return raw ? resolveModulePath(raw, MODULE) : ''
 }
 
-// 内嵌图片预览状态
+/**
+ * 视频源：优先本地已下载 .mp4（custom_filepath），回退 video_info 在线地址
+ */
+function videoSrc(photo: Photo): string {
+  const info = photo.video_info || {}
+  const local = photo.custom_filepath ? resolveModulePath(photo.custom_filepath, MODULE) : ''
+  return local || info.video_url || info.play_url || ''
+}
+
+// 内嵌媒体预览状态
 const previewSrc = ref('')
 const previewAlt = ref('')
 const previewIndex = ref(-1)
+const previewIsVideo = ref(false)
 
-function previewPhoto(photo: Photo, i: number) {
-  const src = photoSrc(photo)
+function previewPhoto(item: PhotoMedia) {
+  const src = item.isVideo ? item.videoSrc : item.src
   if (!src) return
   previewSrc.value = src
-  previewAlt.value = photo.name || `照片 ${i + 1}`
-  previewIndex.value = i
+  previewAlt.value = item.photo.name || `照片 ${item.index + 1}`
+  previewIndex.value = item.index
+  previewIsVideo.value = item.isVideo
 }
 
 function closePreview() {
   previewSrc.value = ''
   previewAlt.value = ''
   previewIndex.value = -1
+  previewIsVideo.value = false
 }
 
 function openLikes() {
@@ -248,8 +369,16 @@ function handleClose() {
   emit('close')
 }
 
-watch(visible, v => {
-  if (!v) {
+watch([visible, () => photoList.value.length], ([v]) => {
+  if (v) {
+    // 每次打开重置分批渲染状态并挂载加载哨兵
+    visibleCount.value = BATCH
+    photoErrors.value = {}
+    coverOverrides.value = {}
+    // album 可能是异步加载（photoList 随后填充），photoList 就绪后再次挂载哨兵
+    nextTick(setupObserver)
+  } else {
+    observer?.disconnect()
     likesVisible.value = false
     closePreview()
     photoErrors.value = {}
@@ -343,6 +472,11 @@ watch(visible, v => {
   gap: var(--sp-2);
 }
 
+/* 分批加载哨兵：占位触发 IntersectionObserver */
+.grid-sentinel {
+  height: 1px;
+}
+
 .photo-cell {
   padding: 0;
   border: var(--line);
@@ -364,6 +498,26 @@ watch(visible, v => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* 视频角标 */
+.photo-cell-video {
+  position: relative;
+}
+
+.photo-video-badge {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  background: rgba(26, 22, 18, 0.72);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .photo-placeholder {
@@ -562,6 +716,13 @@ watch(visible, v => {
   object-fit: contain;
   border: var(--line);
   background: var(--paper);
+}
+
+.photo-preview-video {
+  max-width: 92vw;
+  max-height: 82vh;
+  background: #000;
+  border: var(--line);
 }
 
 .photo-preview-tip {

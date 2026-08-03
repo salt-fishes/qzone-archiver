@@ -10,7 +10,12 @@
       :data-poster="item.poster"
       :data-video="item.type === 'video' ? videoSourceJSON(item.src) : null"
     >
-      <img :src="item.thumb" :alt="item.caption || ''" loading="lazy" />
+      <img
+        :src="thumbOverrides[i] || item.thumb"
+        :alt="item.caption || ''"
+        loading="lazy"
+        @load="(e) => handleThumbLoad(item, i, e)"
+      />
       <!-- 视频播放标识 -->
       <span v-if="item.type === 'video'" class="media-video-overlay" aria-label="视频">
         <span class="media-video-icon">▶</span>
@@ -29,6 +34,7 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useLightGallery } from '@/composables/useLightGallery'
+import { repairBlackCover } from '@/utils/coverRepair'
 
 export interface MediaItem {
   src: string
@@ -49,6 +55,23 @@ const props = withDefaults(defineProps<{
 
 const containerRef = ref<HTMLElement>()
 const { init, destroy } = useLightGallery()
+
+/** 视频黑封面替换结果（索引 → dataURL），驱动模板响应式更新 */
+const thumbOverrides = ref<Record<number, string>>({})
+
+/**
+ * 视频缩略图加载完成回调：
+ * 封面若为黑帧（QQ 端导出的黑帧封面），用本地已下载 mp4 首帧替换
+ */
+async function handleThumbLoad(item: MediaItem, index: number, event: Event) {
+  if (item.type !== 'video') return
+  if (thumbOverrides.value[index]) return
+  const img = event.target as HTMLImageElement
+  const frame = await repairBlackCover(img, item.src)
+  if (frame) {
+    thumbOverrides.value[index] = frame
+  }
+}
 
 /**
  * 生成 LightGallery video 插件所需的 data-video JSON 配置
@@ -85,6 +108,7 @@ onMounted(() => {
 
 // mediaItems 变化时重新初始化
 watch(() => props.mediaItems, () => {
+  thumbOverrides.value = {}
   destroy()
   setupGallery()
 }, { flush: 'post' })

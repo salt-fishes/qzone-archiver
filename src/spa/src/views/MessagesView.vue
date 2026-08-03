@@ -196,6 +196,41 @@ watch(() => route.query.year, async (year) => {
   await jumpToYear(y)
 }, { immediate: true })
 
+// 年报跳转：监听 route.query.tid，定位列表并打开该条说说详情
+watch(() => route.query.tid, async (tid) => {
+  const t = tid ? String(tid) : ''
+  if (!t) return
+  // 1. 索引未就绪时等待就绪
+  if (messagesStore.index.length === 0) {
+    if (!messagesStore.loading) messagesStore.init()
+    while (messagesStore.loading) {
+      await new Promise(r => setTimeout(r, 50))
+    }
+    if (messagesStore.index.length === 0) return
+  }
+  // 2. 清空搜索，保证列表 = 全量索引
+  if (query.value) query.value = ''
+  // 3. 等待 useFlexSearch 重建 results
+  for (let i = 0; i < 20; i++) {
+    if (results.value.length > 0) break
+    await new Promise(r => setTimeout(r, 50))
+  }
+  await nextTick()
+  // 4. 定位到该条并打开详情
+  const pos = messagesStore.index.findIndex(m => String(m.tid) === t)
+  if (pos < 0) return
+  for (let i = 0; i < 20; i++) {
+    if (listRef.value) break
+    await new Promise(r => setTimeout(r, 50))
+  }
+  if (listRef.value) {
+    await new Promise(r => requestAnimationFrame(() => r(null as any)))
+    await new Promise(r => requestAnimationFrame(() => r(null as any)))
+    listRef.value.scrollToItem(pos)
+  }
+  handleOpen(messagesStore.index[pos])
+}, { immediate: true })
+
 onMounted(() => {
   if (messagesStore.index.length === 0 && !messagesStore.loading) {
     messagesStore.init()

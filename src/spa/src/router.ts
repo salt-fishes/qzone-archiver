@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '@/views/HomeView.vue'
+import AnnualReportView from '@/views/AnnualReportView.vue'
 import MessagesView from '@/views/MessagesView.vue'
 import MessagesDeletedView from '@/views/MessagesDeletedView.vue'
 import VisitorsView from '@/views/VisitorsView.vue'
@@ -20,6 +21,7 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
+    { path: '/report', name: 'report', component: AnnualReportView },
     { path: '/messages', name: 'messages', component: MessagesView },
     { path: '/messages-deleted', name: 'messages-deleted', component: MessagesDeletedView },
     { path: '/visitors', name: 'visitors', component: VisitorsView },
