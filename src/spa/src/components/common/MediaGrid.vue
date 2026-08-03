@@ -99,7 +99,7 @@ const props = defineProps<{
   mediaItems: MediaItem[]
 }>()
 
-// ============ 就地预览（替代 LightGallery） ============
+// ============ 就地预览 ============
 const previewIndex = ref(-1)
 
 const currentPreview = computed(() => {

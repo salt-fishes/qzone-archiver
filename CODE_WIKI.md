@@ -154,8 +154,8 @@ qzone-archiver/
 │   │   │   ├── components/       # 卡片 / 详情模态 / 布局 / 通用组件
 │   │   │   ├── stores/           # 11 个 Pinia store
 │   │   │   ├── api/data-loader.ts# <script> 数据加载器
-│   │   │   ├── composables/      # useFlexSearch / useLightGallery
-│   │   │   ├── styles/           # 档案馆主题（tokens/base/lightgallery-theme）
+│   │   │   ├── composables/      # useFlexSearch 等组合式函数
+│   │   │   ├── styles/           # 档案馆主题（tokens/base）
 │   │   │   ├── utils/formatContent.ts
 │   │   │   ├── types.ts router.ts main.ts App.vue
 │   │   │   └── env.d.ts
