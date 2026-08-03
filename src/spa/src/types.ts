@@ -27,6 +27,8 @@ export interface MessageIndex {
   imgCount: number
   commentCount: number
   likeCount: number
+  /** 列表缩略图地址数组（最多 4 张，相对 Messages/ 根或远程 URL） */
+  thumbs?: string[]
 }
 
 /** 说说配图项 —— 来自 custom_images / pic 字段 */
@@ -243,6 +245,8 @@ export interface FavoriteIndex {
   abstract: string
   /** 配图数量 */
   imageCount: number
+  /** 配图缩略图地址数组（最多 4 张，相对 Favorites/ 根或远程 URL） */
+  thumbs?: string[]
   /** 原图数量 */
   originImageCount: number
   /** 视频数量 */
@@ -416,6 +420,8 @@ export interface ShareIndex {
   sourceFromName: string
   sourceCount: number
   sourceImageCount: number
+  /** 来源配图缩略图地址数组（最多 4 张，相对 Shares/ 根或远程 URL） */
+  sourceThumbs?: string[]
   commentCount: number
   likeCount: number
   visitorCount: number
@@ -504,6 +510,10 @@ export interface VideoIndex {
   hasLocalVideo: boolean
   /** 是否有封面图 */
   hasCover: boolean
+  /** 封面图地址：本地路径（相对 Videos/ 根）或远程 URL，用于列表缩略图 */
+  coverUrl?: string
+  /** 本地视频文件路径（相对 Videos/ 根），用于列表黑封面修复 */
+  videoSrc?: string
 }
 
 /**

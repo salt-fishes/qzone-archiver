@@ -66,11 +66,10 @@
         <a :href="shareUrl" class="detail-link" target="_blank" rel="noopener">{{ shareUrl }}</a>
       </div>
 
-      <!-- 媒体网格（LightGallery） -->
+      <!-- 媒体网格 -->
       <MediaGrid
         v-if="mediaItems.length"
         :media-items="mediaItems"
-        :autoplay-gallery="true"
         class="detail-media"
       />
 

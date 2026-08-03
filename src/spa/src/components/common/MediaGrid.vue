@@ -1,20 +1,29 @@
 <template>
-  <div v-if="mediaItems.length" ref="containerRef" class="media-grid">
-    <a
+  <div v-if="mediaItems.length" class="media-grid">
+    <button
       v-for="(item, i) in mediaItems"
       :key="i"
+      type="button"
       class="media-cell"
       :class="{ 'media-cell-video': item.type === 'video' }"
-      :href="item.type === 'video' ? '' : item.src"
-      :data-sub-html="item.caption"
-      :data-poster="item.poster"
-      :data-video="item.type === 'video' ? videoSourceJSON(item.src) : null"
+      :title="item.caption || (item.type === 'video' ? '点击播放' : '点击放大')"
+      @click="openPreview(i)"
     >
+      <!-- 视频项：统一封面组件（含黑帧修复）；图片项：普通 img -->
+      <VideoCover
+        v-if="item.type === 'video'"
+        :src="item.thumb"
+        :video-src="item.src"
+        size="fill"
+        :placeholder="false"
+        :alt="item.caption || ''"
+      />
       <img
-        :src="thumbOverrides[i] || item.thumb"
+        v-else
+        :src="item.thumb"
         :alt="item.caption || ''"
         loading="lazy"
-        @load="(e) => handleThumbLoad(item, i, e)"
+        decoding="async"
       />
       <!-- 视频播放标识 -->
       <span v-if="item.type === 'video'" class="media-video-overlay" aria-label="视频">
@@ -24,17 +33,58 @@
       <span v-if="item.duration" class="media-duration">{{ item.duration }}</span>
       <!-- hover 提示 -->
       <span class="media-cell-tip">{{ item.type === 'video' ? '点击播放' : '点击放大' }}</span>
-    </a>
+    </button>
   </div>
   <div v-else class="media-empty">
     <span class="meta">无媒体附件</span>
   </div>
+
+  <!-- 就地预览：图片放大 / 视频播放，点击遮罩关闭，左右箭头切换，Esc 退出 -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div v-if="previewIndex >= 0" class="media-preview-overlay" @click.self="closePreview">
+        <video
+          v-if="currentPreview?.type === 'video'"
+          :key="`v-${previewIndex}`"
+          :src="currentPreview.src"
+          controls
+          autoplay
+          playsinline
+          class="media-preview-video"
+        ></video>
+        <img
+          v-else
+          :src="currentPreview?.src"
+          class="media-preview-img"
+          :alt="currentPreview?.caption || ''"
+        />
+        <button
+          v-if="mediaItems.length > 1"
+          type="button"
+          class="preview-nav preview-prev"
+          aria-label="上一张"
+          @click="stepPreview(-1)"
+        >‹</button>
+        <button
+          v-if="mediaItems.length > 1"
+          type="button"
+          class="preview-nav preview-next"
+          aria-label="下一张"
+          @click="stepPreview(1)"
+        >›</button>
+        <span class="media-preview-tip">
+          {{ previewIndex + 1 }} / {{ mediaItems.length }}
+          <template v-if="currentPreview?.caption"> · {{ currentPreview.caption }}</template>
+          <template v-else> · 点击遮罩关闭</template>
+        </span>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useLightGallery } from '@/composables/useLightGallery'
-import { repairBlackCover } from '@/utils/coverRepair'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import VideoCover from '@/components/common/VideoCover.vue'
 
 export interface MediaItem {
   src: string
@@ -45,115 +95,89 @@ export interface MediaItem {
   duration?: string
 }
 
-const props = withDefaults(defineProps<{
+const props = defineProps<{
   mediaItems: MediaItem[]
-  /** 启用自动初始化 LightGallery（默认 true；列表卡片可置为 false 仅展示缩略图） */
-  autoplayGallery?: boolean
-}>(), {
-  autoplayGallery: true
+}>()
+
+// ============ 就地预览（替代 LightGallery） ============
+const previewIndex = ref(-1)
+
+const currentPreview = computed(() => {
+  if (previewIndex.value < 0) return null
+  return props.mediaItems[previewIndex.value] || null
 })
 
-const containerRef = ref<HTMLElement>()
-const { init, destroy } = useLightGallery()
-
-/** 视频黑封面替换结果（索引 → dataURL），驱动模板响应式更新 */
-const thumbOverrides = ref<Record<number, string>>({})
-
-/**
- * 视频缩略图加载完成回调：
- * 封面若为黑帧（QQ 端导出的黑帧封面），用本地已下载 mp4 首帧替换
- */
-async function handleThumbLoad(item: MediaItem, index: number, event: Event) {
-  if (item.type !== 'video') return
-  if (thumbOverrides.value[index]) return
-  const img = event.target as HTMLImageElement
-  const frame = await repairBlackCover(img, item.src)
-  if (frame) {
-    thumbOverrides.value[index] = frame
-  }
+function openPreview(index: number) {
+  const item = props.mediaItems[index]
+  if (!item || !item.src) return
+  previewIndex.value = index
 }
 
-/**
- * 生成 LightGallery video 插件所需的 data-video JSON 配置
- *
- * LightGallery video 插件需要明确的 source 数组才能创建 <video> 元素播放
- * 仅靠 href 指向 .mp4 文件不足以触发视频播放（会卡在 lg-video-loading 状态）
- *
- * 格式：{"source":[{"src":"video.mp4","type":"video/mp4"}]}
- */
-function videoSourceJSON(src: string): string {
-  // 根据扩展名推断 MIME 类型
-  const ext = src.split('?')[0].split('.').pop()?.toLowerCase() || ''
-  const typeMap: Record<string, string> = {
-    mp4: 'video/mp4',
-    webm: 'video/webm',
-    ogg: 'video/ogg',
-    ogv: 'video/ogg',
-    mov: 'video/quicktime',
-  }
-  const mimeType = typeMap[ext] || 'video/mp4'
-  return JSON.stringify({ source: [{ src, type: mimeType }] })
+function closePreview() {
+  previewIndex.value = -1
 }
 
-async function setupGallery() {
-  if (!props.autoplayGallery || !containerRef.value) return
-  await nextTick()
-  if (containerRef.value) init(containerRef.value)
+function stepPreview(dir: number) {
+  const n = props.mediaItems.length
+  if (n < 2) return
+  previewIndex.value = (previewIndex.value + dir + n) % n
 }
 
-// 组件挂载后初始化（containerRef 此时已绑定）
-onMounted(() => {
-  setupGallery()
-})
+/** 键盘：← → 切换，Esc 关闭 */
+function onKeydown(e: KeyboardEvent) {
+  if (previewIndex.value < 0) return
+  if (e.key === 'ArrowLeft') stepPreview(-1)
+  else if (e.key === 'ArrowRight') stepPreview(1)
+  else if (e.key === 'Escape') closePreview()
+}
 
-// mediaItems 变化时重新初始化
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
+
+// mediaItems 变化：若预览项已超出范围则关闭
 watch(() => props.mediaItems, () => {
-  thumbOverrides.value = {}
-  destroy()
-  setupGallery()
-}, { flush: 'post' })
-
-onUnmounted(destroy)
+  if (previewIndex.value >= props.mediaItems.length) previewIndex.value = -1
+})
 </script>
 
 <style scoped>
-/* LightGallery 初始化后会注入全局 CSS 覆盖我们的 scoped 样式：
- *   .lg-container { display: block }  覆盖 display: grid
- *   .lg-item      { display: inline } 覆盖 display: block
- *   以及 aspect-ratio: auto / overflow: visible / object-fit: fill 等
- * 这里用 !important 强制保持网格布局和图片约束，避免溢出屏幕。 */
 .media-grid {
-  display: grid !important;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-  gap: var(--sp-2) !important;
-  margin: var(--sp-3) 0 !important;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
 }
 
 .media-cell {
-  position: relative !important;
-  aspect-ratio: 1 !important;
-  border: var(--line) !important;
-  overflow: hidden !important;
-  background: var(--paper-2) !important;
-  cursor: zoom-in !important;
-  display: block !important;
-  /* 兜底：即使 grid 失效，单格也不会撑破屏幕 */
-  max-width: 100% !important;
-  min-width: 0 !important;
+  position: relative;
+  aspect-ratio: 1;
+  border: var(--line);
+  overflow: hidden;
+  background: var(--paper-2);
+  cursor: zoom-in;
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.media-cell:hover {
+  border-color: var(--vermilion);
+  transform: translateY(-2px);
 }
 
 .media-cell-video {
-  cursor: pointer !important;
+  cursor: pointer;
 }
 
 .media-cell img {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  /* 关键：限制图片最大尺寸，防止原图撑破容器 */
-  max-width: 100% !important;
-  max-height: 100% !important;
-  display: block !important;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
   transition: transform 0.3s var(--ease-out);
 }
 
@@ -257,6 +281,79 @@ onUnmounted(destroy)
   border: var(--line-dot);
 }
 
+/* ============ 就地预览遮罩 ============ */
+.media-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 22, 18, 0.92);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  cursor: zoom-out;
+  padding: var(--sp-5);
+}
+
+.media-preview-img {
+  max-width: 92vw;
+  max-height: 82vh;
+  object-fit: contain;
+  border: var(--line);
+  background: var(--paper);
+}
+
+.media-preview-video {
+  max-width: 92vw;
+  max-height: 82vh;
+  background: #000;
+  border: var(--line);
+}
+
+.media-preview-tip {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--paper);
+  letter-spacing: 0.1em;
+  max-width: 90vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 左右切换按钮 */
+.preview-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(244, 236, 216, 0.12);
+  color: var(--paper);
+  border: 1px solid rgba(244, 236, 216, 0.35);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.preview-prev {
+  left: var(--sp-5);
+}
+
+.preview-next {
+  right: var(--sp-5);
+}
+
+.preview-nav:hover {
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+}
+
 /* 移动端：去掉 hover 提示，简化交互 */
 @media (hover: none) {
   .media-cell-tip {
@@ -265,6 +362,18 @@ onUnmounted(destroy)
   .media-video-icon {
     width: 40px;
     height: 40px;
+  }
+}
+
+@media (max-width: 720px) {
+  .media-preview-overlay {
+    padding: var(--sp-3);
+  }
+  .preview-prev {
+    left: var(--sp-2);
+  }
+  .preview-next {
+    right: var(--sp-2);
   }
 }
 </style>

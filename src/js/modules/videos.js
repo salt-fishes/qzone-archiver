@@ -327,7 +327,7 @@ API.Videos.exportAllToFiles = async(videos) => {
  *     - videos-YYYY.js           → window.videos_YYYY   （按年份分片全量数据）
  *
  * 索引字段：vid, title, desc(摘要), time(格式化时间), uploadTime(unix秒),
- *           commentCount, likeCount, hasLocalVideo, hasCover
+ *           commentCount, likeCount, hasLocalVideo, hasCover, coverUrl, videoSrc
  *
  * 全量数据保留扩展端原始结构，SPA 端按需加载年份分片后渲染详情。
  *
@@ -374,7 +374,11 @@ API.Videos.exportToSpa = async(videos) => {
                 commentCount: (v.comments && v.comments.length) || v.cmtTotal || 0,
                 likeCount: (v.likes && v.likes.length) || (v.like && v.like.total) || 0,
                 hasLocalVideo,
-                hasCover
+                hasCover,
+                // 封面图地址：本地优先（列表缩略图用），回退远程 URL
+                coverUrl: v.custom_pre_filepath || v.custom_pre_url || v.pre || v.preview_img || '',
+                // 本地视频文件路径（相对 Videos/ 模块根），用于列表黑封面修复
+                videoSrc: v.custom_filepath || ''
             };
         });
         await API.Common.writeJsonToJs('videosIndex', index, dataFolder + '/videos-index.js');

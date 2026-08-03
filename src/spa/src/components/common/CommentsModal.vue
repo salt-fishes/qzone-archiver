@@ -26,7 +26,6 @@
             <MediaGrid
               v-if="commentMedia(c).length"
               :media-items="commentMedia(c)"
-              :autoplay-gallery="true"
               class="comment-media"
             />
           </div>
@@ -49,7 +48,6 @@
               <MediaGrid
                 v-if="commentMedia(r).length"
                 :media-items="commentMedia(r)"
-                :autoplay-gallery="true"
                 class="comment-media"
               />
             </div>

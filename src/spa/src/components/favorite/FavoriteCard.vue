@@ -14,6 +14,14 @@
     </p>
     <p v-else class="entry-text entry-text-empty">（无标题）</p>
 
+    <!-- 配图缩略图预览（最多 4 张） -->
+    <EntryThumbs
+      v-if="index.thumbs?.length"
+      :thumbs="index.thumbs"
+      module="Favorites"
+      :total="index.imageCount"
+    />
+
     <template #stats>
       <span v-if="index.imageCount > 0" class="entry-stat active" title="配图数量">
         <span class="entry-stat-icon">▣</span>
@@ -37,6 +45,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
+import EntryThumbs from '@/components/common/EntryThumbs.vue'
 import { stripFormatting } from '@/utils/formatContent'
 import type { FavoriteIndex } from '@/types'
 

@@ -40,14 +40,22 @@
             :title="item.photo.name || `照片 ${item.index + 1}`"
             @click="previewPhoto(item)"
           >
+            <!-- 视频条目：统一封面组件（含黑帧修复）；图片条目：普通 img + 失败占位 -->
+            <VideoCover
+              v-if="item.isVideo"
+              :src="item.src"
+              :video-src="item.videoSrc"
+              size="fill"
+              placeholder-icon="无封面"
+              :alt="item.photo.name || `照片 ${item.index + 1}`"
+            />
             <img
-              v-if="item.src && !photoErrors[item.index]"
-              :src="coverOverrides[item.index] || item.src"
+              v-else-if="item.src && !photoErrors[item.index]"
+              :src="item.src"
               :alt="item.photo.name || `照片 ${item.index + 1}`"
               loading="lazy"
               decoding="async"
               @error="photoErrors[item.index] = true"
-              @load="(e) => handleCoverLoad(item, e)"
             />
             <span v-else class="photo-placeholder">{{ item.isVideo ? '无封面' : '无图' }}</span>
             <span v-if="item.isVideo" class="photo-video-badge">▶ 视频</span>
@@ -160,9 +168,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
+import VideoCover from '@/components/common/VideoCover.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
-import { repairBlackCover } from '@/utils/coverRepair'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
 /** 相册评论（结构沿用扩展端，与 ShareComment/VideoComment 兼容） */
@@ -254,24 +262,6 @@ const mediaList = computed<PhotoMedia[]>(() => {
 function loadMore() {
   if (hasMore.value) {
     visibleCount.value += BATCH
-  }
-}
-
-// ============ 视频黑封面：检测 + 本地首帧替换（复用 utils/coverRepair 工具） ============
-/** 本组件内封面替换结果（照片索引 → dataURL），驱动模板响应式更新 */
-const coverOverrides = ref<Record<number, string>>({})
-
-/**
- * 封面加载完成回调：
- * 视频封面若为黑帧（QQ 端导出的黑帧封面），用本地已下载 mp4 的首帧替换为封面
- */
-async function handleCoverLoad(item: PhotoMedia, event: Event) {
-  if (!item.isVideo || !item.videoSrc) return
-  if (coverOverrides.value[item.index]) return
-  const img = event.target as HTMLImageElement
-  const frame = await repairBlackCover(img, item.videoSrc)
-  if (frame) {
-    coverOverrides.value[item.index] = frame
   }
 }
 
@@ -374,7 +364,6 @@ watch([visible, () => photoList.value.length], ([v]) => {
     // 每次打开重置分批渲染状态并挂载加载哨兵
     visibleCount.value = BATCH
     photoErrors.value = {}
-    coverOverrides.value = {}
     // album 可能是异步加载（photoList 随后填充），photoList 就绪后再次挂载哨兵
     nextTick(setupObserver)
   } else {

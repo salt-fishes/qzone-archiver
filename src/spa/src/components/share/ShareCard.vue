@@ -14,6 +14,14 @@
     </p>
     <p v-else class="entry-text entry-text-empty">（无描述）</p>
 
+    <!-- 来源配图缩略图预览（最多 4 张） -->
+    <EntryThumbs
+      v-if="index.sourceThumbs?.length"
+      :thumbs="index.sourceThumbs"
+      module="Shares"
+      :total="index.sourceImageCount"
+    />
+
     <!-- 来源信息 -->
     <div v-if="index.sourceTitle || index.sourceFromName" class="entry-source">
       <span class="entry-source-label">来源</span>
@@ -48,6 +56,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
+import EntryThumbs from '@/components/common/EntryThumbs.vue'
 import { stripFormatting } from '@/utils/formatContent'
 import type { ShareIndex } from '@/types'
 

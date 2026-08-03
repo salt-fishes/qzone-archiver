@@ -537,14 +537,22 @@ API.Messages.exportToSpa = async(messages) => {
         await API.Utils.createFolder(dataFolder);
 
         // 1. 生成轻量索引：仅保留 SPA 首屏需要的字段
-        const index = messages.map(m => ({
-            tid: m.tid,
-            time: m.custom_create_time,
-            title: (m.content || '').substring(0, 50),
-            imgCount: (m.pic_list && m.pic_list.length) || 0,
-            commentCount: (m.commentlist && m.commentlist.length) || 0,
-            likeCount: (m.like && m.like.total) || 0
-        }));
+        const index = messages.map(m => {
+            // 配图：扩展端转换后 custom_images 与 pic 等价，pic_list 为旧字段（可能为空）
+            const pics = m.custom_images || m.pic || m.pic_list || [];
+            return {
+                tid: m.tid,
+                time: m.custom_create_time,
+                title: (m.content || '').substring(0, 50),
+                imgCount: pics.length,
+                // 列表缩略图：最多前 4 张，本地文件优先，回退远程缩略图 URL
+                thumbs: pics.slice(0, 4)
+                    .map(p => p.custom_filepath || p.s_url || p.url3 || p.custom_url || p.url1 || p.b_url || '')
+                    .filter(Boolean),
+                commentCount: (m.commentlist && m.commentlist.length) || 0,
+                likeCount: (m.like && m.like.total) || 0
+            };
+        });
         await API.Common.writeJsonToJs('messagesIndex', index, dataFolder + '/messages-index.js');
         console.info('生成 SPA 说说索引完成', { total: index.length });
 

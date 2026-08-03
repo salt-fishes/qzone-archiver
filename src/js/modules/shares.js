@@ -488,6 +488,11 @@ API.Shares.exportToSpa = async(items) => {
                 sourceFromName: (source.from && source.from.name) || '',
                 sourceCount: source.count || 0,
                 sourceImageCount: (source.images && source.images.length) || 0,
+                // 来源配图缩略图：最多前 4 张，本地文件优先，回退远程缩略图 URL
+                sourceThumbs: (source.images || [])
+                    .slice(0, 4)
+                    .map(p => p.custom_filepath || p.s_url || p.url3 || p.custom_url || p.url1 || p.b_url || '')
+                    .filter(Boolean),
                 commentCount: s.commentTotal || (s.comments && s.comments.length) || 0,
                 likeCount: s.likeTotal || (s.likes && s.likes.length) || 0,
                 visitorCount: (s.custom_visitor && s.custom_visitor.totalNum) || 0

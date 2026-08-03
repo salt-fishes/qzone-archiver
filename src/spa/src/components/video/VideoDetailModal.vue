@@ -105,7 +105,6 @@
             <MediaGrid
               v-if="commentImages(c).length"
               :media-items="commentImages(c)"
-              :autoplay-gallery="false"
               class="comment-media"
             />
             <!-- 二级回复 -->

@@ -25,11 +25,10 @@
       <!-- 说说正文 -->
       <div class="detail-text" v-html="formatContent(message.content || '（无内容）')"></div>
 
-      <!-- 媒体网格（LightGallery） -->
+      <!-- 媒体网格 -->
       <MediaGrid
         v-if="mediaItems.length"
         :media-items="mediaItems"
-        :autoplay-gallery="true"
         class="detail-media"
       />
 

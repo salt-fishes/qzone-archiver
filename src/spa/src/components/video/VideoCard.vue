@@ -9,6 +9,16 @@
       >外部</span>
     </template>
 
+    <!-- 封面缩略图：黑帧封面自动用本地视频首帧替换；文件缺失显示占位符 -->
+    <VideoCover
+      v-if="index.hasCover"
+      :src="coverSrc"
+      :video-src="videoSrc"
+      size="wide"
+      placeholder-icon="▶"
+      :alt="displayTitle"
+    />
+
     <!-- 标题 -->
     <p class="entry-text" :class="{ 'entry-text-empty': !index.title }">{{ displayTitle }}</p>
 
@@ -38,7 +48,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
-import { stripFormatting } from '@/utils/formatContent'
+import VideoCover from '@/components/common/VideoCover.vue'
+import { stripFormatting, resolveModulePath } from '@/utils/formatContent'
 import type { VideoIndex } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -50,10 +61,24 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{ open: [index: VideoIndex] }>()
 
+const MODULE = 'Videos'
+
 // 无标题时显示占位文案
 const displayTitle = computed(() => props.index.title || '(无标题)')
 // 摘要去格式化后展示
 const displayDesc = computed(() => stripFormatting(props.index.desc || ''))
+
+/** 封面图地址：本地路径优先（经 resolveModulePath 转换），远程 URL 原样返回 */
+const coverSrc = computed(() => {
+  if (!props.index.hasCover || !props.index.coverUrl) return ''
+  return resolveModulePath(props.index.coverUrl, MODULE)
+})
+
+/** 本地视频文件地址：用于黑封面时提取首帧替换 */
+const videoSrc = computed(() => {
+  if (!props.index.videoSrc) return ''
+  return resolveModulePath(props.index.videoSrc, MODULE)
+})
 
 function handleClick() {
   if (props.clickable) emit('open', props.index)

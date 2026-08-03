@@ -176,6 +176,11 @@ API.Favorites.exportToSpa = async(favorites) => {
                 title: fav.title || '',
                 abstract: fav.custom_abstract || fav.abstract || '',
                 imageCount: (fav.custom_images && fav.custom_images.length) || 0,
+                // 配图缩略图：最多前 4 张，本地文件优先，回退远程缩略图 URL
+                thumbs: (fav.custom_images || [])
+                    .slice(0, 4)
+                    .map(p => p.custom_filepath || p.s_url || p.url3 || p.custom_url || p.url1 || p.b_url || '')
+                    .filter(Boolean),
                 originImageCount: (fav.custom_origin_images && fav.custom_origin_images.length) || 0,
                 videoCount: (fav.custom_videos && fav.custom_videos.length) || 0,
                 audioCount: (fav.custom_audios && fav.custom_audios.length) || 0

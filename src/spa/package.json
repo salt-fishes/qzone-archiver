@@ -15,8 +15,7 @@
     "vue-router": "^4.3.0",
     "pinia": "^2.1.7",
     "vue-virtual-scroller": "^2.0.0-beta.8",
-    "flexsearch": "^0.7.43",
-    "lightgallery": "^2.7.2"
+    "flexsearch": "^0.7.43"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -23,7 +23,6 @@
       <MediaGrid
         v-if="blogImages.length"
         :media-items="blogImages"
-        :autoplay-gallery="false"
         class="detail-media"
       />
 
@@ -84,7 +83,6 @@
             <MediaGrid
               v-if="commentImages(c).length"
               :media-items="commentImages(c)"
-              :autoplay-gallery="false"
               class="comment-media"
             />
             <!-- 二级回复 -->

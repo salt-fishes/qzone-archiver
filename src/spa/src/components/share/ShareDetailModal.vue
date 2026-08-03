@@ -81,7 +81,6 @@
         <MediaGrid
           v-if="sourceImages.length"
           :media-items="sourceImages"
-          :autoplay-gallery="true"
           class="detail-media"
         />
       </section>
@@ -135,7 +134,6 @@
             <MediaGrid
               v-if="commentImages(c).length"
               :media-items="commentImages(c)"
-              :autoplay-gallery="false"
               class="comment-media"
             />
             <!-- 二级回复 -->
