@@ -8,7 +8,7 @@
   >
     <div v-if="loading" class="loading-tip">加载中…</div>
     <div v-else-if="!likes.length" class="empty-tip">暂无点赞</div>
-    <ul v-else class="likes-list">
+    <ul v-else ref="likesListRef" class="likes-list">
       <li v-for="(item, i) in likes" :key="itemKey(item, i)" class="like-item">
         <div class="like-avatar">
           <img v-if="avatarUrl(item)" :src="avatarUrl(item)" :alt="displayName(item)" />
@@ -27,8 +27,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from './ModalDialog.vue'
+import { anime, isAnimated, markAnimated, removeAnimations, staggerEnter } from '@/composables/useMotion'
 import type { LikeItem } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -67,6 +68,32 @@ function avatarUrl(item: LikeItem): string {
 function itemKey(item: LikeItem, i: number): string {
   return item.uin ? String(item.uin) : `k${i}`
 }
+
+// ============ 点赞头像逐格 pop-in（前 24 个交错，其余直接落位） ============
+const likesListRef = ref<HTMLElement | null>(null)
+
+function revealLikes() {
+  const list = likesListRef.value
+  if (!list) return
+  const fresh = Array.from(list.querySelectorAll('.like-item')).filter(c => !isAnimated(c)) as HTMLElement[]
+  if (!fresh.length) return
+  const animEls = fresh.slice(0, 24)
+  const rest = fresh.slice(24)
+  if (rest.length) anime.set(rest, { opacity: 1, translateY: 0 })
+  if (animEls.length) {
+    staggerEnter(list, animEls, { gap: 50, translateY: 12, duration: 580 })
+    animEls.forEach(markAnimated)
+  }
+  rest.forEach(markAnimated)
+}
+
+watch(() => props.modelValue, (v) => {
+  if (v) setTimeout(() => revealLikes(), 280)
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (likesListRef.value) removeAnimations(likesListRef.value)
+})
 </script>
 
 <style scoped>

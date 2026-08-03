@@ -1,5 +1,5 @@
 <template>
-  <section class="report-view">
+  <section ref="rootRef" class="report-view">
     <!-- ============ 封面（§01） ============ -->
     <header v-if="cover" class="report-cover">
       <div class="cover-kicker">年度档案 · Annual Archive</div>
@@ -177,8 +177,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useAnnualReport, type ReportChapter } from '@/composables/useAnnualReport'
+import { anime, countUp, enter, removeAnimations, scrollReveal, staggerEnter } from '@/composables/useMotion'
 
 /** 年度：'all' 或具体年份，响应式切换 */
 const year = ref<'all' | number>('all')
@@ -211,6 +212,92 @@ onMounted(() => {
       musicBlocked.value = true
     })
   }
+  // 数据未就绪时兜底触发封面/章节动画
+  setTimeout(() => {
+    if (!animInit) nextTick(initAnimations)
+  }, 400)
+})
+
+/* ============ 年报动画（封面级联 / 章节滚动入场 / 图形生长） ============ */
+const rootRef = ref<HTMLElement | null>(null)
+let animInit = false
+const cleanupFns: Array<() => void> = []
+
+function revealChapter(ch: HTMLElement) {
+  // 章节主要区块交错浮现
+  const parts: HTMLElement[] = []
+  ;['.chapter-head', '.chapter-text', '.chart-box', '.chapter-quote', '.highlight-grid',
+    '.people-list', '.special-grid', '.word-cloud'].forEach(sel => {
+    const el = ch.querySelector(sel) as HTMLElement | null
+    if (el) parts.push(el)
+  })
+  if (parts.length) {
+    staggerEnter(ch, parts, { gap: 90, translateY: 18, duration: 680 })
+  }
+  // 柱状图高度从 0 生长（outBack 弹性）
+  const bars = Array.from(ch.querySelectorAll('.chart-bar')) as HTMLElement[]
+  if (bars.length) {
+    anime({
+      targets: bars,
+      height: (el: HTMLElement) => [0, el.style.height || '2%'],
+      delay: anime.stagger(60, { start: 180 }),
+      duration: 900,
+      easing: 'easeOutBack'
+    })
+  }
+  // 互动高光数字滚动
+  ch.querySelectorAll('.highlight-num').forEach((el, i) => {
+    const raw = (el.textContent || '').replace(/[^\d]/g, '') || '0'
+    countUp(el, Number(raw), { delay: 300 + i * 140, duration: 1000 })
+  })
+  // 年度词词条交错弹出
+  const wordEls = Array.from(ch.querySelectorAll('.word-tag')) as HTMLElement[]
+  if (wordEls.length) {
+    staggerEnter(ch, wordEls, { gap: 55, translateY: 12, duration: 560 })
+  }
+  // 大引号盖章浮现
+  const mark = ch.querySelector('.quote-mark') as HTMLElement | null
+  if (mark) enter(mark, { translateY: 10, duration: 600, scale: 0.9 })
+}
+
+function initAnimations() {
+  if (animInit) return
+  const root = rootRef.value
+  if (!root) return
+  const cover = root.querySelector('.report-cover') as HTMLElement | null
+  const chapters = Array.from(root.querySelectorAll('.report-chapter')) as HTMLElement[]
+  if (!cover && !chapters.length) return // 数据未就绪，等待
+  animInit = true
+  // 封面四段级联入场
+  if (cover) {
+    staggerEnter(cover, '.cover-kicker, .cover-title, .cover-text, .cover-accent, .year-switch', {
+      gap: 160,
+      translateY: 20,
+      duration: 760
+    })
+  }
+  // 章节滚动进入视口时逐一浮现
+  chapters.forEach(ch => {
+    cleanupFns.push(scrollReveal(ch, () => revealChapter(ch)))
+  })
+}
+
+// 数据就绪后初始化（首次加载时 chapters 异步填充）
+watch(() => chapters.value.length, () => {
+  if (chapters.value.length && !animInit) nextTick(initAnimations)
+})
+
+// 年度切换：章节容器整体淡入（DOM 复用，不回滚章节滚动动画）
+watch(year, () => {
+  nextTick(() => {
+    const chaptersEl = rootRef.value?.querySelector('.report-chapters') as HTMLElement | null
+    if (chaptersEl) enter(chaptersEl, { translateY: 12, duration: 500 })
+  })
+})
+
+onUnmounted(() => {
+  cleanupFns.forEach(fn => fn())
+  if (rootRef.value) removeAnimations(rootRef.value)
 })
 
 /* ============ 背景音乐 ============ */
@@ -620,6 +707,13 @@ function cleanText(text: string): string {
   margin-top: var(--sp-2);
   letter-spacing: 0.1em;
   color: var(--ink-muted, var(--ink-3));
+  animation: hint-flicker 2.2s ease-in-out infinite;
+}
+
+/* 页脚加载提示呼吸 */
+@keyframes hint-flicker {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
 }
 
 /* ============ 背景音乐播放器 ============ */
@@ -668,6 +762,17 @@ function cleanText(text: string): string {
 .music-icon {
   font-size: 1.1rem;
   line-height: 1;
+}
+
+/* 播放时音符轻微浮动 */
+.music-btn.playing .music-icon {
+  display: inline-block;
+  animation: music-float 1.6s ease-in-out infinite;
+}
+
+@keyframes music-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
 }
 
 .music-tip {

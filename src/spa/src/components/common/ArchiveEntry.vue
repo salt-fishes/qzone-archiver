@@ -84,7 +84,7 @@ function handleClick() {
   padding: var(--sp-4) var(--sp-3);
   border-bottom: var(--line-dot);
   position: relative;
-  transition: background 0.15s;
+  transition: background 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
 }
 
 .archive-entry.clickable {
@@ -93,6 +93,9 @@ function handleClick() {
 
 .archive-entry.clickable:hover {
   background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 14px rgba(26, 22, 18, 0.08);
+  z-index: 1;
 }
 
 .archive-entry.clickable:hover .entry-date::after {
@@ -119,6 +122,13 @@ function handleClick() {
   border: 2px solid var(--paper);
   box-shadow: 0 0 0 1px var(--ink);
   transition: background 0.2s;
+  animation: dot-pulse 2.6s ease-in-out infinite;
+}
+
+/* 时间线圆点微弱呼吸 */
+@keyframes dot-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px var(--ink), 0 0 0 0 rgba(200, 68, 42, 0.18); }
+  50% { box-shadow: 0 0 0 1px var(--ink), 0 0 0 5px rgba(200, 68, 42, 0); }
 }
 
 .entry-year {
@@ -307,6 +317,12 @@ function handleClick() {
 
 .archive-entry :deep(.entry-stat-icon) {
   font-size: 0.85rem;
+  display: inline-block;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.archive-entry :deep(.entry-stat:hover .entry-stat-icon) {
+  transform: scale(1.18);
 }
 
 .archive-entry :deep(.entry-stat-num) {
@@ -318,6 +334,11 @@ function handleClick() {
   color: var(--vermilion);
   font-style: italic;
   letter-spacing: 0.05em;
+  transition: transform 0.2s var(--ease-out);
+}
+
+.archive-entry.clickable:hover :deep(.entry-stat-cta) {
+  transform: translateX(4px);
 }
 
 @media (max-width: 600px) {

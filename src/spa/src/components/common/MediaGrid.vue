@@ -1,5 +1,5 @@
 <template>
-  <div v-if="mediaItems.length" class="media-grid">
+  <div v-if="mediaItems.length" ref="gridRef" class="media-grid">
     <button
       v-for="(item, i) in mediaItems"
       :key="i"
@@ -83,8 +83,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
 import VideoCover from '@/components/common/VideoCover.vue'
+import { staggerEnter, removeAnimations } from '@/composables/useMotion'
 
 export interface MediaItem {
   src: string
@@ -98,6 +99,19 @@ export interface MediaItem {
 const props = defineProps<{
   mediaItems: MediaItem[]
 }>()
+
+// ============ 网格交错入场 ============
+const gridRef = ref<HTMLElement | null>(null)
+
+onMounted(() => {
+  if (gridRef.value) {
+    staggerEnter(gridRef.value, '.media-cell', { gap: 60, translateY: 16, scale: 0.98, duration: 640 })
+  }
+})
+
+onBeforeUnmount(() => {
+  if (gridRef.value) removeAnimations(gridRef.value)
+})
 
 // ============ 就地预览 ============
 const previewIndex = ref(-1)
@@ -219,6 +233,13 @@ watch(() => props.mediaItems, () => {
   border: 2px solid var(--paper);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s var(--ease-out), background 0.2s;
+  animation: video-icon-pulse 3s ease-in-out infinite;
+}
+
+/* 视频播放图标微弱呼吸 */
+@keyframes video-icon-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 68, 42, 0.3); }
+  50% { box-shadow: 0 0 0 7px rgba(200, 68, 42, 0); }
 }
 
 .media-cell:hover .media-video-icon {
@@ -352,6 +373,32 @@ watch(() => props.mediaItems, () => {
 .preview-nav:hover {
   background: var(--vermilion);
   border-color: var(--vermilion);
+}
+
+/* ============ 预览遮罩过渡（放大进入） ============ */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-active .media-preview-img,
+.modal-enter-active .media-preview-video,
+.modal-leave-active .media-preview-img,
+.modal-leave-active .media-preview-video {
+  transition: opacity 0.25s ease, transform 0.3s var(--ease-out);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from .media-preview-img,
+.modal-enter-from .media-preview-video,
+.modal-leave-to .media-preview-img,
+.modal-leave-to .media-preview-video {
+  opacity: 0;
+  transform: scale(0.97);
 }
 
 /* 移动端：去掉 hover 提示，简化交互 */

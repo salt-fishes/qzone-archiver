@@ -179,6 +179,31 @@ a {
 .tag-vermilion { color: var(--vermilion); border-color: var(--vermilion); }
 .tag-moss { color: var(--moss); border-color: var(--moss); }
 
+// ============ 详情操作按钮：hover 扫光 + 按下反馈（跨 modal 通用） ============
+.detail-action {
+  position: relative;
+  overflow: hidden;
+}
+
+.detail-action::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.28) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.5s var(--ease-out);
+  pointer-events: none;
+}
+
+.detail-action:hover::after {
+  transform: translateX(100%);
+}
+
+.btn:active,
+.detail-action:active {
+  transform: scale(0.97);
+}
+
 // 搜索框
 .search {
   display: flex;

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="items.length" class="entry-thumbs">
+  <div ref="rootRef" v-if="items.length" class="entry-thumbs">
     <span
       v-for="(t, i) in items"
       :key="i"
@@ -22,8 +22,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { resolveModulePath } from '@/utils/formatContent'
+import { staggerEnter, removeAnimations } from '@/composables/useMotion'
 
 /**
  * 列表条目缩略图横排组件
@@ -64,12 +65,25 @@ const extra = computed(() => {
   const total = props.total ?? props.thumbs.length
   return total > props.max ? total - props.max : 0
 })
+
+const rootRef = ref<HTMLElement | null>(null)
+
+// 缩略图首次渲染交错弹出（虚拟列表复用节点不重播）
+onMounted(() => {
+  if (rootRef.value) {
+    staggerEnter(rootRef.value, '.entry-thumb', { gap: 60, translateY: 10, duration: 560 })
+  }
+})
+
+onBeforeUnmount(() => {
+  if (rootRef.value) removeAnimations(rootRef.value)
+})
 </script>
 
 <style scoped>
 .entry-thumbs {
   display: flex;
-  gap: 4px;
+  gap: 6px;
   margin-bottom: var(--sp-2);
   align-items: center;
   flex-wrap: wrap;
@@ -77,8 +91,8 @@ const extra = computed(() => {
 
 .entry-thumb {
   display: block;
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
   border: var(--line);
   background: var(--paper-2);
   overflow: hidden;
@@ -90,6 +104,15 @@ const extra = computed(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: transform 0.25s var(--ease-out);
+}
+
+.entry-thumb:hover {
+  border-color: var(--vermilion);
+}
+
+.entry-thumb:hover img {
+  transform: scale(1.08);
 }
 
 .thumb-placeholder {
@@ -104,15 +127,15 @@ const extra = computed(() => {
 
 .thumb-more {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.85rem;
   color: var(--ink-3);
-  margin-left: 4px;
+  margin-left: 6px;
 }
 
 @media (max-width: 600px) {
   .entry-thumb {
-    width: 48px;
-    height: 48px;
+    width: 72px;
+    height: 72px;
   }
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <section class="home-view">
+  <section ref="homeRef" class="home-view">
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 01</span>
@@ -93,12 +93,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useMessagesStore } from '@/stores/messages'
+import { countUp, enter, staggerEnter } from '@/composables/useMotion'
 
 const userStore = useUserStore()
 const messagesStore = useMessagesStore()
+
+const homeRef = ref<HTMLElement | null>(null)
+let userCardAnimated = false
+let gridAnimated = false
+let firstAnimated = false
 
 /** 首页挂载时加载说说索引（首条说说展示） */
 onMounted(() => {
@@ -111,6 +117,54 @@ const firstMessage = computed(() => {
   if (!list.length) return null
   return [...list].sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0]
 })
+
+// 用户信息就绪后：用户卡 + 入口网格 + 页脚入场
+watch(() => userStore.isReady, (ready) => {
+  if (!ready || !homeRef.value) return
+  nextTick(() => {
+    const root = homeRef.value
+    if (!root) return
+    const card = root.querySelector('.user-card')
+    if (card && !userCardAnimated) {
+      userCardAnimated = true
+      staggerEnter(card, '.user-avatar, .user-info > *', { gap: 110, translateY: 16, duration: 680 })
+    }
+    const grid = root.querySelector('.entry-grid')
+    if (grid && !gridAnimated) {
+      gridAnimated = true
+      staggerEnter(grid, '.entry-cell', { gap: 90, translateY: 22, scale: 0.98, duration: 700 })
+      // 各模块数字滚动
+      const nums = Array.from(grid.querySelectorAll('.entry-num'))
+      nums.forEach((el, i) => {
+        const n = moduleEntries.value[i]?.count || 0
+        countUp(el, n, { delay: 200 + i * 90, duration: 1000, format: formatStatNum })
+      })
+    }
+    const colophon = root.querySelector('.colophon')
+    if (colophon) enter(colophon, { translateY: 12, duration: 800 })
+  })
+}, { immediate: true })
+
+// 第一条说说就绪后：卡片三列交错入场 + 日期数字滚动
+watch(() => firstMessage.value, (m) => {
+  if (!m || !homeRef.value || firstAnimated) return
+  firstAnimated = true
+  nextTick(() => {
+    const root = homeRef.value
+    if (!root) return
+    const card = root.querySelector('.first-card')
+    if (!card) return
+    staggerEnter(card, '.first-date, .first-body, .first-more', { gap: 120, translateY: 18, duration: 700 })
+    const dayEl = card.querySelector('.first-date-day')
+    if (dayEl && firstDay.value) {
+      countUp(dayEl, Number(firstDay.value), {
+        delay: 320,
+        duration: 800,
+        format: n => String(n).padStart(2, '0')
+      })
+    }
+  })
+}, { immediate: true })
 
 /** 首条说说时间解析：'YYYY-MM-DD HH:mm:ss' */
 const firstDate = computed(() => {
@@ -189,6 +243,13 @@ function formatStatNum(n: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
+  animation: avatar-float 4.5s ease-in-out infinite;
+}
+
+/* 头像轻微浮动 */
+@keyframes avatar-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 .user-avatar img {

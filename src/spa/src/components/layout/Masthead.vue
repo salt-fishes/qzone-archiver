@@ -1,5 +1,5 @@
 <template>
-  <header class="masthead">
+  <header ref="mastheadRef" class="masthead">
     <div class="masthead-grid">
       <div class="masthead-left">
         <span class="meta">Personal Archive</span>
@@ -11,7 +11,7 @@
       </div>
       <div class="masthead-right">
         <span class="meta">№ {{ uin || '——' }}</span>
-        <span class="meta">共 {{ totalRecords.toLocaleString() }} 条记录</span>
+        <span class="meta">共 <span ref="countRef">{{ totalRecords.toLocaleString() }}</span> 条记录</span>
       </div>
     </div>
     <NavBar />
@@ -19,8 +19,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { countUp, enter, anime, reducedMotion, staggerEnter } from '@/composables/useMotion'
 import NavBar from './NavBar.vue'
 
 const userStore = useUserStore()
@@ -29,6 +30,9 @@ const uin = computed(() => userStore.uin)
 const nickname = computed(() => userStore.nickname)
 const totalRecords = computed(() => userStore.totalRecords)
 
+const mastheadRef = ref<HTMLElement | null>(null)
+const countRef = ref<HTMLElement | null>(null)
+
 const issueLabel = computed(() => {
   const d = new Date()
   const year = d.getFullYear()
@@ -36,8 +40,39 @@ const issueLabel = computed(() => {
   return `Vol. ${year} · No.${month}`
 })
 
+// 顶部 meta 信息交错入场（主标题沿用 CSS ink-spread）
 onMounted(() => {
   if (!userStore.isReady) userStore.init()
+  const root = mastheadRef.value
+  if (!root) return
+  enter(root.querySelector('.masthead-sub') as HTMLElement, { translateY: 12, duration: 720 })
+  staggerEnter(root, '.masthead-left .meta, .masthead-right .meta', {
+    gap: 140,
+    translateY: 14,
+    duration: 720
+  })
+  // 主标题墨迹展开（字间距收拢 + 淡入），替代原有 CSS ink-spread
+  const titleEl = root.querySelector('.masthead-title')
+  if (titleEl && !reducedMotion()) {
+    anime.set(titleEl, { opacity: 0, letterSpacing: '0.35em' })
+    anime({
+      targets: titleEl,
+      opacity: 1,
+      letterSpacing: '-0.03em',
+      duration: 1000,
+      delay: 120,
+      easing: 'easeOutCubic'
+    })
+  } else if (titleEl) {
+    anime.set(titleEl, { opacity: 1, letterSpacing: '-0.03em' })
+  }
+})
+
+// 记录总数就绪后数字滚动（仅一次）
+watch(() => userStore.totalRecords, (v) => {
+  if (v > 0 && countRef.value) {
+    countUp(countRef.value, v, { duration: 900, format: n => n.toLocaleString() })
+  }
 })
 </script>
 
@@ -82,7 +117,6 @@ onMounted(() => {
   letter-spacing: -0.03em;
   line-height: 0.95;
   text-align: center;
-  animation: ink-spread 1s ease-out both;
 }
 
 .masthead-title em {

@@ -86,6 +86,13 @@ async function handleLoad(e: Event) {
   display: block;
   border: var(--line);
   background: var(--paper-2);
+  animation: cover-fade 0.35s ease;
+}
+
+/* 封面图加载完成淡入 */
+@keyframes cover-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* fill：填满父容器（照片网格单元 / 媒体网格单元） */
@@ -95,10 +102,11 @@ async function handleLoad(e: Event) {
   object-fit: cover;
 }
 
-/* wide：整宽固定高度（视频/相册列表大图），为异步加载预留高度避免虚拟滚动抖动 */
+/* wide：整宽固定 16:9 比例（视频/相册列表大图），为异步加载预留高度避免虚拟滚动抖动 */
 .video-cover-wide {
   width: 100%;
-  height: 120px;
+  aspect-ratio: 16 / 9;
+  height: auto;
   object-fit: cover;
   margin-bottom: var(--sp-2);
 }
@@ -119,7 +127,8 @@ async function handleLoad(e: Event) {
 
 .video-cover-fallback.video-cover-wide {
   width: 100%;
-  height: 120px;
+  aspect-ratio: 16 / 9;
+  height: auto;
   margin-bottom: var(--sp-2);
 }
 

@@ -30,7 +30,7 @@
       <!-- 照片网格（分批渲染：先渲染前 BATCH 张，滚动到末尾自动加载下一批） -->
       <section v-if="photoList.length" class="detail-section">
         <h4 class="section-title">照片 · {{ photoList.length }}</h4>
-        <div class="photo-grid">
+        <div ref="photoGridRef" class="photo-grid">
           <button
             v-for="item in mediaList"
             :key="`p-${item.index}`"
@@ -171,6 +171,7 @@ import ModalDialog from '@/components/common/ModalDialog.vue'
 import VideoCover from '@/components/common/VideoCover.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
+import { anime, isAnimated, markAnimated, removeAnimations, staggerEnter } from '@/composables/useMotion'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
 /** 相册评论（结构沿用扩展端，与 ShareComment/VideoComment 兼容） */
@@ -265,6 +266,26 @@ function loadMore() {
   }
 }
 
+// ============ 照片网格交错入场（首批前 24 张交错，其余直接落位；滚动新批同样处理） ============
+const photoGridRef = ref<HTMLElement | null>(null)
+
+watch(() => mediaList.value.length, () => {
+  nextTick(() => {
+    const grid = photoGridRef.value
+    if (!grid) return
+    const fresh = Array.from(grid.querySelectorAll('.photo-cell')).filter(c => !isAnimated(c)) as HTMLElement[]
+    if (!fresh.length) return
+    const animEls = fresh.slice(0, 24)
+    const rest = fresh.slice(24)
+    if (rest.length) anime.set(rest, { opacity: 1, translateY: 0 })
+    if (animEls.length) {
+      staggerEnter(grid, animEls, { gap: 32, translateY: 12, duration: 520 })
+      animEls.forEach(markAnimated)
+    }
+    rest.forEach(markAnimated)
+  })
+})
+
 // 分批加载哨兵：IntersectionObserver 检测滚动到网格末尾
 const sentinelEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
@@ -284,7 +305,10 @@ function setupObserver() {
   observer.observe(sentinelEl.value)
 }
 
-onBeforeUnmount(() => observer?.disconnect())
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  if (photoGridRef.value) removeAnimations(photoGridRef.value)
+})
 
 const comments = computed<AlbumComment[]>(() => (props.album?.comments as AlbumComment[]) || [])
 const commentCount = computed(() => props.album?.comments?.length || props.index?.commentCount || comments.value.length)

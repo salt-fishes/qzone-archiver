@@ -14,7 +14,9 @@
           :placeholder="searchPlaceholder"
           type="search"
         />
-        <button v-if="searchQuery" class="search-clear" type="button" @click="clearQuery" aria-label="清除">×</button>
+        <Transition name="pop">
+          <button v-if="searchQuery" class="search-clear" type="button" @click="clearQuery" aria-label="清除">×</button>
+        </Transition>
         <span class="search-shortcut">⌘K</span>
       </div>
     </div>
@@ -109,18 +111,38 @@ onUnmounted(() => document.removeEventListener('keydown', handleShortcut))
   color: var(--ink-2);
   border-bottom: none;
   padding: var(--sp-1) 0;
-  border-bottom: 2px solid transparent;
-  transition: all 0.15s;
+  position: relative;
+}
+
+/* 下划线指示器：hover 墨色 / 激活朱砂，从左向右展开 */
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 2px;
+  background: var(--vermilion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.28s var(--ease-out), background 0.2s;
 }
 
 .nav-link:hover {
   color: var(--vermilion);
-  border-bottom-color: var(--vermilion);
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
 }
 
 .nav-link.active {
   color: var(--ink);
-  border-bottom-color: var(--ink);
+}
+
+.nav-link.active::after {
+  background: var(--ink);
+  transform: scaleX(1);
 }
 
 .search-box {
@@ -131,6 +153,24 @@ onUnmounted(() => document.removeEventListener('keydown', handleShortcut))
   padding: var(--sp-2) var(--sp-4);
   flex: 1;
   max-width: 360px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-box:focus-within {
+  border-color: var(--vermilion);
+  box-shadow: 0 0 0 2px rgba(200, 68, 42, 0.12);
+}
+
+/* 清除按钮 pop 过渡 */
+.pop-enter-active,
+.pop-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s var(--ease-out);
+}
+
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: scale(0.4);
 }
 
 .search-clear {

@@ -8,7 +8,7 @@
   >
     <div v-if="loading" class="loading-tip">加载中…</div>
     <div v-else-if="!comments.length" class="empty-tip">暂无评论</div>
-    <ol v-else class="comment-tree">
+    <ol v-else ref="commentTreeRef" class="comment-tree">
       <li v-for="(c, i) in comments" :key="commentKey(c, i)" class="comment-item">
         <!-- 一级评论 -->
         <div class="comment-level-1">
@@ -62,10 +62,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from './ModalDialog.vue'
 import MediaGrid, { type MediaItem } from './MediaGrid.vue'
 import { formatContent, resolveModulePath } from '@/utils/formatContent'
+import { anime, isAnimated, markAnimated, removeAnimations, staggerEnter } from '@/composables/useMotion'
 import type { Comment } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -125,6 +126,32 @@ function commentMedia(c: Comment): MediaItem[] {
 function commentKey(c: Comment, i: number): string {
   return c.id ? String(c.id) : `k${i}`
 }
+
+// ============ 评论逐条滑入（前 30 条交错，其余直接落位） ============
+const commentTreeRef = ref<HTMLElement | null>(null)
+
+function revealComments() {
+  const tree = commentTreeRef.value
+  if (!tree) return
+  const fresh = Array.from(tree.querySelectorAll('.comment-item')).filter(c => !isAnimated(c)) as HTMLElement[]
+  if (!fresh.length) return
+  const animEls = fresh.slice(0, 30)
+  const rest = fresh.slice(30)
+  if (rest.length) anime.set(rest, { opacity: 1, translateY: 0 })
+  if (animEls.length) {
+    staggerEnter(tree, animEls, { gap: 65, translateY: 14, duration: 600 })
+    animEls.forEach(markAnimated)
+  }
+  rest.forEach(markAnimated)
+}
+
+watch(() => props.modelValue, (v) => {
+  if (v) setTimeout(() => revealComments(), 280)
+}, { immediate: true })
+
+onBeforeUnmount(() => {
+  if (commentTreeRef.value) removeAnimations(commentTreeRef.value)
+})
 </script>
 
 <style scoped>
