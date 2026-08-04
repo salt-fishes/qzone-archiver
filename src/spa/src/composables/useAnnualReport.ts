@@ -12,7 +12,14 @@ import { useMessagesStore } from '@/stores/messages'
 import { useUserStore } from '@/stores/user'
 import { usePhotosStore } from '@/stores/photos'
 import { useFriendsStore } from '@/stores/friends'
-import type { MessageIndex, AlbumIndex, FriendIndex } from '@/types'
+import { useVisitorsStore } from '@/stores/visitors'
+import { useFavoritesStore } from '@/stores/favorites'
+import { useSharesStore } from '@/stores/shares'
+import { useVideosStore } from '@/stores/videos'
+import { useBlogsStore } from '@/stores/blogs'
+import { useDiariesStore } from '@/stores/diaries'
+import { useBoardsStore } from '@/stores/boards'
+import type { MessageIndex, AlbumIndex, FriendIndex, VisitorIndex } from '@/types'
 
 /* ==================== 类型 ==================== */
 
@@ -62,6 +69,26 @@ export interface AnnualStats {
   earliestFriend: FriendIndex | null
   /** 亲密度最高的好友（intimacyScore 最大，可能为 null） */
   topIntimacyFriend: FriendIndex | null
+  /** 点赞总数（说说索引累加） */
+  totalLikes: number
+  /** 评论总数 */
+  totalComments: number
+  /** 单条最高赞 */
+  maxLikes: number
+  /** 单条最高评 */
+  maxComments: number
+  /** 累计字数（说说 title 长度累加，近似） */
+  totalChars: number
+  /** 访客总人次 */
+  visitorsTotal: number
+  /** 最常来访者 */
+  topVisitor: { uin: string; name: string; count: number } | null
+  /** 访客按年份分布 */
+  visitorYearCounts: { year: number; count: number }[]
+  /** 全模块档案计数（按所选年度过滤） */
+  moduleCounts: { label: string; value: number }[]
+  /** 好友分组分布 */
+  friendGroupCounts: { label: string; value: number; pct: number }[]
 }
 
 /** 需要加载全量数据后才能算出的内容（按当前年度计算） */
@@ -243,7 +270,14 @@ function describeOverview(s: AnnualStats): ReportChapter {
     title: '这一年的文字',
     text,
     accent: `${total.toLocaleString()} 条`,
-    data: { totals: { ...s } }
+    data: {
+      totals: { ...s },
+      cells: [
+        { label: '说说总数', value: total },
+        { label: '跨越年数', value: s.spanYears },
+        { label: '照片总数', value: s.totalPhotos }
+      ]
+    }
   }
 }
 
@@ -566,16 +600,178 @@ function describeConclusion(s: AnnualStats, d: AnnualDetail): ReportChapter {
   return { id: 'conclusion', num: '§ 13', title: '结语', text, accent: `${d.words.length ? d.words[0].word : ''}` }
 }
 
+/** § 全档案（各模块计数总览） */
+function describeModules(s: AnnualStats): ReportChapter {
+  const modules = s.moduleCounts
+  const total = modules.reduce((a, m) => a + m.value, 0)
+  const top = modules.length ? modules.reduce((a, b) => (b.value > a.value ? b : a)) : null
+  const scope = s.year === 'all' ? '这座档案馆' : `${s.year} 年，你的档案馆`
+  let text: string
+  if (!top || total === 0) {
+    text = `${scope}里，所有格子都静悄悄的。<em>从第一条记录开始，故事就有了着落。</em>`
+  } else if (top.value === 0) {
+    text = `${scope}暂时空白。<em>你更习惯把日子过在别处——没关系，生活本身就在替你记录。</em>`
+  } else {
+    text = `${scope}共收纳了 <em>${total.toLocaleString()}</em> 件档案。其中「<em>${top.label}</em>」最多，有 ${top.value.toLocaleString()} 件。`
+  }
+  return { id: 'modules', num: '§', title: '全档案', text, accent: `${total.toLocaleString()} 件`, data: { modules } }
+}
+
+/** § 互动总量 */
+function describeInteractions(s: AnnualStats): ReportChapter {
+  const likes = s.totalLikes
+  const comments = s.totalComments
+  const hasLikes = likes > 0
+  let text: string
+  if (comments === 0 && !hasLikes) {
+    text = '这些说说几乎没有留下互动，但安静不表示没人认真看过。<em>被记得，比被点赞更重要。</em>'
+  } else if (!hasLikes) {
+    text = `这些说说共收到了 <em>${comments.toLocaleString()}</em> 条评论。<em>每一次回应，都是隔空的一次点头。</em>`
+  } else if (likes >= 1000 || comments >= 1000) {
+    text = `这些说说累计收到 <em>${likes.toLocaleString()}</em> 次点赞、<em>${comments.toLocaleString()}</em> 条评论。你随手写下的日常，曾在很多人的屏幕上停留。`
+  } else {
+    text = `你的说说共收获了 <em>${likes}</em> 次点赞与 <em>${comments}</em> 条评论。<em>每一次回应，都是隔空的一次点头。</em>`
+  }
+  const cells: { label: string; value: number }[] = [
+    { label: '总评论', value: comments },
+    { label: '单条最高评', value: s.maxComments }
+  ]
+  if (hasLikes) {
+    cells.unshift({ label: '总点赞', value: likes })
+    cells.push({ label: '单条最高赞', value: s.maxLikes })
+  }
+  return {
+    id: 'interactions',
+    num: '§',
+    title: '互动总量',
+    text,
+    accent: `${(comments + likes).toLocaleString()} 次`,
+    data: { cells }
+  }
+}
+
+/** § 文字累积 */
+function describeWriting(s: AnnualStats): ReportChapter {
+  const chars = s.totalChars
+  const avg = s.totalMessages ? Math.round(chars / s.totalMessages) : 0
+  let text: string
+  if (chars === 0) {
+    text = '文字档案暂时空白——你更习惯用别的方式记下日子。<em>形式不同，珍重相同。</em>'
+  } else if (chars >= 10000) {
+    text = `你在说说里写下了约 <em>${(chars / 10000).toFixed(1)} 万字</em>，平均每条 ${avg} 字。这些字，都是你认真生活过的证据。`
+  } else {
+    text = `你的说说累计约 <em>${chars.toLocaleString()}</em> 字，平均每条 ${avg} 字。<em>字不在多，句句是真。</em>`
+  }
+  return {
+    id: 'writing',
+    num: '§',
+    title: '文字累积',
+    text,
+    accent: `${chars.toLocaleString()} 字`,
+    data: {
+      cells: [
+        { label: '累计字数', value: chars },
+        { label: '平均每条', value: avg }
+      ]
+    }
+  }
+}
+
+/** § 访客足迹 */
+function describeVisitors(s: AnnualStats): ReportChapter {
+  const total = s.visitorsTotal
+  if (total === 0) {
+    return {
+      id: 'visitors',
+      num: '§',
+      title: '访客足迹',
+      text: '访客记录还不多——也许你的空间安静，但安静有时也是一种偏爱。<em>来过的人，都被记住了。</em>',
+      accent: '0 人次',
+      data: { cells: [{ label: '访客总人次', value: 0 }], yearCounts: [] }
+    }
+  }
+  const tv = s.topVisitor
+  let text: string
+  if (tv && tv.count >= 5) {
+    text = `共有 <em>${total.toLocaleString()}</em> 人次到访。「<em>${tv.name}</em>」是最常来看你的人，出现了 ${tv.count} 次。<em>有些人嘴上不说，却一直在悄悄关注你。</em>`
+  } else if (tv) {
+    text = `共有 <em>${total.toLocaleString()}</em> 人次到访。「${tv.name}」来过 ${tv.count} 次，是与你最有默契的访客。`
+  } else {
+    text = `共有 <em>${total.toLocaleString()}</em> 人次到访过你的空间。<em>每一次来访，都是一次无声的惦记。</em>`
+  }
+  return {
+    id: 'visitors',
+    num: '§',
+    title: '访客足迹',
+    text,
+    accent: `${total.toLocaleString()} 人次`,
+    data: {
+      cells: [{ label: '访客总人次', value: total }],
+      topVisitor: tv,
+      yearCounts: s.visitorYearCounts
+    }
+  }
+}
+
+/** § 好友分布 */
+function describeFriendDist(s: AnnualStats): ReportChapter {
+  const groups = s.friendGroupCounts
+  const total = s.friendTotal
+  if (!groups.length) {
+    return {
+      id: 'friend-dist',
+      num: '§',
+      title: '好友分布',
+      text: '好友档案还空着——<em>真正的朋友，不需要被数据证明。</em>',
+      accent: '0 位',
+      data: { groups: [] }
+    }
+  }
+  const top = groups[0]
+  let text: string
+  if (total >= 100) {
+    text = `你的 <em>${total}</em> 位好友，分布在 ${groups.length} 个分组里。「${top.label}」人最多，有 ${top.value} 位。<em>圈子有大有小，真心最要紧。</em>`
+  } else {
+    text = `你有 <em>${total}</em> 位好友，分成了 ${groups.length} 个分组。「${top.label}」是最大的一群（${top.value} 人）。`
+  }
+  return {
+    id: 'friend-dist',
+    num: '§',
+    title: '好友分布',
+    text,
+    accent: `${total} 位`,
+    data: { groups }
+  }
+}
+
 /* ==================== 聚合与主 composable ==================== */
 
-function aggregateIndex(
-  index: MessageIndex[],
-  albumIndex: AlbumIndex[],
-  friendIndex: FriendIndex[],
-  year: number | 'all',
-  nickname: string,
+/** 按年度过滤的通用计数（数据项需含 time 字段，'YYYY-MM-DD…'） */
+function countByYear(arr: { time?: string }[], year: number | 'all'): number {
+  if (year === 'all') return arr.length
+  const p = String(year)
+  return arr.filter(x => (x.time || '').startsWith(p)).length
+}
+
+function aggregateIndex(input: {
+  messages: MessageIndex[]
+  albums: AlbumIndex[]
+  friends: FriendIndex[]
+  visitors: VisitorIndex[]
+  favorites: { time?: string }[]
+  shares: { time?: string }[]
+  videos: { time?: string }[]
+  blogs: { time?: string }[]
+  diaries: { time?: string }[]
+  boards: { time?: string }[]
+  year: number | 'all'
+  nickname: string
   uin: string
-): AnnualStats {
+}): AnnualStats {
+  const { messages, albums, friends, visitors, favorites, shares, videos, blogs, diaries, boards, year, nickname, uin } = input
+  const index = messages
+  const albumIndex = albums
+  const friendIndex = friends
   // 按年份过滤
   const filtered = year === 'all' ? index : index.filter(m => (m.time || '').startsWith(String(year)))
 
@@ -664,6 +860,71 @@ function aggregateIndex(
     ? intimacyFriends.reduce((a, b) => (b.intimacyScore > a.intimacyScore ? b : a))
     : null
 
+  // 互动总量 / 累计字数
+  let totalLikes = 0
+  let totalComments = 0
+  let totalChars = 0
+  let maxLikes = 0
+  let maxComments = 0
+  for (const m of filtered) {
+    totalLikes += m.likeCount || 0
+    totalComments += m.commentCount || 0
+    totalChars += (m.title || '').length
+    maxLikes = Math.max(maxLikes, m.likeCount || 0)
+    maxComments = Math.max(maxComments, m.commentCount || 0)
+  }
+
+  // 访客（按年度过滤）
+  const visitorScope = year === 'all' ? visitors : visitors.filter(v => (v.time || '').startsWith(String(year)))
+  const visitorsTotal = visitorScope.length
+  const visitorYearMap = new Map<number, number>()
+  const visitorFreq = new Map<string, { uin: string; name: string; count: number }>()
+  for (const v of visitorScope) {
+    const d = parseTime(v.time)
+    if (d) visitorYearMap.set(d.getFullYear(), (visitorYearMap.get(d.getFullYear()) || 0) + 1)
+    const key = String(v.uin ?? v.name ?? '')
+    if (!key) continue
+    const rec = visitorFreq.get(key) || { uin: key, name: v.name || key, count: 0 }
+    rec.count++
+    visitorFreq.set(key, rec)
+  }
+  const visitorYearCounts = Array.from(visitorYearMap.entries())
+    .map(([y, c]) => ({ year: y, count: c }))
+    .sort((a, b) => a.year - b.year)
+  let topVisitor: { uin: string; name: string; count: number } | null = null
+  visitorFreq.forEach(rec => {
+    if (!topVisitor || rec.count > topVisitor.count) topVisitor = rec
+  })
+
+  // 全模块档案计数（按年度过滤）
+  const albumScope = year === 'all' ? albumIndex : albumIndex.filter(a => (a.createTime || '').startsWith(String(year)))
+  const moduleCounts = [
+    { label: '说说', value: totalMessages },
+    { label: '日志', value: countByYear(blogs, year) },
+    { label: '日记', value: countByYear(diaries, year) },
+    { label: '相册', value: albumScope.length },
+    { label: '视频', value: countByYear(videos, year) },
+    { label: '留言', value: countByYear(boards, year) },
+    { label: '收藏', value: countByYear(favorites, year) },
+    { label: '分享', value: countByYear(shares, year) },
+    { label: '好友', value: friendTotal },
+    { label: '访客', value: visitorsTotal }
+  ]
+
+  // 好友分组分布
+  const friendGroupMap = new Map<string, number>()
+  for (const f of friendScope) {
+    const g = f.groupName || '(未分组)'
+    friendGroupMap.set(g, (friendGroupMap.get(g) || 0) + 1)
+  }
+  const friendGroupCounts = Array.from(friendGroupMap.entries())
+    .map(([label, value]) => ({
+      label,
+      value,
+      pct: friendScope.length ? Math.round((value / friendScope.length) * 100) : 0
+    }))
+    .sort((a, b) => b.value - a.value)
+
   return {
     year,
     nickname,
@@ -689,7 +950,17 @@ function aggregateIndex(
     earliestAlbum,
     friendTotal,
     earliestFriend,
-    topIntimacyFriend
+    topIntimacyFriend,
+    totalLikes,
+    totalComments,
+    maxLikes,
+    maxComments,
+    totalChars,
+    visitorsTotal,
+    topVisitor,
+    visitorYearCounts,
+    moduleCounts,
+    friendGroupCounts
   }
 }
 
@@ -702,17 +973,43 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
   const userStore = useUserStore()
   const photosStore = usePhotosStore()
   const friendsStore = useFriendsStore()
+  const visitorsStore = useVisitorsStore()
+  const favoritesStore = useFavoritesStore()
+  const sharesStore = useSharesStore()
+  const videosStore = useVideosStore()
+  const blogsStore = useBlogsStore()
+  const diariesStore = useDiariesStore()
+  const boardsStore = useBoardsStore()
+
+  // 初始化各模块索引（幂等；年报页为全屏路由，不经 SideBar 的 init）
+  messagesStore.init()
+  photosStore.init()
+  friendsStore.init()
+  visitorsStore.init()
+  favoritesStore.init()
+  sharesStore.init()
+  videosStore.init()
+  blogsStore.init()
+  diariesStore.init()
+  boardsStore.init()
 
   /** 索引级统计 */
   const stats = computed<AnnualStats>(() =>
-    aggregateIndex(
-      messagesStore.index,
-      photosStore.index,
-      friendsStore.index,
-      yearRef.value,
-      userStore.nickname,
-      String(userStore.uin || '')
-    )
+    aggregateIndex({
+      messages: messagesStore.index,
+      albums: photosStore.index,
+      friends: friendsStore.index,
+      visitors: visitorsStore.index,
+      favorites: favoritesStore.index,
+      shares: sharesStore.index,
+      videos: videosStore.index,
+      blogs: blogsStore.index,
+      diaries: diariesStore.index,
+      boards: boardsStore.index,
+      year: yearRef.value,
+      nickname: userStore.nickname,
+      uin: String(userStore.uin || '')
+    })
   )
 
   /** 全量说说原文（按年缓存，loadDetail 后填充），供按年度重新聚合 */
@@ -831,25 +1128,30 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
     }
   }
 
-  /** 13 个章节文案 */
+  /** 章节文案（自动按顺序编号） */
   const chapters = computed<ReportChapter[]>(() => {
     const s = stats.value
     const d = detail.value
     return [
       describeCover(s),
       describeOverview(s),
+      describeModules(s),
       describeFirst(s),
       describeYears(s),
       describeMonths(s),
       describeNight(s),
-      describeQuote(s, d),
+      describeInteractions(s),
       describeHighlight(s),
+      describeQuote(s, d),
+      describeWriting(s),
       describeAlbum(s),
+      describeVisitors(s),
+      describeFriendDist(s),
       describePeople(s, d),
       describeSpecialDay(s, d),
       describeWord(d),
       describeConclusion(s, d)
-    ]
+    ].map((ch, i) => ({ ...ch, num: `§ ${String(i + 1).padStart(2, '0')}` }))
   })
 
   /** 首页用的第一条说说（无需年报） */

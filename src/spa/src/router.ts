@@ -21,7 +21,7 @@ const router = createRouter({
   history: createWebHashHistory(),
   routes: [
     { path: '/', name: 'home', component: HomeView },
-    { path: '/report', name: 'report', component: AnnualReportView },
+    { path: '/report', name: 'report', component: AnnualReportView, meta: { fullscreen: true } },
     { path: '/messages', name: 'messages', component: MessagesView },
     { path: '/messages-deleted', name: 'messages-deleted', component: MessagesDeletedView },
     { path: '/visitors', name: 'visitors', component: VisitorsView },
