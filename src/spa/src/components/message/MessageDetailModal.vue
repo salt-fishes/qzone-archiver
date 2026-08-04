@@ -58,6 +58,26 @@
           共 {{ likeCount + commentCount + mediaItems.length }} 项互动
         </span>
       </div>
+
+      <!-- 最近访问（扩展端勾选「最近访问」后随说说一并备份） -->
+      <section v-if="visitorList.length" class="detail-visitors">
+        <h4 class="visitors-title">最近访问 <span class="visitors-count">{{ visitorsCount }}</span></h4>
+        <ul class="visitors-list">
+          <li v-for="(v, i) in visitorList" :key="`v-${v.uin}-${i}`" class="visitor-item">
+            <img
+              v-if="v.uin"
+              :src="qlogoUrl(v.uin)"
+              class="visitor-avatar"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              @error="hideAvatar"
+            />
+            <span class="visitor-name">{{ v.name || v.uin || '匿名' }}</span>
+            <span v-if="v.time" class="visitor-time">{{ formatUnixTime(v.time) }}</span>
+          </li>
+        </ul>
+      </section>
     </article>
 
     <!-- 子模态：点赞列表 -->
@@ -81,7 +101,7 @@ import ModalDialog from '@/components/common/ModalDialog.vue'
 import MediaGrid, { type MediaItem } from '@/components/common/MediaGrid.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import CommentsModal from '@/components/common/CommentsModal.vue'
-import { formatContent, resolveModulePath } from '@/utils/formatContent'
+import { formatContent, resolveModulePath, buildQzoneAvatarUrl, formatUnixTime } from '@/utils/formatContent'
 import type { Message, MediaImage, MediaVideo } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -152,8 +172,36 @@ const mediaItems = computed<MediaItem[]>(() => {
   return items
 })
 
-const likeCount = computed(() => props.message?.like?.total || 0)
-const likeList = computed(() => props.message?.like?.list || [])
+// 点赞：扩展端导出的结构可能是 like: {total,list} 或平铺 likes 数组，两者兼容
+const likeCount = computed(() => props.message?.like?.total || props.message?.likes?.length || 0)
+const likeList = computed(() => props.message?.like?.list || props.message?.likes || [])
+
+// 最近访问（扩展端勾选「最近访问」后写入 message.custom_visitor.list）
+interface VisitorRec {
+  uin?: number | string
+  name?: string
+  time?: number
+  [k: string]: any
+}
+const visitorList = computed<VisitorRec[]>(() => {
+  const cv = (props.message as any)?.custom_visitor
+  return cv?.list || []
+})
+const visitorsCount = computed(() => {
+  const cv = (props.message as any)?.custom_visitor
+  return cv?.totalNum || cv?.viewCount || visitorList.value.length
+})
+
+/** 访客在线头像（qlogo） */
+function qlogoUrl(uin: number | string | undefined): string {
+  return buildQzoneAvatarUrl(String(uin ?? ''))
+}
+
+/** 头像加载失败时隐藏（显示占位） */
+function hideAvatar(e: Event) {
+  const el = e.target as HTMLElement | null
+  if (el) el.style.display = 'none'
+}
 
 const commentList = computed(() => {
   const m = props.message
@@ -317,6 +365,66 @@ watch(visible, v => {
   margin-left: auto;
   font-family: var(--font-mono);
   font-size: 0.7rem;
+  color: var(--ink-3);
+}
+
+/* 最近访问 */
+.detail-visitors {
+  border-top: var(--line-double);
+  padding-top: var(--sp-4);
+}
+
+.visitors-title {
+  font-family: var(--font-serif-cn);
+  font-size: 0.95rem;
+  color: var(--ink);
+  margin: 0 0 var(--sp-3);
+}
+
+.visitors-count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--vermilion);
+  margin-left: var(--sp-1);
+}
+
+.visitors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.visitor-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.visitor-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: var(--line);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.visitor-name {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  max-width: 8em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.visitor-time {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
   color: var(--ink-3);
 }
 

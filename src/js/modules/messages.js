@@ -555,7 +555,7 @@ API.Messages.exportToSpa = async(messages) => {
                 commentCount: (m.commenttotal && m.commenttotal > 0)
                     ? m.commenttotal
                     : (m.custom_comments && m.custom_comments.length) || (m.commentlist && m.commentlist.length) || 0,
-                likeCount: (m.like && m.like.total) || 0
+                likeCount: (m.like && m.like.total) || (m.likes && m.likes.length) || 0
             };
         });
         await API.Common.writeJsonToJs('messagesIndex', index, dataFolder + '/messages-index.js');

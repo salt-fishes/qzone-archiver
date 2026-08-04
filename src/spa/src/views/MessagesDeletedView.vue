@@ -103,7 +103,7 @@ const indexArray = computed<DeletedMessageIndex[]>(() => {
     title: (m.content || '').substring(0, 50),
     imgCount: (m.custom_images && m.custom_images.length) || 0,
     commentCount: m.commenttotal || 0,
-    likeCount: (m.like && m.like.total) || 0,
+    likeCount: (m.like && m.like.total) || (m.likes && m.likes.length) || 0,
     _raw: m
   }))
 })

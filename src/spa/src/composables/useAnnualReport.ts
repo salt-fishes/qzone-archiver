@@ -993,12 +993,16 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
   diariesStore.init()
   boardsStore.init()
 
-  /** 索引级统计（用全量数据修正后的评论数，避免旧索引截断值） */
+  /** 索引级统计（用全量数据修正后的评论/点赞数，避免旧索引截断值） */
   const stats = computed<AnnualStats>(() =>
     aggregateIndex({
       messages: messagesStore.index.map(m => {
-        const fix = commentFix.value.get(m.tid)
-        return fix != null && fix > (m.commentCount || 0) ? { ...m, commentCount: fix } : m
+        const fc = commentFix.value.get(m.tid)
+        const fl = likeFix.value.get(m.tid)
+        let item = m
+        if (fc != null && fc > (item.commentCount || 0)) item = { ...item, commentCount: fc }
+        if (fl != null && fl > (item.likeCount || 0)) item = { ...item, likeCount: fl }
+        return item
       }),
       albums: photosStore.index,
       friends: friendsStore.index,
@@ -1027,6 +1031,13 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
    * loadDetail 后据此修正，使年报「互动高光」等统计不受旧索引截断影响。
    */
   const commentFix = ref<Map<string, number>>(new Map())
+
+  /**
+   * 真实点赞数修正表（tid → 点赞总数）。
+   * 旧备份的 SPA 索引把点赞数记为 like.total，而扩展端实际导出的是 likes 数组，
+   * loadDetail 后据此修正，使年报「互动高光」等统计显示真实点赞数。
+   */
+  const likeFix = ref<Map<string, number>>(new Map())
 
   /**
    * 按当前年度聚合的内容（金句 / 年度词 / 互动 / 特别的日子）
@@ -1112,8 +1123,13 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
           const commentTotal = (m as any).commenttotal
             || ((m as any).custom_comments && (m as any).custom_comments.length)
             || 0
+          // 真实点赞数（like.total 或平铺 likes 数组长度），供年报统计修正
+          const likeTotal = (m as any).like?.total
+            || ((m as any).likes && (m as any).likes.length)
+            || 0
           const tid = String((m as any).tid ?? '')
           if (commentTotal > 0 && tid) commentFix.value.set(tid, commentTotal)
+          if (likeTotal > 0 && tid) likeFix.value.set(tid, likeTotal)
           const raw = (m as any).content || m.title || ''
           const text = String(raw).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
           if (!text) continue

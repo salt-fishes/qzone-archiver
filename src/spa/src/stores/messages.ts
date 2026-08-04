@@ -15,6 +15,8 @@ export const useMessagesStore = defineStore('messages', () => {
 
   const loading = ref(false)
   const error = ref<string>('')
+  /** 是否已用全量数据增强索引（旧备份索引的点赞/评论数可能缺失或截断） */
+  const enriched = ref(false)
 
   /** 已删除说说列表（实验性，按需加载） */
   const deletedList = ref<DeletedMessage[]>([])
@@ -44,11 +46,54 @@ export const useMessagesStore = defineStore('messages', () => {
     error.value = ''
     try {
       index.value = await loadMessagesIndex()
+      // 旧备份索引的点赞数（like.total）与扩展端实际导出的 likes 数组不一致、
+      // 评论数可能被列表接口截断，加载后异步用全量数据回填真实值（本地文件，无网络开销）
+      enrichIndex()
     } catch (e: any) {
       error.value = e?.message || '说说索引加载失败'
       console.warn('[messagesStore] 说说索引加载失败，可能尚未导出', e)
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * 用全量数据（messages-YYYY.js）回填索引中的真实点赞/评论数：
+   * 扩展端索引 likeCount 取 like.total，但旧备份实际导出的是 likes 数组；
+   * commentCount 曾取内嵌评论长度（截断为 10）。此处按 tid 覆盖为真实值。
+   */
+  async function enrichIndex() {
+    if (enriched.value || index.value.length === 0) return
+    enriched.value = true
+    try {
+      const fixMap = new Map<string, { likeCount?: number; commentCount?: number }>()
+      for (const [year] of yearGroups.value) {
+        const items = await loadYear(year)
+        for (const m of items) {
+          const tid = String((m as any).tid ?? '')
+          if (!tid) continue
+          const likeTotal = (m as any).like?.total
+            || ((m as any).likes && (m as any).likes.length)
+            || 0
+          const commentTotal = (m as any).commenttotal
+            || ((m as any).custom_comments && (m as any).custom_comments.length)
+            || 0
+          if (likeTotal > 0 || commentTotal > 0) {
+            fixMap.set(tid, { likeCount: likeTotal, commentCount: commentTotal })
+          }
+        }
+      }
+      if (fixMap.size === 0) return
+      index.value = index.value.map(it => {
+        const fix = fixMap.get(String(it.tid))
+        if (!fix) return it
+        const next = { ...it }
+        if (fix.likeCount && fix.likeCount > (next.likeCount || 0)) next.likeCount = fix.likeCount
+        if (fix.commentCount && fix.commentCount > (next.commentCount || 0)) next.commentCount = fix.commentCount
+        return next
+      })
+    } catch (e) {
+      console.warn('[messagesStore] 索引互动数据增强失败', e)
     }
   }
 
@@ -117,6 +162,7 @@ export const useMessagesStore = defineStore('messages', () => {
     loadingYears,
     loading,
     error,
+    enriched,
     total,
     yearGroups,
     deletedList,
@@ -125,6 +171,7 @@ export const useMessagesStore = defineStore('messages', () => {
     deletedError,
     deletedTotal,
     init,
+    enrichIndex,
     loadYear,
     getMessageByTid,
     loadDeleted
