@@ -549,7 +549,12 @@ API.Messages.exportToSpa = async(messages) => {
                 thumbs: pics.slice(0, 4)
                     .map(p => p.custom_filepath || p.s_url || p.url3 || p.custom_url || p.url1 || p.b_url || '')
                     .filter(Boolean),
-                commentCount: (m.commentlist && m.commentlist.length) || 0,
+                // 评论数：优先取接口返回的真实总数（commenttotal），
+                // 其次取全量评论列表长度（commentlist_v6 拉全后 custom_comments 为全量），
+                // 最后回退到内嵌列表长度（列表接口内嵌评论可能被截断，如仅前 10 条）
+                commentCount: (m.commenttotal && m.commenttotal > 0)
+                    ? m.commenttotal
+                    : (m.custom_comments && m.custom_comments.length) || (m.commentlist && m.commentlist.length) || 0,
                 likeCount: (m.like && m.like.total) || 0
             };
         });

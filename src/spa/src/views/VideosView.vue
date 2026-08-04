@@ -35,22 +35,19 @@
         <p class="hint">试试其他关键字，或清除搜索查看全部。</p>
       </div>
 
-      <!-- 虚拟滚动列表 -->
-      <VirtualList
-        v-else
-        ref="listRef"
-        :items="results"
-        :key-of="(it: VideoIndex) => `${it.vid}_${it.uploadTime}`"
-        list-class="video-list"
-      >
-        <template #default="{ item }">
-          <VideoCard
-            :index="item"
-            :clickable="true"
-            @open="handleOpen"
-          />
-        </template>
-      </VirtualList>
+      <!-- 网格铺开（仿相册内部分批渲染：先渲染前 PAGE 条，滚动到末尾加载下一批） -->
+      <div v-else class="video-grid">
+        <VideoCard
+          v-for="(item, i) in visibleVideos"
+          :key="`${item.vid}_${item.uploadTime}`"
+          :index="item"
+          :clickable="true"
+          variant="grid"
+          :data-video-pos="globalPos(item)"
+          @open="handleOpen"
+        />
+      </div>
+      <div v-if="hasMore" ref="sentinelEl" class="video-grid-sentinel" aria-hidden="true"></div>
 
       <!-- 年份快速跳转 -->
       <div v-if="!query && videosStore.yearGroups.length > 1" class="year-jump">
@@ -78,10 +75,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVideosStore } from '@/stores/videos'
-import VirtualList from '@/components/common/VirtualList.vue'
 import VideoCard from '@/components/video/VideoCard.vue'
 import VideoDetailModal from '@/components/video/VideoDetailModal.vue'
 import { stripFormatting } from '@/utils/formatContent'
@@ -94,7 +90,13 @@ const videosStore = useVideosStore()
 // 客户端搜索：视频数据量通常适中，用普通 includes 过滤即可
 const query = ref('')
 
-const listRef = ref<InstanceType<typeof VirtualList> | null>(null)
+// 网格分页（仿相册内部分批渲染）：每批条数 + 滚动哨兵
+const PAGE = 48
+const visibleCount = ref(PAGE)
+const visibleVideos = computed(() => results.value.slice(0, visibleCount.value))
+const hasMore = computed(() => visibleCount.value < results.value.length)
+const sentinelEl = ref<HTMLElement | null>(null)
+let sentinelIO: IntersectionObserver | null = null
 
 // 详情模态状态
 const detailVisible = ref(false)
@@ -133,14 +135,20 @@ const searchMeta = computed(() => {
   return `共 ${videosStore.total} 条 · 按时间倒序`
 })
 
+/** 视频在完整索引中的位置（用于年份跳转定位） */
+function globalPos(item: VideoIndex): number {
+  return videosStore.index.indexOf(item)
+}
+
 // 路由 query → 搜索框
 watch(() => route.query.q, (q) => {
   const next = String(q || '')
   if (next !== query.value) query.value = next
 }, { immediate: true })
 
-// 搜索框 → 路由 query
+// 搜索框 → 路由 query；搜索变化时重置分页回第一屏
 watch(query, (v) => {
+  visibleCount.value = PAGE
   const next = { ...route.query }
   const q = (v || '').trim()
   if (q) next.q = q
@@ -170,9 +178,15 @@ async function handleOpen(idx: VideoIndex) {
 
 function jumpToYear(year: string) {
   const pos = videosStore.index.findIndex(item => (item.time || '').startsWith(year))
-  if (pos >= 0) {
-    listRef.value?.scrollToItem(pos)
+  if (pos < 0) return
+  // 目标尚未渲染（分批）时，先把分页扩到包含该位置
+  if (pos >= visibleCount.value) {
+    visibleCount.value = Math.ceil((pos + 1) / PAGE) * PAGE
   }
+  nextTick(() => {
+    const el = document.querySelector<HTMLElement>(`[data-video-pos="${pos}"]`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 // 侧边栏年份快速跳转：监听 route.query.year
@@ -194,6 +208,25 @@ onMounted(() => {
   if (videosStore.index.length === 0 && !videosStore.loading) {
     videosStore.init()
   }
+  // 滚动哨兵：进入视口时加载下一批（仿相册内部）
+  sentinelIO = new IntersectionObserver((entries) => {
+    if (entries[0]?.isIntersecting) {
+      visibleCount.value += PAGE
+    }
+  }, { rootMargin: '200px' })
+  if (sentinelEl.value) sentinelIO.observe(sentinelEl.value)
+})
+
+// 数据异步加载完成后哨兵才存在，需补观察
+watch([() => hasMore.value, () => !!sentinelEl.value], ([more, hasEl]) => {
+  if (more && hasEl && sentinelEl.value && sentinelIO) {
+    sentinelIO.observe(sentinelEl.value)
+  }
+}, { flush: 'post' })
+
+onBeforeUnmount(() => {
+  sentinelIO?.disconnect()
+  sentinelIO = null
 })
 </script>
 
@@ -204,6 +237,28 @@ onMounted(() => {
   border: var(--line);
   background: rgba(200, 68, 42, 0.04);
   font-family: var(--font-serif-cn);
+}
+
+/* 网格铺开（仿相册内部） */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border: var(--line);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.video-grid-sentinel {
+  height: 1px;
+}
+
+@media (max-width: 900px) {
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+  }
 }
 
 .error-tip .hint,

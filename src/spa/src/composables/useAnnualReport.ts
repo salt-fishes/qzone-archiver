@@ -896,13 +896,13 @@ function aggregateIndex(input: {
     if (!topVisitor || rec.count > topVisitor.count) topVisitor = rec
   })
 
-  // 全模块档案计数（按年度过滤）
+  // 全模块档案计数（按年度过滤；相册按照片总数计，而非相册个数）
   const albumScope = year === 'all' ? albumIndex : albumIndex.filter(a => (a.createTime || '').startsWith(String(year)))
   const moduleCounts = [
     { label: '说说', value: totalMessages },
     { label: '日志', value: countByYear(blogs, year) },
     { label: '日记', value: countByYear(diaries, year) },
-    { label: '相册', value: albumScope.length },
+    { label: '照片', value: albumScope.reduce((sum, a) => sum + (a.photoCount || 0), 0) },
     { label: '视频', value: countByYear(videos, year) },
     { label: '留言', value: countByYear(boards, year) },
     { label: '收藏', value: countByYear(favorites, year) },
@@ -993,10 +993,13 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
   diariesStore.init()
   boardsStore.init()
 
-  /** 索引级统计 */
+  /** 索引级统计（用全量数据修正后的评论数，避免旧索引截断值） */
   const stats = computed<AnnualStats>(() =>
     aggregateIndex({
-      messages: messagesStore.index,
+      messages: messagesStore.index.map(m => {
+        const fix = commentFix.value.get(m.tid)
+        return fix != null && fix > (m.commentCount || 0) ? { ...m, commentCount: fix } : m
+      }),
       albums: photosStore.index,
       friends: friendsStore.index,
       visitors: visitorsStore.index,
@@ -1016,6 +1019,14 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
   const rawItems = ref<RawMessage[]>([])
   const detailLoaded = ref(false)
   const detailLoading = ref(false)
+
+  /**
+   * 真实评论数修正表（tid → 评论总数）。
+   * 旧备份的 SPA 索引把评论数记为列表接口内嵌评论长度（可能截断为 10），
+   * 而全量数据（messages-YYYY.js）里 custom_comments / commenttotal 才是真实总数，
+   * loadDetail 后据此修正，使年报「互动高光」等统计不受旧索引截断影响。
+   */
+  const commentFix = ref<Map<string, number>>(new Map())
 
   /**
    * 按当前年度聚合的内容（金句 / 年度词 / 互动 / 特别的日子）
@@ -1097,6 +1108,12 @@ export function useAnnualReport(yearRef: Ref<number | 'all'>) {
         const list = await messagesStore.loadYear(y)
         const yearNum = parseInt(String(y), 10)
         for (const m of list) {
+          // 真实评论数（优先接口总数，回退全量评论列表长度），供年报统计修正
+          const commentTotal = (m as any).commenttotal
+            || ((m as any).custom_comments && (m as any).custom_comments.length)
+            || 0
+          const tid = String((m as any).tid ?? '')
+          if (commentTotal > 0 && tid) commentFix.value.set(tid, commentTotal)
           const raw = (m as any).content || m.title || ''
           const text = String(raw).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
           if (!text) continue
