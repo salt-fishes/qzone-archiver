@@ -2,7 +2,7 @@
 
 > 项目仓库：[https://github.com/salt-fishes/qzone-archiver](https://github.com/salt-fishes/qzone-archiver)
 > 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
-> 版本：v3.2.0（Manifest V3 + SPA 档案浏览器）
+> 版本：v3.3.0（Manifest V3 + SPA 档案浏览器）
 
 ---
 
@@ -430,4 +430,4 @@ npm run build      # 产物 → src/export/spa-dist/
 
 ---
 
-> 本文档基于 v3.2.0 代码整理，如有出入以源码为准。
+> 本文档基于 v3.3.0 代码整理，如有出入以源码为准。

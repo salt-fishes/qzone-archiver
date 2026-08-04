@@ -111,9 +111,16 @@ npm run build     # 构建到 src/export/spa-dist/
 
 1. 在 `src/spa` 下执行 `npm run build` 生成最新 SPA 产物
 2. 将 `src/` 目录打包为 zip（排除 `node_modules` / 测试数据）
-3. 打 tag 并创建 GitHub Release（参考 [v3.2.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.2.0)）
+3. 打 tag 并创建 GitHub Release（参考 [v3.3.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.3.0)）
 
 ## 更新日志
+
+### v3.3.0（2026-08-04）
+
+- **年报互动高光修正**：评论数不再被列表接口截断（此前评论多的说说显示为 10 条），改取真实评论总数，SPA 端自动用全量数据修正旧备份
+- **年报全档案修正**：照片模块改按「照片总数」统计（此前只算相册个数），档案总数恢复正确量级
+- **视频列表网格化**：视频页改为网格铺开（仿相册内部分批渲染），卡片更小更密集，滚动到底自动加载更多
+- **H.265 视频播放引导**：浏览器无法解码 H.265（HEVC）视频时，提示可将视频发送到微信 / QQ，或用 VLC 等主流播放软件打开，并附文件路径
 
 ### v3.2.0（2026-08-04）
 
