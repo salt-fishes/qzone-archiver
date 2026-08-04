@@ -86,13 +86,6 @@ async function handleLoad(e: Event) {
   display: block;
   border: var(--line);
   background: var(--paper-2);
-  animation: cover-fade 0.35s ease;
-}
-
-/* 封面图加载完成淡入 */
-@keyframes cover-fade {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 /* fill：填满父容器（照片网格单元 / 媒体网格单元） */

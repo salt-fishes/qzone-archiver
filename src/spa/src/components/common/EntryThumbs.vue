@@ -22,9 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { resolveModulePath } from '@/utils/formatContent'
-import { staggerEnter, removeAnimations } from '@/composables/useMotion'
 
 /**
  * 列表条目缩略图横排组件
@@ -65,19 +64,6 @@ const extra = computed(() => {
   const total = props.total ?? props.thumbs.length
   return total > props.max ? total - props.max : 0
 })
-
-const rootRef = ref<HTMLElement | null>(null)
-
-// 缩略图首次渲染交错弹出（虚拟列表复用节点不重播）
-onMounted(() => {
-  if (rootRef.value) {
-    staggerEnter(rootRef.value, '.entry-thumb', { gap: 60, translateY: 10, duration: 560 })
-  }
-})
-
-onBeforeUnmount(() => {
-  if (rootRef.value) removeAnimations(rootRef.value)
-})
 </script>
 
 <style scoped>
@@ -104,7 +90,7 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.25s var(--ease-out);
+  transition: filter 0.25s var(--ease-out);
 }
 
 .entry-thumb:hover {
@@ -112,7 +98,7 @@ onBeforeUnmount(() => {
 }
 
 .entry-thumb:hover img {
-  transform: scale(1.08);
+  filter: brightness(1.08);
 }
 
 .thumb-placeholder {

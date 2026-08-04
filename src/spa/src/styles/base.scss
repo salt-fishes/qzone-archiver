@@ -238,7 +238,7 @@ a {
   padding: 1px 6px;
 }
 
-// 加载状态
+// 加载状态：文本提示
 .app-loading {
   display: flex;
   align-items: center;
@@ -251,21 +251,61 @@ a {
   text-transform: uppercase;
 }
 
-// 入场动画
-@keyframes rise {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+// 首页等自定义骨架容器（静态占位，无动画）
+.app-loading-skeleton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
 }
 
-@keyframes ink-spread {
-  from { opacity: 0; letter-spacing: 0.3em; }
-  to { opacity: 1; letter-spacing: -0.03em; }
+// ============ 骨架屏占位（静态，无扫过动画） ============
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid rgba(26, 22, 18, 0.08);
+  border-radius: 3px;
+}
+
+.skeleton-line {
+  height: 12px;
+  margin: var(--sp-2) 0;
+}
+
+.skeleton-block {
+  height: 72px;
+}
+
+.skeleton-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.skeleton-card {
+  height: 96px;
+  border-radius: 4px;
+}
+
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 
 // 响应式
 @media (max-width: 900px) {
   .frame {
-    grid-template-columns: 1fr;
-    padding: var(--sp-5);
+    // 移动端：左侧 52px 窄图标栏 + 内容区（完整侧栏收纳为抽屉）
+    grid-template-columns: 52px 1fr;
+    gap: var(--sp-4);
+    padding: var(--sp-4);
   }
 }

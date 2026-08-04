@@ -17,6 +17,7 @@
             :src="avatarSrc"
             :alt="displayName"
             class="avatar"
+            @error="onAvatarError"
           />
           <span v-else class="avatar avatar-placeholder">{{ avatarFallback }}</span>
         </div>
@@ -57,9 +58,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
-import { formatUnixTime, resolveModulePath } from '@/utils/formatContent'
+import { formatUnixTime, resolveCommonImagePath, buildQzoneAvatarUrl } from '@/utils/formatContent'
 import type { Friend, FriendIndex } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -78,8 +79,6 @@ const visible = computed({
   set: v => emit('update:modelValue', v)
 })
 
-const MODULE = 'Friends'
-
 // 主标题：备注名 → 昵称 → QQ 号
 const displayName = computed(() => {
   const f = props.friend
@@ -92,14 +91,30 @@ const titleText = computed(() => {
   return uin ? `${displayName.value} · ${uin}` : displayName.value
 })
 
-// 头像地址：优先全量数据的 custom_avatar_filepath（经 resolveModulePath 转换）
+// 头像：本地 Common/images/ → 在线 qlogo → 占位字
+const avatarState = ref<'local' | 'remote' | 'none'>('local')
+
 const avatarSrc = computed(() => {
   const f = props.friend
-  if (!f) return ''
-  if (f.custom_avatar_filepath) return resolveModulePath(f.custom_avatar_filepath, MODULE)
+  if (!f || avatarState.value === 'none') return ''
+  if (avatarState.value === 'remote') {
+    const uin = f.uin != null && f.uin !== '' ? String(f.uin) : ''
+    return buildQzoneAvatarUrl(uin)
+  }
+  // 优先本地已下载头像（custom_avatar = 'Common/images/{uin}'）
+  if (f.custom_avatar) return resolveCommonImagePath(f.custom_avatar)
   if (f.avatar && /^https?:\/\//i.test(f.avatar)) return f.avatar
   return ''
 })
+
+function onAvatarError() {
+  if (avatarState.value === 'local') {
+    // 本地文件缺失，回退到在线头像
+    avatarState.value = 'remote'
+    return
+  }
+  avatarState.value = 'none'
+}
 
 // 无头像时的占位字符（取 displayName 首字）
 const avatarFallback = computed(() => {

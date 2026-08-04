@@ -7,14 +7,21 @@
       <span class="section-meta">{{ userStore.isReady ? '已就绪' : '加载中…' }}</span>
     </div>
 
-    <!-- 加载/错误状态 -->
-    <div v-if="userStore.loading" class="app-loading">正在加载用户信息…</div>
+    <!-- 加载状态：骨架占位（数据到达前的中间态，避免空白/内容闪现） -->
+    <div v-if="userStore.loading" class="app-loading-skeleton">
+      <div class="skeleton-list" style="max-width: 560px;">
+        <div class="skeleton skeleton-card"></div>
+        <div class="skeleton-grid">
+          <div v-for="i in 6" :key="i" class="skeleton skeleton-block"></div>
+        </div>
+      </div>
+    </div>
     <div v-else-if="userStore.error" class="error-tip">
       <p>{{ userStore.error }}</p>
       <p class="hint">提示：请先通过扩展导出 SPA 备份，再双击 index.html 打开。</p>
     </div>
 
-    <!-- 用户信息卡 -->
+    <!-- 用户信息卡（数据就绪后颜色扫过显现） -->
     <div v-else-if="userStore.isReady" class="user-card">
       <div class="user-avatar">
         <img v-if="userStore.avatar" :src="userStore.avatar" :alt="userStore.nickname" />
@@ -50,18 +57,20 @@
           <span v-if="!firstMessage.imgCount && !firstMessage.commentCount && !firstMessage.likeCount" class="first-stat muted">无互动 · 安静的开始</span>
         </div>
       </div>
-      <RouterLink to="/report" class="first-more" title="查看年度档案">
-        <span class="first-more-label">查看更多</span>
-        <span class="first-more-arrow">→</span>
-      </RouterLink>
     </section>
     <section v-else-if="userStore.isReady" class="first-card first-card-empty">
       <p class="first-text">还没有找到第一条说说——<em>起点未至，故事待写。</em></p>
-      <RouterLink to="/report" class="first-more" title="查看年度档案">
-        <span class="first-more-label">查看更多</span>
-        <span class="first-more-arrow">→</span>
-      </RouterLink>
     </section>
+
+    <!-- QQ空间报告：年度报告独立入口 -->
+    <RouterLink to="/report" class="report-entry" v-if="userStore.isReady" title="查看 QQ 空间年度报告">
+      <span class="report-entry-mark">◈</span>
+      <span class="report-entry-text">
+        <span class="report-entry-kicker">Annual Archive · 年度档案</span>
+        <span class="report-entry-title">QQ空间报告</span>
+      </span>
+      <span class="report-entry-arrow">→</span>
+    </RouterLink>
 
     <!-- 入口提示 -->
     <div class="section-head" v-if="userStore.isReady">
@@ -93,18 +102,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useMessagesStore } from '@/stores/messages'
-import { countUp, enter, staggerEnter } from '@/composables/useMotion'
 
 const userStore = useUserStore()
 const messagesStore = useMessagesStore()
 
 const homeRef = ref<HTMLElement | null>(null)
-let userCardAnimated = false
-let gridAnimated = false
-let firstAnimated = false
 
 /** 首页挂载时加载说说索引（首条说说展示） */
 onMounted(() => {
@@ -117,54 +122,6 @@ const firstMessage = computed(() => {
   if (!list.length) return null
   return [...list].sort((a, b) => (a.time || '').localeCompare(b.time || ''))[0]
 })
-
-// 用户信息就绪后：用户卡 + 入口网格 + 页脚入场
-watch(() => userStore.isReady, (ready) => {
-  if (!ready || !homeRef.value) return
-  nextTick(() => {
-    const root = homeRef.value
-    if (!root) return
-    const card = root.querySelector('.user-card')
-    if (card && !userCardAnimated) {
-      userCardAnimated = true
-      staggerEnter(card, '.user-avatar, .user-info > *', { gap: 110, translateY: 16, duration: 680 })
-    }
-    const grid = root.querySelector('.entry-grid')
-    if (grid && !gridAnimated) {
-      gridAnimated = true
-      staggerEnter(grid, '.entry-cell', { gap: 90, translateY: 22, scale: 0.98, duration: 700 })
-      // 各模块数字滚动
-      const nums = Array.from(grid.querySelectorAll('.entry-num'))
-      nums.forEach((el, i) => {
-        const n = moduleEntries.value[i]?.count || 0
-        countUp(el, n, { delay: 200 + i * 90, duration: 1000, format: formatStatNum })
-      })
-    }
-    const colophon = root.querySelector('.colophon')
-    if (colophon) enter(colophon, { translateY: 12, duration: 800 })
-  })
-}, { immediate: true })
-
-// 第一条说说就绪后：卡片三列交错入场 + 日期数字滚动
-watch(() => firstMessage.value, (m) => {
-  if (!m || !homeRef.value || firstAnimated) return
-  firstAnimated = true
-  nextTick(() => {
-    const root = homeRef.value
-    if (!root) return
-    const card = root.querySelector('.first-card')
-    if (!card) return
-    staggerEnter(card, '.first-date, .first-body, .first-more', { gap: 120, translateY: 18, duration: 700 })
-    const dayEl = card.querySelector('.first-date-day')
-    if (dayEl && firstDay.value) {
-      countUp(dayEl, Number(firstDay.value), {
-        delay: 320,
-        duration: 800,
-        format: n => String(n).padStart(2, '0')
-      })
-    }
-  })
-}, { immediate: true })
 
 /** 首条说说时间解析：'YYYY-MM-DD HH:mm:ss' */
 const firstDate = computed(() => {
@@ -243,13 +200,6 @@ function formatStatNum(n: number): string {
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: avatar-float 4.5s ease-in-out infinite;
-}
-
-/* 头像轻微浮动 */
-@keyframes avatar-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
 }
 
 .user-avatar img {
@@ -360,41 +310,67 @@ function formatStatNum(n: number): string {
   border-style: dotted;
 }
 
-.first-more {
-  flex-shrink: 0;
-  align-self: center;
+.first-card-empty .first-text {
+  -webkit-line-clamp: unset;
+}
+
+/* QQ空间报告：年度报告独立入口 */
+.report-entry {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border: var(--line);
-  color: var(--ink-2);
+  gap: var(--sp-4);
+  margin: var(--sp-5) 0;
+  padding: var(--sp-4) var(--sp-5);
+  border: var(--line-double);
+  background: linear-gradient(180deg, rgba(234, 224, 197, 0.35), rgba(200, 68, 42, 0.05));
+  color: var(--ink);
   text-decoration: none;
   transition: all 0.15s;
 }
 
-.first-more:hover {
-  background: var(--vermilion);
+.report-entry:hover {
+  background: var(--paper-2);
   border-color: var(--vermilion);
-  color: var(--paper);
 }
 
-.first-more-label {
-  font-family: var(--font-serif-cn);
-  font-size: 0.9rem;
+.report-entry-mark {
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--vermilion);
 }
 
-.first-more-arrow {
+.report-entry-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.report-entry-kicker {
   font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.report-entry-title {
+  font-family: var(--font-serif-cn);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.report-entry-arrow {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  color: var(--vermilion);
   transition: transform 0.15s;
 }
 
-.first-more:hover .first-more-arrow {
+.report-entry:hover .report-entry-arrow {
   transform: translateX(3px);
-}
-
-.first-card-empty .first-text {
-  -webkit-line-clamp: unset;
 }
 
 @media (max-width: 720px) {
@@ -417,9 +393,6 @@ function formatStatNum(n: number): string {
   }
   .first-date-rest {
     margin-top: 0;
-  }
-  .first-more {
-    align-self: flex-end;
   }
 }
 
@@ -450,12 +423,11 @@ function formatStatNum(n: number): string {
   padding: var(--sp-5);
   background: var(--paper);
   color: var(--ink);
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.2s ease;
 }
 
 .entry-cell:hover {
   background: var(--paper-2);
-  transform: translateY(-2px);
 }
 
 .entry-cell-empty {

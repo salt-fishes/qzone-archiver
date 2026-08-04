@@ -297,7 +297,7 @@ API.Friends.exportToSpa = async(friends) => {
                 care: !!f.care,
                 isFriend: f.isFriend !== false,
                 deleted: !!f.deleted,
-                hasAvatar: !!f.custom_avatar_filepath || !!f.avatar
+                hasAvatar: !!f.custom_avatar || !!f.avatar
             };
         });
         await API.Common.writeJsonToJs('friendsIndex', index, dataFolder + '/friends-index.js');

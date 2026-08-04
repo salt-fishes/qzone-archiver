@@ -171,7 +171,6 @@ import ModalDialog from '@/components/common/ModalDialog.vue'
 import VideoCover from '@/components/common/VideoCover.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
-import { anime, isAnimated, markAnimated, removeAnimations, staggerEnter } from '@/composables/useMotion'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
 /** 相册评论（结构沿用扩展端，与 ShareComment/VideoComment 兼容） */
@@ -266,26 +265,6 @@ function loadMore() {
   }
 }
 
-// ============ 照片网格交错入场（首批前 24 张交错，其余直接落位；滚动新批同样处理） ============
-const photoGridRef = ref<HTMLElement | null>(null)
-
-watch(() => mediaList.value.length, () => {
-  nextTick(() => {
-    const grid = photoGridRef.value
-    if (!grid) return
-    const fresh = Array.from(grid.querySelectorAll('.photo-cell')).filter(c => !isAnimated(c)) as HTMLElement[]
-    if (!fresh.length) return
-    const animEls = fresh.slice(0, 24)
-    const rest = fresh.slice(24)
-    if (rest.length) anime.set(rest, { opacity: 1, translateY: 0 })
-    if (animEls.length) {
-      staggerEnter(grid, animEls, { gap: 32, translateY: 12, duration: 520 })
-      animEls.forEach(markAnimated)
-    }
-    rest.forEach(markAnimated)
-  })
-})
-
 // 分批加载哨兵：IntersectionObserver 检测滚动到网格末尾
 const sentinelEl = ref<HTMLElement | null>(null)
 let observer: IntersectionObserver | null = null
@@ -307,7 +286,6 @@ function setupObserver() {
 
 onBeforeUnmount(() => {
   observer?.disconnect()
-  if (photoGridRef.value) removeAnimations(photoGridRef.value)
 })
 
 const comments = computed<AlbumComment[]>(() => (props.album?.comments as AlbumComment[]) || [])
@@ -497,13 +475,12 @@ watch([visible, () => photoList.value.length], ([v]) => {
   cursor: pointer;
   overflow: hidden;
   aspect-ratio: 1;
-  transition: transform 0.15s, border-color 0.15s;
+  transition: border-color 0.2s ease;
   display: block;
 }
 
 .photo-cell:hover {
   border-color: var(--vermilion);
-  transform: translateY(-2px);
 }
 
 .photo-cell img {

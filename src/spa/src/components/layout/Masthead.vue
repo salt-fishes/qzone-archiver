@@ -2,16 +2,33 @@
   <header ref="mastheadRef" class="masthead">
     <div class="masthead-grid">
       <div class="masthead-left">
-        <span class="meta">Personal Archive</span>
-        <span class="meta">{{ issueLabel }}</span>
+        <template v-if="userStore.isReady">
+          <span class="meta">Personal Archive</span>
+          <span class="meta">{{ issueLabel }}</span>
+        </template>
+        <template v-else>
+          <div class="skeleton skeleton-line" style="width: 120px;"></div>
+          <div class="skeleton skeleton-line" style="width: 80px;"></div>
+        </template>
       </div>
       <div class="masthead-center">
         <h1 class="masthead-title">QQ空间<em>档案</em></h1>
-        <div class="masthead-sub">Est. 2005 · {{ nickname || 'Archive' }}</div>
+        <template v-if="userStore.isReady">
+          <div class="masthead-sub">Est. 2005 · {{ nickname || 'Archive' }}</div>
+        </template>
+        <template v-else>
+          <div class="skeleton skeleton-line" style="width: 180px; margin: var(--sp-2) auto;"></div>
+        </template>
       </div>
       <div class="masthead-right">
-        <span class="meta">№ {{ uin || '——' }}</span>
-        <span class="meta">共 <span ref="countRef">{{ totalRecords.toLocaleString() }}</span> 条记录</span>
+        <template v-if="userStore.isReady">
+          <span class="meta">№ {{ uin || '——' }}</span>
+          <span class="meta">共 <span ref="countRef">{{ totalRecords.toLocaleString() }}</span> 条记录</span>
+        </template>
+        <template v-else>
+          <div class="skeleton skeleton-line" style="width: 90px;"></div>
+          <div class="skeleton skeleton-line" style="width: 110px;"></div>
+        </template>
       </div>
     </div>
     <NavBar />
@@ -21,7 +38,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { countUp, enter, anime, reducedMotion, staggerEnter } from '@/composables/useMotion'
 import NavBar from './NavBar.vue'
 
 const userStore = useUserStore()
@@ -40,38 +56,14 @@ const issueLabel = computed(() => {
   return `Vol. ${year} · No.${month}`
 })
 
-// 顶部 meta 信息交错入场（主标题沿用 CSS ink-spread）
 onMounted(() => {
   if (!userStore.isReady) userStore.init()
-  const root = mastheadRef.value
-  if (!root) return
-  enter(root.querySelector('.masthead-sub') as HTMLElement, { translateY: 12, duration: 720 })
-  staggerEnter(root, '.masthead-left .meta, .masthead-right .meta', {
-    gap: 140,
-    translateY: 14,
-    duration: 720
-  })
-  // 主标题墨迹展开（字间距收拢 + 淡入），替代原有 CSS ink-spread
-  const titleEl = root.querySelector('.masthead-title')
-  if (titleEl && !reducedMotion()) {
-    anime.set(titleEl, { opacity: 0, letterSpacing: '0.35em' })
-    anime({
-      targets: titleEl,
-      opacity: 1,
-      letterSpacing: '-0.03em',
-      duration: 1000,
-      delay: 120,
-      easing: 'easeOutCubic'
-    })
-  } else if (titleEl) {
-    anime.set(titleEl, { opacity: 1, letterSpacing: '-0.03em' })
-  }
 })
 
-// 记录总数就绪后数字滚动（仅一次）
+// 记录总数就绪后数字直接显示
 watch(() => userStore.totalRecords, (v) => {
   if (v > 0 && countRef.value) {
-    countUp(countRef.value, v, { duration: 900, format: n => n.toLocaleString() })
+    countRef.value.textContent = v.toLocaleString()
   }
 })
 </script>
@@ -135,19 +127,38 @@ watch(() => userStore.totalRecords, (v) => {
   margin-top: var(--sp-2);
 }
 
-@keyframes ink-spread {
-  from { opacity: 0; letter-spacing: 0.3em; }
-  to { opacity: 1; letter-spacing: -0.03em; }
-}
-
+/* 移动端：压缩顶部导航高度与边距（侧边距由 48px 降至 12px，标题缩小约 60%） */
 @media (max-width: 900px) {
+  .masthead {
+    padding: var(--sp-2) var(--sp-3) var(--sp-2);
+  }
   .masthead-grid {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-1);
+  }
+  .masthead-center {
+    order: -1;
   }
   .masthead-left,
   .masthead-right {
-    text-align: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
+    gap: var(--sp-3);
+    font-size: 0.6rem;
+    text-align: center;
+  }
+  .masthead-title {
+    font-size: 1.3rem;
+    letter-spacing: -0.01em;
+  }
+  .masthead-sub {
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+    margin-top: var(--sp-1);
   }
 }
 </style>

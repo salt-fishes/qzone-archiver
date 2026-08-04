@@ -13,13 +13,20 @@
         <!-- 一级评论 -->
         <div class="comment-level-1">
           <div class="comment-avatar">
-            <img v-if="avatarUrl(c)" :src="avatarUrl(c)" :alt="name(c)" loading="lazy" />
+            <img
+              v-if="avatarUrl(c)"
+              :src="avatarUrl(c)"
+              :data-uin="uinOf(c) || ''"
+              :alt="name(c)"
+              loading="lazy"
+              @error="onAvatarError"
+            />
             <span v-else class="comment-avatar-placeholder">{{ (name(c) || '?')[0] }}</span>
           </div>
           <div class="comment-body">
             <div class="comment-meta">
               <span class="comment-name">{{ name(c) }}</span>
-              <span v-if="c.uin" class="comment-uin">№ {{ c.uin }}</span>
+              <span v-if="uinOf(c)" class="comment-uin">№ {{ uinOf(c) }}</span>
               <span class="comment-time">{{ formatTime(c) }}</span>
             </div>
             <div class="comment-text" v-html="formatContent(c.content || '（无内容）')"></div>
@@ -35,13 +42,20 @@
         <ol v-if="c.list_3 && c.list_3.length" class="comment-level-2">
           <li v-for="(r, j) in c.list_3" :key="commentKey(r, j)" class="comment-reply">
             <div class="comment-avatar small">
-              <img v-if="avatarUrl(r)" :src="avatarUrl(r)" :alt="name(r)" loading="lazy" />
+              <img
+                v-if="avatarUrl(r)"
+                :src="avatarUrl(r)"
+                :data-uin="uinOf(r) || ''"
+                :alt="name(r)"
+                loading="lazy"
+                @error="onAvatarError"
+              />
               <span v-else class="comment-avatar-placeholder">{{ (name(r) || '?')[0] }}</span>
             </div>
             <div class="comment-body">
               <div class="comment-meta">
                 <span class="comment-name">{{ name(r) }}</span>
-                <span v-if="r.uin" class="comment-uin">№ {{ r.uin }}</span>
+                <span v-if="uinOf(r)" class="comment-uin">№ {{ uinOf(r) }}</span>
                 <span class="comment-time">{{ formatTime(r) }}</span>
               </div>
               <div class="comment-text" v-html="formatContent(r.content || '（无内容）', { plainMentions: true })"></div>
@@ -62,11 +76,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import ModalDialog from './ModalDialog.vue'
 import MediaGrid, { type MediaItem } from './MediaGrid.vue'
-import { formatContent, resolveModulePath } from '@/utils/formatContent'
-import { anime, isAnimated, markAnimated, removeAnimations, staggerEnter } from '@/composables/useMotion'
+import { formatContent, resolveModulePath, buildQzoneAvatarUrl, resolveCommonImagePath } from '@/utils/formatContent'
 import type { Comment } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -91,20 +104,45 @@ const titleText = computed(() => {
 })
 
 function name(c: Comment): string {
-  return c.nick || c.name || '匿名'
+  const p = c.poster
+  return p?.name || p?.nick || p?.nickname || c.nick || c.name || '匿名'
+}
+
+function uinOf(c: Comment): string | number | undefined {
+  return c.uin || c.poster?.uin || c.poster?.id
 }
 
 function avatarUrl(c: Comment): string {
-  const p = (c as any).portrait || (c as any).avatar || ''
-  if (!p) return ''
-  if (p.startsWith('http')) return p
-  if (p.startsWith('//')) return 'https:' + p
-  return p
+  const direct = (c as any).portrait || (c as any).avatar || ''
+  if (direct && /^https?:/.test(direct)) return direct
+  if (direct && direct.startsWith('//')) return 'https:' + direct
+  // 无直链头像时，用 uin 指向本地已下载头像（Common/images/{uin}），缺失时 @error 回退在线 qlogo
+  const uin = uinOf(c)
+  return uin ? resolveCommonImagePath(`Common/images/${uin}`) : ''
+}
+
+function onAvatarError(e: Event) {
+  const img = e.target as HTMLImageElement
+  const src = img.src
+  if (src.includes('qlogo') || src.startsWith('data:')) {
+    // 在线头像也失败：隐藏，避免破图
+    img.style.display = 'none'
+    return
+  }
+  // 本地文件缺失 → 换成在线 qlogo 头像
+  const uin = (img as any).dataset?.uin || ''
+  if (uin) img.src = buildQzoneAvatarUrl(uin)
+  else img.style.display = 'none'
 }
 
 function formatTime(c: Comment): string {
-  const t = c.custom_create_time || (c.create_time ? new Date(c.create_time * 1000).toISOString().replace('T', ' ').substring(0, 16) : '')
-  return t || '——'
+  if (c.custom_create_time) return c.custom_create_time
+  const ts = c.create_time || c.postTime
+  if (ts) {
+    const d = new Date(Number(ts) * 1000)
+    if (!Number.isNaN(d.getTime())) return d.toISOString().replace('T', ' ').substring(0, 16)
+  }
+  return '——'
 }
 
 /** 提取评论图片，按 custom_filepath > custom_url > o_url > hd_url > b_url > s_url > url1 优先级 */
@@ -126,32 +164,6 @@ function commentMedia(c: Comment): MediaItem[] {
 function commentKey(c: Comment, i: number): string {
   return c.id ? String(c.id) : `k${i}`
 }
-
-// ============ 评论逐条滑入（前 30 条交错，其余直接落位） ============
-const commentTreeRef = ref<HTMLElement | null>(null)
-
-function revealComments() {
-  const tree = commentTreeRef.value
-  if (!tree) return
-  const fresh = Array.from(tree.querySelectorAll('.comment-item')).filter(c => !isAnimated(c)) as HTMLElement[]
-  if (!fresh.length) return
-  const animEls = fresh.slice(0, 30)
-  const rest = fresh.slice(30)
-  if (rest.length) anime.set(rest, { opacity: 1, translateY: 0 })
-  if (animEls.length) {
-    staggerEnter(tree, animEls, { gap: 65, translateY: 14, duration: 600 })
-    animEls.forEach(markAnimated)
-  }
-  rest.forEach(markAnimated)
-}
-
-watch(() => props.modelValue, (v) => {
-  if (v) setTimeout(() => revealComments(), 280)
-}, { immediate: true })
-
-onBeforeUnmount(() => {
-  if (commentTreeRef.value) removeAnimations(commentTreeRef.value)
-})
 </script>
 
 <style scoped>

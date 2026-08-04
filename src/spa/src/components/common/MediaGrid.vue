@@ -83,9 +83,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import VideoCover from '@/components/common/VideoCover.vue'
-import { staggerEnter, removeAnimations } from '@/composables/useMotion'
 
 export interface MediaItem {
   src: string
@@ -99,19 +98,6 @@ export interface MediaItem {
 const props = defineProps<{
   mediaItems: MediaItem[]
 }>()
-
-// ============ 网格交错入场 ============
-const gridRef = ref<HTMLElement | null>(null)
-
-onMounted(() => {
-  if (gridRef.value) {
-    staggerEnter(gridRef.value, '.media-cell', { gap: 60, translateY: 16, scale: 0.98, duration: 640 })
-  }
-})
-
-onBeforeUnmount(() => {
-  if (gridRef.value) removeAnimations(gridRef.value)
-})
 
 // ============ 就地预览 ============
 const previewIndex = ref(-1)
@@ -173,12 +159,11 @@ watch(() => props.mediaItems, () => {
   max-width: 100%;
   min-width: 0;
   padding: 0;
-  transition: border-color 0.15s, transform 0.15s;
+  transition: border-color 0.2s ease;
 }
 
 .media-cell:hover {
   border-color: var(--vermilion);
-  transform: translateY(-2px);
 }
 
 .media-cell-video {
@@ -192,11 +177,11 @@ watch(() => props.mediaItems, () => {
   max-width: 100%;
   max-height: 100%;
   display: block;
-  transition: transform 0.3s var(--ease-out);
+  transition: filter 0.25s var(--ease-out);
 }
 
 .media-cell:hover img {
-  transform: scale(1.06);
+  filter: brightness(1.08);
 }
 
 .media-cell::after {
@@ -233,13 +218,6 @@ watch(() => props.mediaItems, () => {
   border: 2px solid var(--paper);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
   transition: transform 0.2s var(--ease-out), background 0.2s;
-  animation: video-icon-pulse 3s ease-in-out infinite;
-}
-
-/* 视频播放图标微弱呼吸 */
-@keyframes video-icon-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 68, 42, 0.3); }
-  50% { box-shadow: 0 0 0 7px rgba(200, 68, 42, 0); }
 }
 
 .media-cell:hover .media-video-icon {
@@ -272,7 +250,7 @@ watch(() => props.mediaItems, () => {
   position: absolute;
   left: 50%;
   bottom: 6px;
-  transform: translateX(-50%) translateY(8px);
+  transform: translateX(-50%);
   padding: 2px 8px;
   background: rgba(244, 236, 216, 0.95);
   color: var(--ink);
@@ -281,14 +259,13 @@ watch(() => props.mediaItems, () => {
   letter-spacing: 0.1em;
   white-space: nowrap;
   opacity: 0;
-  transition: all 0.2s var(--ease-out);
+  transition: opacity 0.2s var(--ease-out);
   pointer-events: none;
   border: 1px solid var(--ink);
 }
 
 .media-cell:hover .media-cell-tip {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
 }
 
 .media-cell-video .media-cell-tip {
@@ -398,7 +375,6 @@ watch(() => props.mediaItems, () => {
 .modal-leave-to .media-preview-img,
 .modal-leave-to .media-preview-video {
   opacity: 0;
-  transform: scale(0.97);
 }
 
 /* 移动端：去掉 hover 提示，简化交互 */

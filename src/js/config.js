@@ -750,9 +750,6 @@ const SpaExportFiles = [{
     original: 'export/spa-dist/assets/style.css',
     target: 'Common/spa/assets/style.css'
 }, {
-    original: 'export/spa-dist/assets/annual-music.mp3',
-    target: 'Common/spa/assets/annual-music.mp3'
-}, {
     original: 'export/spa-dist/export-entry.html',
     target: 'Common/spa/export-entry.html'
 }]

@@ -1,6 +1,18 @@
 <template>
   <ArchiveEntry :time="index.time" :clickable="clickable" @click="handleClick">
     <template #head>
+      <span class="friend-avatar-wrap">
+        <img
+          v-if="avatarSrc"
+          :src="avatarSrc"
+          :alt="displayTitle"
+          class="friend-avatar"
+          loading="lazy"
+          decoding="async"
+          @error="onAvatarError"
+        />
+        <span v-else class="friend-avatar friend-avatar-fallback">{{ avatarFallback }}</span>
+      </span>
       <span class="entry-type-tag">好友</span>
       <span
         v-if="index.deleted"
@@ -32,8 +44,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
+import { buildQzoneAvatarUrl, resolveCommonImagePath } from '@/utils/formatContent'
 import type { FriendIndex } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -57,6 +70,33 @@ const groupLabel = computed(() => {
   return g ? `分组 · ${g}` : '(未分组)'
 })
 
+/* ============ 头像：本地文件 → 在线 qlogo → 占位字 ============ */
+const uin = computed(() => (props.index.uin != null && props.index.uin !== '' ? String(props.index.uin) : ''))
+
+// 头像加载状态：local（本地 Common/images/）→ remote（在线 qlogo）→ none（占位）
+const avatarState = ref<'local' | 'remote' | 'none'>('local')
+
+const avatarSrc = computed(() => {
+  if (!uin.value || avatarState.value === 'none') return ''
+  if (avatarState.value === 'remote') return buildQzoneAvatarUrl(uin.value)
+  return resolveCommonImagePath(`Common/images/${uin.value}`)
+})
+
+function onAvatarError() {
+  if (avatarState.value === 'local') {
+    // 本地文件缺失，回退到在线头像
+    avatarState.value = 'remote'
+    return
+  }
+  avatarState.value = 'none'
+}
+
+// 无头像时的占位字符（取主标题首字）
+const avatarFallback = computed(() => {
+  const n = displayTitle.value
+  return n ? n.charAt(0) : '?'
+})
+
 function handleClick() {
   if (props.clickable) emit('open', props.index)
 }
@@ -76,5 +116,28 @@ function handleClick() {
   color: var(--vermilion);
   border-color: var(--vermilion);
   background: rgba(200, 68, 42, 0.1);
+}
+
+/* 好友头像 */
+.friend-avatar-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.friend-avatar {
+  width: 38px;
+  height: 38px;
+  border: var(--line);
+  object-fit: cover;
+  background: var(--paper-2);
+}
+
+.friend-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif-cn);
+  font-size: 1.1rem;
+  color: var(--ink-3);
 }
 </style>

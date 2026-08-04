@@ -138,6 +138,17 @@ export interface Comment {
   content?: string
   custom_create_time?: string
   create_time?: number
+  /** 评论列表 API（commentlist_v6）返回的嵌套作者结构 */
+  poster?: {
+    id?: string | number
+    uin?: string | number
+    name?: string
+    nick?: string
+    nickname?: string
+    [key: string]: any
+  }
+  /** 评论列表 API 返回的发布时间（unix 秒） */
+  postTime?: number
   pic?: any[]
   list_3?: Comment[] // 二级回复
   [key: string]: any

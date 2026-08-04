@@ -158,28 +158,28 @@
       <span class="foot-hint">{{ detailLoaded ? '内容已全部载入' : '正在翻找更早的档案…' }}</span>
     </footer>
 
-    <!-- 背景音乐播放器 -->
+    <!-- 背景音乐播放器（网易云音乐外链） -->
     <div class="music-player">
-      <button
-        type="button"
-        class="music-btn"
-        :class="{ playing: musicOn }"
-        :title="musicOn ? '暂停音乐' : '播放音乐'"
-        @click="toggleMusic"
-      >
-        <span class="music-icon">{{ musicOn ? '♫' : '♪' }}</span>
-      </button>
-      <span v-if="musicBlocked" class="music-tip">点击开启背景音乐 · 请打开声音</span>
-      <span v-else-if="musicOn" class="music-tip">背景音乐播放中…</span>
+      <iframe
+        class="music-frame"
+        title="背景音乐"
+        frameborder="no"
+        border="0"
+        marginwidth="0"
+        marginheight="0"
+        width="330"
+        height="86"
+        src="https://music.163.com/outchain/player?type=2&id=480353&auto=1&height=66"
+        loading="lazy"
+        allow="autoplay"
+      ></iframe>
     </div>
-    <audio ref="audioRef" :src="MUSIC_SRC" loop preload="auto"></audio>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useAnnualReport, type ReportChapter } from '@/composables/useAnnualReport'
-import { anime, countUp, enter, removeAnimations, scrollReveal, staggerEnter } from '@/composables/useMotion'
 
 /** 年度：'all' 或具体年份，响应式切换 */
 const year = ref<'all' | number>('all')
@@ -202,126 +202,7 @@ function msgLink(m: { tid?: string | number; time?: string } | null | undefined)
 /** 挂载后延迟加载全量文本（金句 / 年度词） */
 onMounted(() => {
   setTimeout(loadDetail, 600)
-  // 尝试自动播放背景音乐；被浏览器拦截时提示用户手动开启
-  const audio = audioRef.value
-  if (audio) {
-    audio.play().then(() => {
-      musicOn.value = true
-      musicBlocked.value = false
-    }).catch(() => {
-      musicBlocked.value = true
-    })
-  }
-  // 数据未就绪时兜底触发封面/章节动画
-  setTimeout(() => {
-    if (!animInit) nextTick(initAnimations)
-  }, 400)
 })
-
-/* ============ 年报动画（封面级联 / 章节滚动入场 / 图形生长） ============ */
-const rootRef = ref<HTMLElement | null>(null)
-let animInit = false
-const cleanupFns: Array<() => void> = []
-
-function revealChapter(ch: HTMLElement) {
-  // 章节主要区块交错浮现
-  const parts: HTMLElement[] = []
-  ;['.chapter-head', '.chapter-text', '.chart-box', '.chapter-quote', '.highlight-grid',
-    '.people-list', '.special-grid', '.word-cloud'].forEach(sel => {
-    const el = ch.querySelector(sel) as HTMLElement | null
-    if (el) parts.push(el)
-  })
-  if (parts.length) {
-    staggerEnter(ch, parts, { gap: 90, translateY: 18, duration: 680 })
-  }
-  // 柱状图高度从 0 生长（outBack 弹性）
-  const bars = Array.from(ch.querySelectorAll('.chart-bar')) as HTMLElement[]
-  if (bars.length) {
-    anime({
-      targets: bars,
-      height: (el: HTMLElement) => [0, el.style.height || '2%'],
-      delay: anime.stagger(60, { start: 180 }),
-      duration: 900,
-      easing: 'easeOutBack'
-    })
-  }
-  // 互动高光数字滚动
-  ch.querySelectorAll('.highlight-num').forEach((el, i) => {
-    const raw = (el.textContent || '').replace(/[^\d]/g, '') || '0'
-    countUp(el, Number(raw), { delay: 300 + i * 140, duration: 1000 })
-  })
-  // 年度词词条交错弹出
-  const wordEls = Array.from(ch.querySelectorAll('.word-tag')) as HTMLElement[]
-  if (wordEls.length) {
-    staggerEnter(ch, wordEls, { gap: 55, translateY: 12, duration: 560 })
-  }
-  // 大引号盖章浮现
-  const mark = ch.querySelector('.quote-mark') as HTMLElement | null
-  if (mark) enter(mark, { translateY: 10, duration: 600, scale: 0.9 })
-}
-
-function initAnimations() {
-  if (animInit) return
-  const root = rootRef.value
-  if (!root) return
-  const cover = root.querySelector('.report-cover') as HTMLElement | null
-  const chapters = Array.from(root.querySelectorAll('.report-chapter')) as HTMLElement[]
-  if (!cover && !chapters.length) return // 数据未就绪，等待
-  animInit = true
-  // 封面四段级联入场
-  if (cover) {
-    staggerEnter(cover, '.cover-kicker, .cover-title, .cover-text, .cover-accent, .year-switch', {
-      gap: 160,
-      translateY: 20,
-      duration: 760
-    })
-  }
-  // 章节滚动进入视口时逐一浮现
-  chapters.forEach(ch => {
-    cleanupFns.push(scrollReveal(ch, () => revealChapter(ch)))
-  })
-}
-
-// 数据就绪后初始化（首次加载时 chapters 异步填充）
-watch(() => chapters.value.length, () => {
-  if (chapters.value.length && !animInit) nextTick(initAnimations)
-})
-
-// 年度切换：章节容器整体淡入（DOM 复用，不回滚章节滚动动画）
-watch(year, () => {
-  nextTick(() => {
-    const chaptersEl = rootRef.value?.querySelector('.report-chapters') as HTMLElement | null
-    if (chaptersEl) enter(chaptersEl, { translateY: 12, duration: 500 })
-  })
-})
-
-onUnmounted(() => {
-  cleanupFns.forEach(fn => fn())
-  if (rootRef.value) removeAnimations(rootRef.value)
-})
-
-/* ============ 背景音乐 ============ */
-/** 音乐文件位于 Common/spa/assets/（file:// 相对路径） */
-const MUSIC_SRC = './assets/annual-music.mp3'
-const audioRef = ref<HTMLAudioElement | null>(null)
-const musicOn = ref(false)
-const musicBlocked = ref(false)
-
-function toggleMusic() {
-  const audio = audioRef.value
-  if (!audio) return
-  if (musicOn.value) {
-    audio.pause()
-    musicOn.value = false
-    return
-  }
-  audio.play().then(() => {
-    musicOn.value = true
-    musicBlocked.value = false
-  }).catch(() => {
-    musicBlocked.value = true
-  })
-}
 
 /* ============ 图形辅助 ============ */
 
@@ -707,84 +588,32 @@ function cleanText(text: string): string {
   margin-top: var(--sp-2);
   letter-spacing: 0.1em;
   color: var(--ink-muted, var(--ink-3));
-  animation: hint-flicker 2.2s ease-in-out infinite;
 }
 
-/* 页脚加载提示呼吸 */
-@keyframes hint-flicker {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
-}
-
-/* ============ 背景音乐播放器 ============ */
+/* ============ 背景音乐播放器（网易云外链） ============ */
 .music-player {
   position: fixed;
   right: var(--sp-5);
   bottom: var(--sp-5);
   z-index: 50;
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-}
-
-.music-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  background: var(--paper);
   border: 1px solid var(--ink-3);
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-  box-shadow: 0 2px 8px rgba(26, 22, 18, 0.12);
+  box-shadow: 0 2px 12px rgba(26, 22, 18, 0.2);
+  line-height: 0;
 }
 
-.music-btn:hover {
-  border-color: var(--vermilion);
-  color: var(--vermilion);
+.music-frame {
+  display: block;
+  border: none;
 }
 
-.music-btn.playing {
-  background: var(--vermilion);
-  border-color: var(--vermilion);
-  color: var(--paper);
-  animation: music-pulse 2s ease-in-out infinite;
-}
-
-@keyframes music-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 68, 42, 0.35); }
-  50% { box-shadow: 0 0 0 8px rgba(200, 68, 42, 0); }
-}
-
-.music-icon {
-  font-size: 1.1rem;
-  line-height: 1;
-}
-
-/* 播放时音符轻微浮动 */
-.music-btn.playing .music-icon {
-  display: inline-block;
-  animation: music-float 1.6s ease-in-out infinite;
-}
-
-@keyframes music-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
-}
-
-.music-tip {
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  color: var(--ink-3);
-  background: var(--paper);
-  border: 1px solid var(--border);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: 2px;
-  box-shadow: 0 2px 8px rgba(26, 22, 18, 0.08);
+@media (max-width: 420px) {
+  .music-player {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: var(--sp-3);
+  }
 }
 
 /* ============ 人物志 ============ */

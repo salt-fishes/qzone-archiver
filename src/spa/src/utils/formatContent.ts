@@ -77,6 +77,30 @@ function escapeHtml(s: string): string {
 }
 
 /**
+ * 根据 QQ 号生成 qlogo 头像在线地址
+ * 与扩展端 API.Common.getUserLogoUrl 同规则：
+ *   https://qlogo{1-4}.store.qq.com/qzone/{uin}/{uin}/100
+ */
+export function buildQzoneAvatarUrl(uin: number | string): string {
+  if (uin === undefined || uin === null || uin === '') return ''
+  const n = Number(uin)
+  const host = Number.isFinite(n) && n > 0 ? (n % 4 || 1) : 1
+  return `https://qlogo${host}.store.qq.com/qzone/${uin}/${uin}/100`
+}
+
+/**
+ * 备份根 Common/images/ 下共享文件的 SPA 相对路径
+ * 扩展端 custom_avatar 形如 'Common/images/66600000'（相对备份根），
+ * SPA 部署在 备份根/Common/spa/，生产模式需回退一级 → ../images/xxx
+ */
+export function resolveCommonImagePath(filepath: string): string {
+  if (!filepath) return ''
+  if (/^https?:\/\//i.test(filepath) || filepath.startsWith('//') || filepath.startsWith('data:')) return filepath
+  const clean = filepath.replace(/^\.?\//, '').replace(/^Common\//, '')
+  return (DEV ? '/Common/' : '../') + clean
+}
+
+/**
  * 处理 @ 提及标记：
  *   @{uin:XXX,nick:YYY,who:Z,auto:N} → @YYY
  *   也兼容无 @ 前导的 {uin:XXX,nick:YYY,who:Z,auto:N}

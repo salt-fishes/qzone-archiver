@@ -1,5 +1,5 @@
 <template>
-  <section ref="rootRef" class="not-found">
+  <section class="not-found">
     <div class="section-head">
       <span class="section-num">404</span>
       <h2 class="section-title">未找到档案</h2>
@@ -14,19 +14,6 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, ref } from 'vue'
-import { enter } from '@/composables/useMotion'
-
-const rootRef = ref<HTMLElement | null>(null)
-
-onMounted(() => {
-  nextTick(() => {
-    const root = rootRef.value
-    if (!root) return
-    const ph = root.querySelector('.placeholder') as HTMLElement | null
-    if (ph) enter(ph, { translateY: 18, duration: 700 })
-  })
-})
 </script>
 
 <style scoped>

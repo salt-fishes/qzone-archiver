@@ -148,11 +148,11 @@ function handleClick() {
   border: var(--line);
   background: var(--paper-2);
   overflow: hidden;
-  transition: transform 0.25s var(--ease-out), border-color 0.2s;
+  transition: filter 0.25s var(--ease-out), border-color 0.2s;
 }
 
 .album-grid-cell-wrap:hover .album-grid-cell {
-  transform: scale(1.04);
+  filter: brightness(1.06);
   border-color: var(--vermilion);
 }
 

@@ -201,21 +201,33 @@ onUnmounted(() => document.removeEventListener('keydown', handleShortcut))
   display: none;
 }
 
-@media (max-width: 720px) {
-  /* 移动端：导航与搜索框堆叠居中 */
+@media (max-width: 900px) {
+  /* 移动端：导航与搜索保持一行紧凑布局，整体占用约减半 */
+  .navbar {
+    margin-top: var(--sp-2);
+    padding-top: var(--sp-2);
+  }
   .nav-inner {
-    flex-direction: column;
-    align-items: center;
-    gap: var(--sp-3);
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: var(--sp-2);
   }
   .nav-links {
-    justify-content: center;
-    gap: var(--sp-4);
+    gap: var(--sp-3);
+  }
+  .nav-link {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    padding: var(--sp-1) 0;
   }
   .search-box {
-    width: 100%;
-    max-width: 420px;
-    margin: 0 auto;
+    width: auto;
+    flex: 1;
+    min-width: 120px;
+    max-width: none;
+    margin: 0;
+    padding: var(--sp-1) var(--sp-3);
   }
   /* 扩大清除按钮触控区域 */
   .search-clear {
