@@ -150,13 +150,20 @@
       <Transition name="modal">
         <div v-if="previewSrc" class="photo-preview-overlay" @click="closePreview">
           <video
-            v-if="previewIsVideo"
+            v-if="previewIsVideo && !videoPreviewError"
             :src="previewSrc"
             controls
             autoplay
             playsinline
             class="photo-preview-video"
+            @error="handlePreviewVideoError"
           ></video>
+          <div
+            v-else-if="previewIsVideo && videoPreviewError"
+            class="photo-preview-error"
+          >
+            <VideoHevcTip :hevc="hevcUnsupported" />
+          </div>
           <img v-else :src="previewSrc" class="photo-preview-img" :alt="previewAlt" />
           <span class="photo-preview-tip">{{ previewIndex + 1 }} / {{ photoList.length }} · 点击关闭</span>
         </div>
@@ -169,7 +176,9 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
 import VideoCover from '@/components/common/VideoCover.vue'
+import VideoHevcTip from '@/components/common/VideoHevcTip.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
+import { detectHevcSupport, isCodecUnsupportedError } from '@/utils/videoCompat'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
@@ -330,6 +339,16 @@ const previewAlt = ref('')
 const previewIndex = ref(-1)
 const previewIsVideo = ref(false)
 
+// H.265 / HEVC 视频无法解码时展示引导提示
+const hevcSupported = detectHevcSupport()
+const videoPreviewError = ref(false)
+const hevcUnsupported = ref(false)
+
+function handlePreviewVideoError(e: Event) {
+  videoPreviewError.value = true
+  hevcUnsupported.value = !hevcSupported && isCodecUnsupportedError(e.target as HTMLVideoElement)
+}
+
 function previewPhoto(item: PhotoMedia) {
   const src = item.isVideo ? item.videoSrc : item.src
   if (!src) return
@@ -337,6 +356,8 @@ function previewPhoto(item: PhotoMedia) {
   previewAlt.value = item.photo.name || `照片 ${item.index + 1}`
   previewIndex.value = item.index
   previewIsVideo.value = item.isVideo
+  videoPreviewError.value = false
+  hevcUnsupported.value = false
 }
 
 function closePreview() {
@@ -344,6 +365,8 @@ function closePreview() {
   previewAlt.value = ''
   previewIndex.value = -1
   previewIsVideo.value = false
+  videoPreviewError.value = false
+  hevcUnsupported.value = false
 }
 
 function openLikes() {
@@ -713,6 +736,14 @@ watch([visible, () => photoList.value.length], ([v]) => {
   max-height: 82vh;
   background: #000;
   border: var(--line);
+}
+
+/* H.265 等无法解码时的引导提示容器 */
+.photo-preview-error {
+  max-width: min(560px, 92vw);
+  background: var(--paper);
+  border: var(--line);
+  padding: var(--sp-1);
 }
 
 .photo-preview-tip {

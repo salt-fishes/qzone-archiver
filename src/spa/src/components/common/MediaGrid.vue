@@ -44,14 +44,21 @@
     <Transition name="modal">
       <div v-if="previewIndex >= 0" class="media-preview-overlay" @click.self="closePreview">
         <video
-          v-if="currentPreview?.type === 'video'"
+          v-if="currentPreview?.type === 'video' && !videoPreviewError"
           :key="`v-${previewIndex}`"
           :src="currentPreview.src"
           controls
           autoplay
           playsinline
           class="media-preview-video"
+          @error="handlePreviewVideoError"
         ></video>
+        <div
+          v-else-if="currentPreview?.type === 'video' && videoPreviewError"
+          class="media-preview-error"
+        >
+          <VideoHevcTip :hevc="hevcUnsupported" />
+        </div>
         <img
           v-else
           :src="currentPreview?.src"
@@ -85,6 +92,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import VideoCover from '@/components/common/VideoCover.vue'
+import VideoHevcTip from '@/components/common/VideoHevcTip.vue'
+import { detectHevcSupport, isCodecUnsupportedError } from '@/utils/videoCompat'
 
 export interface MediaItem {
   src: string
@@ -101,6 +110,22 @@ const props = defineProps<{
 
 // ============ 就地预览 ============
 const previewIndex = ref(-1)
+
+// H.265 / HEVC 视频无法解码时展示引导提示
+const hevcSupported = detectHevcSupport()
+const videoPreviewError = ref(false)
+const hevcUnsupported = ref(false)
+
+function handlePreviewVideoError(e: Event) {
+  videoPreviewError.value = true
+  hevcUnsupported.value = !hevcSupported && isCodecUnsupportedError(e.target as HTMLVideoElement)
+}
+
+// 切换预览项 / 关闭时重置播放错误状态
+watch(previewIndex, () => {
+  videoPreviewError.value = false
+  hevcUnsupported.value = false
+})
 
 const currentPreview = computed(() => {
   if (previewIndex.value < 0) return null
@@ -307,6 +332,14 @@ watch(() => props.mediaItems, () => {
   max-height: 82vh;
   background: #000;
   border: var(--line);
+}
+
+/* H.265 等无法解码时的引导提示容器 */
+.media-preview-error {
+  max-width: min(560px, 92vw);
+  background: var(--paper);
+  border: var(--line);
+  padding: var(--sp-1);
 }
 
 .media-preview-tip {

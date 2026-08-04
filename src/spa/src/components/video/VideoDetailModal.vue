@@ -19,15 +19,22 @@
       <!-- 标题 -->
       <h3 class="detail-title">{{ video.title || video.desc || '未命名视频' }}</h3>
 
-      <!-- 视频播放区 -->
+      <!-- 视频播放区（H.265 等无法解码时展示引导提示） -->
       <div class="video-player">
         <video
-          v-if="video.custom_filepath"
+          v-if="video.custom_filepath && !videoError"
+          ref="videoEl"
           controls
           :src="videoSrc"
           :poster="coverSrc"
           preload="metadata"
+          @error="handleVideoError"
         ></video>
+        <VideoHevcTip
+          v-else-if="video.custom_filepath && videoError"
+          :hevc="hevcUnsupported"
+          :file-path="video.custom_filepath"
+        />
         <a
           v-else-if="video.play_url"
           :href="video.play_url"
@@ -148,6 +155,8 @@ import { computed, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
 import MediaGrid, { type MediaItem } from '@/components/common/MediaGrid.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
+import VideoHevcTip from '@/components/common/VideoHevcTip.vue'
+import { detectHevcSupport, isCodecUnsupportedError } from '@/utils/videoCompat'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
 import type { Video, VideoIndex, VideoComment, LikeItem, MediaImage } from '@/types'
 
@@ -191,6 +200,23 @@ const coverSrc = computed(() => {
   if (!v) return ''
   const raw = v.custom_pre_filepath || v.custom_pre_url || v.pre || v.preview_img || ''
   return raw ? resolveModulePath(raw, MODULE) : ''
+})
+
+// H.265 / HEVC 播放兼容：无法解码时展示引导提示（发微信 / QQ 或用 VLC 等播放）
+const hevcSupported = detectHevcSupport()
+const videoEl = ref<HTMLVideoElement | null>(null)
+const videoError = ref(false)
+const hevcUnsupported = ref(false)
+
+function handleVideoError() {
+  videoError.value = true
+  hevcUnsupported.value = !hevcSupported && isCodecUnsupportedError(videoEl.value)
+}
+
+// 切换视频时重置播放错误状态
+watch(() => props.video, () => {
+  videoError.value = false
+  hevcUnsupported.value = false
 })
 
 const comments = computed<VideoComment[]>(() => props.video?.comments || [])
