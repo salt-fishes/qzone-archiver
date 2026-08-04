@@ -111,9 +111,20 @@ npm run build     # 构建到 src/export/spa-dist/
 
 1. 在 `src/spa` 下执行 `npm run build` 生成最新 SPA 产物
 2. 将 `src/` 目录打包为 zip（排除 `node_modules` / 测试数据）
-3. 打 tag 并创建 GitHub Release（参考 [v3.1.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.1.0)）
+3. 打 tag 并创建 GitHub Release（参考 [v3.2.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.2.0)）
 
 ## 更新日志
+
+### v3.2.0（2026-08-04）
+
+- **年度报告全面重做**：全屏独立路由，anime.js v4 巨型排版逐字揭示 + three.js 粒子背景，仿 wodniack.dev 宣传站风格
+- **报告内容扩充**：扩展至 18 个章节，接入访客 / 收藏 / 分享 / 视频 / 日志 / 日记 / 留言数据，新增数字档案网格、好友分布、人物志、特别日子等可视化组件
+- **报告导出长图**：一键导出 PNG 长图（分段截图 + 导出前自动滚动触发全部动画，数字准确无误）
+- **移动端导航重构**：左侧图标导航 + 抽屉侧栏，与 PC 端一致；顶部导航宽度压缩 50% 以上
+- **好友头像**：好友列表与详情显示 QQ 头像（本地 / 在线 / 占位三级降级）
+- **评论匿名修复**：兼容评论列表接口的 poster 嵌套作者结构，评论较多的说说不再显示匿名
+- **音乐播放**：报告页改用网易云 iframe 播放器，移除本地音频文件
+- **已删除说说恢复优化**：降低边界探测上限防 WAF 拦截、增加 WAF 检测与请求间隔、修复 g_tk 序列化
 
 ### v3.1.0（2026-08-03）
 
