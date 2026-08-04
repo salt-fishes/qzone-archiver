@@ -555,7 +555,8 @@ API.Messages.exportToSpa = async(messages) => {
                 commentCount: (m.commenttotal && m.commenttotal > 0)
                     ? m.commenttotal
                     : (m.custom_comments && m.custom_comments.length) || (m.commentlist && m.commentlist.length) || 0,
-                likeCount: (m.like && m.like.total) || (m.likes && m.likes.length) || 0
+                // 点赞数：统一取 likes 数组长度（旧结构 like: {total, list} 仅作兼容回退）
+                likeCount: (m.likes && m.likes.length) || (m.like && m.like.total) || 0
             };
         });
         await API.Common.writeJsonToJs('messagesIndex', index, dataFolder + '/messages-index.js');
@@ -766,7 +767,6 @@ API.Messages.getDeletedMessages = async(existingItems) => {
             commentlist: [],
             custom_comments: [],
             commenttotal: 0,
-            like: { total: 0, list: [] },
             likes: [],
             pic_list: [],
             custom_images: [],
@@ -839,21 +839,19 @@ API.Messages.getDeletedMessages = async(existingItems) => {
                 await API.Common.getModulesLikeList(likeItem, QZone_Config.Messages);
                 if (likeItem.likes && likeItem.likes.length > 0) {
                     message.likes = likeItem.likes;
-                    message.like = { total: likeItem.likes.length, list: likeItem.likes };
                 } else if (entry.likes.length > 0) {
                     message.likes = entry.likes;
-                    message.like = { total: entry.likes.length, list: entry.likes };
                 }
             } catch (e) {
                 if (entry.likes.length > 0) {
                     message.likes = entry.likes;
-                    message.like = { total: entry.likes.length, list: entry.likes };
                 }
             }
         } else if (entry.likes.length > 0) {
             message.likes = entry.likes;
-            message.like = { total: entry.likes.length, list: entry.likes };
         }
+        // 统一点赞结构：只保留 likes 数组（likeTotal 为数值，供 HTML 模板显示）
+        message.likeTotal = message.likes.length;
 
         // 通知中的图片URL（可能已失效）
         if (entry.imageUrl && message.pic_list.length === 0) {
