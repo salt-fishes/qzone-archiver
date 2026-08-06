@@ -1338,16 +1338,22 @@
                 $testBtn.attr('disabled', false);
             },
             error: function(xhr, status, error) {
+                // 使用统一的错误构造器，自动识别 Motrix 端口/密钥错误等场景
+                const msg = API.Utils.buildNetworkErrorMessage(xhr, status, error, rpc);
+                const msgText = msg.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+
                 if (xhr.responseJSON) {
                     if (xhr.responseJSON.error.code === 1 || xhr.responseJSON.error.message === "Unauthorized") {
                         $testBtn.text('认证失败');
-                        tips('<span style="color:red">Aria2认证失败</span>，请检查令牌是否正确！');
+                        tips('<span style="color:red">Aria2 认证失败</span>，请检查令牌是否正确！');
                     } else {
                         $testBtn.text('连接错误');
+                        tips('<span style="color:red">Aria2 连接错误：</span>' + msgText);
                     }
                 } else {
                     $testBtn.text('连接错误');
-                    tips('<span style="color:red">Aria2连接错误</span>，请确认Aria2配置或Aria2服务是否正常！');
+                    // 保留 HTML（含 💡 建议，可直接定位 Motrix 端口/启动等问题）
+                    tips('<span style="color:red">Aria2 连接错误</span>：' + msg);
                 }
                 $testBtn.attr('disabled', false);
             }

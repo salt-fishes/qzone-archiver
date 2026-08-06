@@ -498,6 +498,161 @@ API.Utils = {
     },
 
     /**
+     * 根据 xhr/status/error/url 组装具体可读的错误信息，
+     * 并识别 WAF/风控拦截（403 特征）、登录态失效（302/401）等常见场景。
+     * 返回 string，可直接赋给 customMessage 或塞进 innerHTML（包含 <br/> + <span> 建议）。
+     * @param {XMLHttpRequest} xhr XHR 对象（可为 jQuery 包装的 jqXHR）
+     * @param {string} status jQuery textStatus（'timeout'/'error'/'abort'/'parsererror'）
+     * @param {string|Error} error 原始错误对象/字符串
+     * @param {string} url 请求 URL（用于附带接口短名 + Aria2/Motrix 端口检测）
+     * @returns {string} 可读错误信息（可能含 HTML 标签，给 innerHTML 用）
+     */
+    buildNetworkErrorMessage(xhr, status, error, url) {
+        let msg = '';
+        let hint = ''; // 附加建议
+        const statusCode = xhr && xhr.status ? xhr.status : 0;
+
+        // --- HTTP 状态码分类 ---
+        if (statusCode > 0) {
+            msg += 'HTTP ' + statusCode;
+            if (xhr.statusText) msg += ' ' + xhr.statusText;
+
+            if (statusCode === 403) {
+                // ========== 重点：WAF / 风控 拦截检测 ==========
+                let isWAF = false;
+                const wafHeaders = [
+                    { name: 'Server',         re: /\bwaf\b/i },
+                    { name: 'X-Powered-By',   re: /\bwaf\b/i },
+                    { name: 'X-Response-By',  re: /\bwaf\b/i },
+                    { name: 'X-Waf-Event',    re: /./ },       // 只要存在这个头就是 WAF
+                    { name: 'X-Cdn-Error',    re: /\bwaf\b/i },
+                ];
+                try {
+                    for (const h of wafHeaders) {
+                        const v = xhr.getResponseHeader ? xhr.getResponseHeader(h.name) : null;
+                        if (v && h.re.test(v)) { isWAF = true; break; }
+                    }
+                } catch (_) {}
+                // 退而求其次：检查响应体文本里的关键词（常见 WAF block 页）
+                if (!isWAF && xhr.responseText && typeof xhr.responseText === 'string') {
+                    const body = xhr.responseText.slice(0, 2000);
+                    if (/\bwaf\b|intercept|拦截|安全加固|cloudflare|tencent.?sec|访问被拒绝|forbidden.*html|访问频率/i.test(body)) {
+                        isWAF = true;
+                    }
+                }
+                if (isWAF) {
+                    msg = 'WAF 风控拦截（HTTP 403）';
+                    hint = '请求过于频繁被腾讯安全策略拦截，建议：① 调大「查询间隔 / 翻页随机间隔」；② 调大「列表重试间隔」并勾选「稍候重试接口」对应模块；③ 暂停 10-30 分钟或换网络环境后再试。';
+                } else {
+                    // 非 WAF 特征的 403，可能是接口本身的访问控制（如登录态失效后返回 403）
+                    msg += '（疑似登录态失效或权限不足）';
+                    hint = '请在新标签打开 QQ 空间首页确认是否需要重新登录，登录后刷新当前备份页面重新开始。';
+                }
+            }
+            else if (statusCode === 401) {
+                msg += '（未授权/登录态失效）';
+                hint = '请重新登录 QQ 空间后刷新当前备份页面。';
+            }
+            else if (statusCode === 429) {
+                msg = '接口请求频率超限（HTTP 429）';
+                hint = '调大「查询间隔」或减少下载并发数。';
+            }
+            else if (statusCode >= 500) {
+                msg += '（QQ 空间服务端异常）';
+                hint = '稍后重试即可。若持续出现，可能是接口变更，请到项目提 issue。';
+            }
+            else if (statusCode === 302 || statusCode === 301) {
+                msg += '（被重定向，疑似登录态过期跳登录页）';
+                hint = '请重新登录 QQ 空间后刷新当前备份页面。';
+            }
+        }
+
+        // --- jQuery textStatus ---
+        if (status) {
+            let statusZh = status;
+            switch (status) {
+                case 'timeout':    statusZh = '请求超时'; break;
+                case 'error':      statusZh = '网络错误'; break;
+                case 'abort':      statusZh = '请求被中止'; break;
+                case 'parsererror':statusZh = '响应解析失败'; break;
+            }
+            if (!msg || !statusCode) {
+                msg = statusZh;
+            } else if (status !== 'error') { // status='error' 时与 HTTP 码信息重复，省去
+                msg += ' · ' + statusZh;
+            }
+            if (status === 'timeout') {
+                hint = hint || '网络不稳定或接口响应慢，可在选项里调大「超时秒数」或稍后重试。';
+            }
+        }
+
+        // --- 原生错误字符串 ---
+        if (error && typeof error === 'string' && error !== status) {
+            const e = error.toLowerCase();
+            if (e.includes('cors') || e.includes('access-control-allow-origin')) {
+                msg += (msg ? ' · ' : '') + '跨域被拒绝（CORS）';
+                hint = hint || 'QQ 空间接口未返回跨域头。请确认当前页面在 user.qzone.qq.com 域名下，或检查是否被广告拦截插件篡改响应头。';
+            } else if (e.includes('failed to fetch') || e.includes('networkerror')) {
+                msg += (msg ? ' · ' : '') + '连接失败（无法建立连接）';
+                hint = hint || '请检查本机网络是否正常，QQ 空间首页能否打开；代理/VPN 可能导致连接中断。';
+            } else {
+                msg += (msg ? '：' : '') + error;
+            }
+        }
+
+        if (!msg) msg = '网络请求失败';
+
+        // --- 附带接口短名（隐私友好：去掉 query/token）---
+        if (url) {
+            try {
+                const u = new URL(url, location.href);
+                const parts = u.pathname.split('/').filter(Boolean);
+                const short = parts.slice(-2).join('/') || u.pathname;
+                msg += ` [${short}]`;
+            } catch (_) {
+                if (url.length < 80) msg += ` [${url}]`;
+            }
+        }
+
+        // --- 本地 Aria2 / Motrix RPC 端口检测（downloadByAria2 场景） ---
+        if (url) {
+            try {
+                const u = new URL(url, location.href);
+                if ((u.hostname === 'localhost' || u.hostname === '127.0.0.1') && /\/jsonrpc$/.test(u.pathname)) {
+                    const port = u.port || (u.protocol === 'https:' ? '443' : '80');
+                    if (port === '6800') {
+                        hint = hint || '当前 RPC 端口为 6800（Aria2 原生默认）。' +
+                            '· 若你使用的是 Motrix，请将端口改为 <b>16800</b>（Motrix 默认端口）；' +
+                            '· 若使用 aria2 原生版，请确认 aria2c 已启动并监听了 6800；' +
+                            '· 请在「选项 → 公共 → Aria2 RPC地址」中修改，修改后可点击旁边的「测试」按钮验证。';
+                    } else if (port === '16800') {
+                        hint = hint || '当前 RPC 端口为 16800（Motrix 默认）。请确认 Motrix 已启动：' +
+                            '· 打开 Motrix 主界面（系统托盘有图标不代表 RPC 已就绪）；' +
+                            '· 检查 Motrix 设置 → 高级设置 → RPC 是否启用、端口是否为 16800；' +
+                            '· 若设置了 RPC 密钥，请在「Aria2 密钥」中填入相同密钥；' +
+                            '· 关闭可能拦截本地端口的杀毒软件/防火墙。';
+                    } else {
+                        hint = hint || `RPC 端口 ${port} 非标准端口。Aria2 原生默认 6800，Motrix 默认 16800。请确认端口配置与下载工具实际监听端口一致。`;
+                    }
+                    // JSON-RPC 错误码翻译
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.error) {
+                        const rpcErr = xhr.responseJSON.error;
+                        if (rpcErr.code === 1) {
+                            hint = 'Aria2/Motrix RPC 密钥不正确，请在「选项 → 公共 → Aria2 密钥」中配置与下载工具设置相同的 RPC Secret。' + (hint || '');
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
+        // --- 追加操作建议（换行用 <br>，因为会被塞进 innerHTML）---
+        if (hint) {
+            msg += "<br/><span style='color:#f39c12'>💡 建议：" + hint + "</span>";
+        }
+        return msg;
+    },
+
+    /**
      * 发送请求
      * @param {string} url 
      * @param {string} responseType 
@@ -517,15 +672,36 @@ API.Utils = {
                 request.timeout = timeout * 1000;
             }
             request.onload = function() {
-                resolve(this);
+                if ((request.status >= 200 && request.status < 300) || request.status === 304) {
+                    resolve(this);
+                    return;
+                }
+                // 注意：onload 在 HTTP 403/404/5xx 时也会触发！原生 XHR 只有真正网络错误才走 onerror。
+                // 这里也需要走 buildNetworkErrorMessage 处理 HTTP 403 WAF 场景
+                const msg = API.Utils.buildNetworkErrorMessage(
+                    request, request.status >= 400 ? 'error' : '',
+                    request.statusText || '', url
+                );
+                const err = new Error(msg.replace(/<[^>]+>/g, ''));
+                err.fullMessage = msg;
+                err.status = request.status;
+                reject(err);
             };
-            request.onerror = function(error) {
-                reject(error);
-                this.abort();
+            request.onerror = function() {
+                const msg = API.Utils.buildNetworkErrorMessage(request, 'error', 'NetworkError', url);
+                const err = new Error(msg.replace(/<[^>]+>/g, ''));
+                err.fullMessage = msg;
+                err.status = request.status;
+                reject(err);
+                try { this.abort(); } catch (_) {}
             };
-            request.ontimeout = function(error) {
-                reject(error);
-                this.abort();
+            request.ontimeout = function() {
+                const msg = API.Utils.buildNetworkErrorMessage(request, 'timeout', '', url);
+                const err = new Error(msg.replace(/<[^>]+>/g, ''));
+                err.fullMessage = msg;
+                err.status = 0;
+                reject(err);
+                try { this.abort(); } catch (_) {}
             };
             request.send();
         });
@@ -546,8 +722,10 @@ API.Utils = {
     get(url, params) {
         // 重试
         const retryRequest = (ajax, reject, error) => {
+            // 纯文本版（给 console 用，去 HTML 标签）
+            const msgText = (ajax.customMessage || '未知错误').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             if (ajax.retries > 0) {
-                console.warn('请求接口异常，正在重试，接口：%s，参数：%o，剩余重试次数：%i', url, params, ajax.retries);
+                console.warn('请求接口异常，正在重试，接口：%s，参数：%o，剩余重试次数：%i，错误：%s', url, params, ajax.retries, msgText);
                 $('#errorTips').show();
                 $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，将会在{1}重试，剩余次数：{2}</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
                 ajax.retries--;
@@ -557,7 +735,7 @@ API.Utils = {
                 }, ajax.retryInterval);
                 return;
             }
-            console.warn('重试次数已用完，准备回调，接口：%s，参数：%o', this.url, params);
+            console.warn('重试次数已用完，准备回调，接口：%s，参数：%o，错误：%s', this.url, params, msgText);
             $('#errorTips').show();
             $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，重试次数用完，已取消</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
             reject(error);
@@ -607,6 +785,8 @@ API.Utils = {
                     resolve(result);
                 },
                 error: function(xhr, status, error) {
+                    // 使用统一的错误构造器，自动识别 WAF 403 / 超时 / CORS / Motrix 端口 等
+                    this.customMessage = API.Utils.buildNetworkErrorMessage(xhr, status, error, this.url);
                     retryRequest(this, reject, error);
                 }
             });
@@ -617,22 +797,44 @@ API.Utils = {
      * POST 请求
      * @param {string} url 请求URL
      * @param {object} data 请求数据
+     * @param {object} [options] 可选配置：{ retries, retryInterval, contentType, timeout }
      */
-    post(url, data) {
-        return new Promise(function(resolve, reject) {
+    post(url, data, options) {
+        options = options || {};
+        const retries = options.retries != null ? options.retries : 2;
+        const retryInterval = (options.retryInterval || 2) * 1000;
+        let attempt = 0;
+
+        const doRequest = () => new Promise(function(resolve, reject) {
             $.ajax({
                 url: url,
                 type: 'POST',
                 data: data,
-                contentType: "application/json;charset=utf-8",
+                contentType: options.contentType || "application/json;charset=utf-8",
+                timeout: (options.timeout || 15) * 1000,
                 success: function(result) {
                     resolve(result);
                 },
-                error: function(xhr, status, error) {
-                    reject(error);
+                error: function(xhr, status, err) {
+                    const msg = API.Utils.buildNetworkErrorMessage(xhr, status, err, url);
+                    const msgText = msg.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                    // 401/403 不重试（重试也不会过，反而消耗次数），其它类型继续
+                    const isAuthFail = !!(xhr && (xhr.status === 401 || xhr.status === 403));
+                    if (attempt < retries && !isAuthFail) {
+                        attempt++;
+                        console.warn('POST 接口异常，正在重试，接口：%s，剩余次数：%i，错误：%s',
+                            url, retries - attempt + 1, msgText);
+                        setTimeout(doRequest, retryInterval);
+                    } else {
+                        const wrapped = new Error(msgText); // Error 消息为纯文本
+                        wrapped.fullMessage = msg; // 保留带 HTML 版本给 UI 用
+                        wrapped.xhr = xhr; wrapped.status = status; wrapped.raw = err;
+                        reject(wrapped);
+                    }
                 }
             });
         });
+        return doRequest();
     },
 
     /**
@@ -1436,8 +1638,10 @@ API.Utils = {
                 task: API.Utils.transformBrowserTask(task)
             }, function(id) {
                 if (chrome.runtime.lastError) {
+                    // 把底层错误挂到 task 上，供 indicator / 日志面板展示
+                    task.lastError = chrome.runtime.lastError.message;
                     task.setId(0);
-                    console.error('添加到下载器失败', chrome.runtime.lastError.message, task);
+                    console.error('添加到下载器失败：' + chrome.runtime.lastError.message, task);
                     resolve(task);
                     return;
                 }

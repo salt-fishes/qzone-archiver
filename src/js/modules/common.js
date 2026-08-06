@@ -477,12 +477,19 @@ API.Common.downloadsByBrowser = async(tasks) => {
                     indicator.setItem(task.name);
                     indicator.addSuccess(task);
                 } else {
-                    console.error('添加到浏览器下载异常', task);
+                    const msg = (task && task.lastError) || '添加到浏览器下载异常';
+                    console.error('添加到浏览器下载异常：' + msg, task);
+                    task.lastError = msg;
                     task.setState('interrupted');
                     indicator.addFailed(task);
                 }
             }).catch((error) => {
-                console.error('添加到浏览器下载异常', error, task);
+                const msg = (task && task.lastError)
+                    || (error && (error.fullMessage || error.message || String(error)))
+                    || '未知错误';
+                const msgText = msg.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                console.error('添加到浏览器下载异常：' + msgText, error, task);
+                task.lastError = msg;
                 task.setState('interrupted');
                 indicator.addFailed(task);
             })
@@ -516,7 +523,19 @@ API.Common.downloadByAria2 = async(tasks) => {
             const task = list[j];
             await API.Utils.downloadByAria2(task).then((result) => {
                 if (result.error) {
-                    console.error('添加到Aria2异常', result, task);
+                    // JSON-RPC 错误对象转可读字符串
+                    const rpcErr = result.error;
+                    const rpcMsg = (typeof rpcErr === 'object')
+                        ? `code=${rpcErr.code || '?'} msg=${rpcErr.message || ''}`
+                        : String(rpcErr);
+                    let hint = '';
+                    // 常见 Aria2 JSON-RPC 错误码翻译
+                    if (rpcErr && rpcErr.code === 1) {
+                        hint = '💡 Aria2/Motrix RPC 密钥不正确，请在「选项 → 公共 → Aria2 密钥」中配置正确密钥';
+                    }
+                    const fullMsg = `添加到Aria2异常（${rpcMsg}）${hint ? ' ' + hint : ''}`;
+                    console.error(fullMsg, result, task);
+                    task.lastError = fullMsg;
                     task.setState('interrupted');
                     indicator.addFailed(task);
                 } else {
@@ -526,7 +545,13 @@ API.Common.downloadByAria2 = async(tasks) => {
                     addedCount++;
                 }
             }).catch((error) => {
-                console.error('添加到Aria2异常', error, task);
+                // error 已由 post() 包装为 Error 对象，message 是纯文本，fullMessage 是带 HTML 版本
+                const msg = (error && error.fullMessage)
+                    || (error && error.message)
+                    || 'Aria2 连接失败';
+                const msgText = msg.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                console.error('添加到Aria2异常：' + msgText, error, task);
+                task.lastError = msg;
                 task.setState('interrupted');
                 indicator.addFailed(task);
             })
