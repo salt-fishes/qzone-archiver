@@ -66,36 +66,30 @@ API.Messages.export = async() => {
 API.Messages.getList = async(pageIndex, indicator) => {
     // 状态更新器当前页
     indicator.index = pageIndex + 1;
-    return await API.Messages.getMessages(pageIndex).then(async(data) => {
-        // 去掉函数，保留json
-        data = API.Utils.toJson(data, /^_preloadCallback\(/);
-        if (data.code && data.code != 0) {
-            // 获取异常
-            console.warn('获取单页的说说列表异常：', data);
-        }
+    // 网络获取委托采集层（P2），模块保留 indicator/convert 编排
+    const data = await QZoneCollectors.Messages.getListRaw(pageIndex);
 
-        // 更新状态-下载中的数量
-        indicator.addDownload(QZone_Config.Messages.pageSize);
+    // 更新状态-下载中的数量
+    indicator.addDownload(QZone_Config.Messages.pageSize);
 
-        // 返回的总数包括无权限的说说的条目数，这里返回为空时表示无权限获取其他的数据
-        if (data.msglist == null || data.msglist.length == 0) {
-            return [];
-        }
+    // 返回的总数包括无权限的说说的条目数，这里返回为空时表示无权限获取其他的数据
+    if (data.msglist == null || data.msglist.length == 0) {
+        return [];
+    }
 
-        // 更新状态-总数
-        QZone.Messages.total = data.total || QZone.Messages.total || 0;
-        indicator.setTotal(QZone.Messages.total);
+    // 更新状态-总数
+    QZone.Messages.total = data.total || QZone.Messages.total || 0;
+    indicator.setTotal(QZone.Messages.total);
 
-        let items = data.msglist || [];
+    let items = data.msglist || [];
 
-        // 转换数据
-        items = API.Messages.convert(items);
+    // 转换数据
+    items = API.Messages.convert(items);
 
-        // 更新状态-下载成功数
-        indicator.addSuccess(items);
+    // 更新状态-下载成功数
+    indicator.addSuccess(items);
 
-        return items;
-    })
+    return items;
 }
 
 /**
