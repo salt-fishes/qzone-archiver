@@ -1,0 +1,38 @@
+appId: com.qzonearchiver.desktop
+productName: QZoneArchiver
+copyright: Copyright © 2026 qzone-archiver
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - src/main/**/*
+  - src/preload/**/*
+  - src/engine/**/*
+  - dist/**/*
+  - package.json
+
+# 打包时无需额外下载的资源可忽略；引擎资源随 files 一并打入
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  artifactName: ${productName}-${version}-setup.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-portable.${ext}
+
+# 中国镜像，避免 electron 二进制下载超时
+electronDownload:
+  mirror: https://npmmirror.com/mirrors/electron/

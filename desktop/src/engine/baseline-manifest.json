@@ -1,0 +1,134 @@
+{
+  "version": "3.3.0",
+  "createdAt": "2026-08-06T12:00:24.053Z",
+  "source": "src/js + src/templates + src/export（扩展端 v3.3.0 冻结基线）",
+  "files": [
+    {
+      "source": "src/js/api.js",
+      "target": "api.js",
+      "sha256": "21b8b71a7ddaaa878060729122d02d08adf149130a1e606754fadadb6a28b20c"
+    },
+    {
+      "source": "src/js/config.js",
+      "target": "config.js",
+      "sha256": "225945e0daee5f6a7084aaf181486b9820a1daf907cdd5ea3d7fbc6db7189fe4"
+    },
+    {
+      "source": "src/js/utils.js",
+      "target": "utils.js",
+      "sha256": "37dad14378fc2101df02a3daf14e8c170374a5edcd38cb12b55ce3ea8b1974d0"
+    },
+    {
+      "source": "src/js/templates-compiled.js",
+      "target": "templates-compiled.js",
+      "sha256": "da8820f7f8a75de71b86df3bbf7c1bcf7a787379848ff2766653f65fb1cd06f8"
+    },
+    {
+      "source": "src/js/background.js",
+      "target": "background.js",
+      "sha256": "03781c522871c7aa70a6642a1072765a5198d92e04cf342b20ffbf0d2216d301"
+    },
+    {
+      "source": "src/js/content.js",
+      "target": "content.js",
+      "sha256": "cfc15a89641d069403b7db59d9a88e455ad186f57e37e41d59d6d6ea24b600d1"
+    }
+  ],
+  "dirs": [
+    {
+      "source": "src/js/modules",
+      "target": "modules",
+      "files": [
+        "blogs.js",
+        "boards.js",
+        "common.js",
+        "diaries.js",
+        "favorites.js",
+        "friends.js",
+        "messages.js",
+        "photos.js",
+        "shares.js",
+        "videos.js",
+        "visitors.js"
+      ]
+    },
+    {
+      "source": "src/templates",
+      "target": "templates",
+      "files": [
+        "albums.html",
+        "bloginfo.html",
+        "bloginfo_static.html",
+        "blogs.html",
+        "boards.html",
+        "diaries.html",
+        "diaryinfo.html",
+        "diaryinfo_static.html",
+        "favorites.html",
+        "friends.html",
+        "index.html",
+        "messages.html",
+        "photos.html",
+        "shares.html",
+        "statistics.html",
+        "videos.html",
+        "visitors.html"
+      ]
+    },
+    {
+      "source": "src/export",
+      "target": "export-resources",
+      "files": [
+        "css\\common.css",
+        "images\\earth.svg",
+        "images\\favicon.ico",
+        "images\\index.jpg",
+        "images\\loading.gif",
+        "images\\share.svg",
+        "images\\video-play.png",
+        "js\\albums.js",
+        "js\\bloginfo.js",
+        "js\\blogs.js",
+        "js\\boards.js",
+        "js\\common.js",
+        "js\\diaries.js",
+        "js\\diaryinfo.js",
+        "js\\favorites.js",
+        "js\\friends.js",
+        "js\\lib\\coordtransform.min.js",
+        "js\\maps\\china\\china-cities.js",
+        "js\\maps\\china\\china.js",
+        "js\\maps\\config.js",
+        "js\\maps\\world\\world.js",
+        "js\\messages.js",
+        "js\\photos.js",
+        "js\\shares.js",
+        "js\\sidebar.js",
+        "js\\statistics.js",
+        "js\\videos.js",
+        "js\\visitors.js",
+        "spa-dist\\Albums\\data\\.gitkeep",
+        "spa-dist\\Blogs\\data\\.gitkeep",
+        "spa-dist\\Boards\\data\\.gitkeep",
+        "spa-dist\\Diaries\\data\\.gitkeep",
+        "spa-dist\\Favorites\\data\\.gitkeep",
+        "spa-dist\\Friends\\data\\.gitkeep",
+        "spa-dist\\Messages\\data\\.gitkeep",
+        "spa-dist\\Shares\\data\\.gitkeep",
+        "spa-dist\\Videos\\data\\.gitkeep",
+        "spa-dist\\Visitors\\data\\.gitkeep",
+        "spa-dist\\assets\\index.js",
+        "spa-dist\\assets\\style.css",
+        "spa-dist\\export-entry.html",
+        "spa-dist\\index.html"
+      ]
+    }
+  ],
+  "layers": [
+    "collectors",
+    "tasks",
+    "repos",
+    "exporters",
+    "packagers"
+  ]
+}

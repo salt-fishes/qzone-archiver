@@ -17,6 +17,9 @@ releases/
 *.zip
 *.crx
 *.pem
+# 桌面版构建产物
+desktop/dist/
+desktop/release/
 
 # ============ 依赖 ============
 node_modules/

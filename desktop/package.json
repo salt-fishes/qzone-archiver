@@ -1,0 +1,31 @@
+{
+  "name": "qzone-archiver-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "QQ空间档案备份桌面版（内嵌登录 → 采集 → 打包 → 内置 SPA 浏览）",
+  "type": "module",
+  "main": "src/main/index.js",
+  "scripts": {
+    "sync:baseline": "node scripts/sync-baseline.mjs",
+    "dev": "vite",
+    "build:renderer": "vite build",
+    "start": "electron .",
+    "start:dev": "npm run build:renderer && electron .",
+    "dist": "npm run build:renderer && electron-builder",
+    "dist:win": "npm run build:renderer && electron-builder --win"
+  },
+  "dependencies": {
+    "pinia": "^2.1.7",
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "electron": "^43.3.0",
+    "electron-builder": "^26.15.3",
+    "sass": "^1.72.0",
+    "typescript": "^5.4.3",
+    "vite": "^5.2.6",
+    "vue-tsc": "^2.0.7"
+  }
+}
