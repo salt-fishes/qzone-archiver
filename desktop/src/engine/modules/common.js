@@ -257,8 +257,8 @@ API.Common.exportUserToHtml = async(userInfo) => {
         let paths = (API.Common.getRootFolder() + '/' + pathInfo.target).split('/');
         let filename = paths.pop();
         await API.Utils.createFolder(paths.join('/'));
-        // MV3 改造：chrome.extension.getURL 已移除，改用 chrome.runtime.getURL
-        await API.Utils.downloadToFile(chrome.runtime.getURL(pathInfo.original), paths.join('/') + '/' + filename);
+        // 桌面端：资源经 QZonePlatform.resources 读取（IPC，避开跨源 fetch 限制）
+        await window.QZonePlatform.resources.copyToFile(pathInfo.original, paths.join('/') + '/' + filename);
     }
 
     console.info('生成首页HTML文件开始', userInfo);
@@ -296,10 +296,8 @@ API.Common.exportUserToSpa = async(userInfo) => {
         const paths = (API.Common.getRootFolder() + '/' + pathInfo.target).split('/');
         const filename = paths.pop();
         await API.Utils.createFolder(paths.join('/'));
-        await API.Utils.downloadToFile(
-            chrome.runtime.getURL(pathInfo.original),
-            paths.join('/') + '/' + filename
-        );
+        // 桌面端：资源经 QZonePlatform.resources 读取
+        await window.QZonePlatform.resources.copyToFile(pathInfo.original, paths.join('/') + '/' + filename);
     }
     console.info('复制 SPA 静态资源结束');
 
@@ -307,7 +305,7 @@ API.Common.exportUserToSpa = async(userInfo) => {
     // 优先使用 spa-dist 内置的 export-entry.html，若不存在则用内联兜底模板
     let entryHtml = '';
     try {
-        entryHtml = await API.Utils.get(chrome.runtime.getURL('export/spa-dist/export-entry.html'));
+        entryHtml = await window.QZonePlatform.resources.readText('export/spa-dist/export-entry.html');
     } catch (e) {
         console.warn('SPA export-entry.html 未找到，使用内联兜底模板', e);
     }
@@ -353,14 +351,14 @@ API.Common.getHtmlTemplate = async(name, params) => {
     // 改为调用预编译函数 templates-compiled.js 中的 window.__templates__[name]
     if (!params) {
         // 无参数时仍读取原始模板文件（仅返回 HTML 骨架）
-        return await API.Utils.get(chrome.runtime.getURL('templates/' + name + '.html'));
+        return await window.QZonePlatform.resources.readText('templates/' + name + '.html');
     }
     const templates = window.__templates__ || {};
     const render = templates[name];
     if (typeof render !== 'function') {
         // 兜底：预编译函数未找到，回退到运行时编译（仅在 CSP 允许 unsafe-eval 时生效）
         console.warn('预编译模板未找到：' + name + '，回退到运行时编译');
-        const html = await API.Utils.get(chrome.runtime.getURL('templates/' + name + '.html'));
+        const html = await window.QZonePlatform.resources.readText('templates/' + name + '.html');
         return template(html, params);
     }
     // 调用预编译函数，第二个参数为 modifierMap（在 templates-compiled.js 中定义）
@@ -955,10 +953,10 @@ API.Common.saveBackupItems = () => {
         backupInfos.Backedup[QZone.Common.Target.uin] = rows;
 
         // 保存配置项，主要是上次备份时间
-        chrome.storage.sync.set(QZone_Config);
+        window.QZonePlatform.storage.set({ QZone_Config });
 
-        // 保存数据到Storage
-        chrome.storage.local.set(backupInfos, function() {
+        // 保存数据到 Storage（桌面端：QZonePlatform.storage → 主进程）
+        window.QZonePlatform.storage.set(backupInfos).then(function() {
             console.info("保存当前备份数据到Storage完成");
             indicator.complete();
             resolve(backupInfos);
@@ -1117,12 +1115,10 @@ API.Common.hasIncrementBackup = () => {
  * 获取上次备份数据
  */
 API.Common.getBackupItems = () => {
-    return new Promise(function(resolve, reject) {
-        chrome.storage.local.get('Backedup', function(data) {
-            window.Backedup = data || {};
-            resolve(window.Backedup);
-        });
-    })
+    return window.QZonePlatform.storage.get('Backedup').then(function(data) {
+        window.Backedup = data || {};
+        return window.Backedup;
+    });
 }
 
 /**

@@ -322,20 +322,8 @@ API.Utils = {
      * @param {string} url 文件URL
      */
     getMimeType(url) {
-        return new Promise(function(resolve, reject) {
-            chrome.runtime.sendMessage({
-                from: 'content',
-                type: 'getMimeType',
-                url: url,
-                timeout: QZone_Config.Common.autoFileSuffixTimeOut
-            }, function(data) {
-                if (chrome.runtime.lastError) {
-                    reject('');
-                    return;
-                }
-                resolve(data);
-            })
-        });
+        // 桌面端：主进程带 Referer 探测（等价扩展 background getMimeType）
+        return window.QZonePlatform.network.getMimeType(url, QZone_Config.Common.autoFileSuffixTimeOut);
     },
 
     /**
@@ -400,13 +388,7 @@ API.Utils = {
      * @param {string} filepath FileSystem路径
      */
     writeText(content, filepath) {
-        return new Promise(function(resolve, reject) {
-            QZone.Common.Filer.write(filepath, { data: content, type: "text/plain", append: false }, (fileEntry) => {
-                resolve(fileEntry);
-            }, (error) => {
-                reject(error);
-            });
-        });
+        return window.QZonePlatform.fs.writeFile(filepath, content);
     },
 
     /**
@@ -415,14 +397,7 @@ API.Utils = {
      * @param {string} filepath FS的文件路径
      */
     writeFile(buffer, filepath) {
-        return new Promise(function(resolve, reject) {
-            QZone.Common.Filer.write(filepath, { data: buffer }, (fileEntry) => {
-                resolve(fileEntry);
-            }, (err) => {
-                reject(err);
-            });
-        });
-
+        return window.QZonePlatform.fs.writeFile(filepath, buffer);
     },
 
     /**
@@ -432,10 +407,10 @@ API.Utils = {
      */
     downloadToFile(url, path) {
         return new Promise(async function(resolve, reject) {
-            await API.Utils.send(url, 'blob').then((xhr) => {
+            await API.Utils.send(url, 'blob').then(async (xhr) => {
                 let res = xhr.response;
-                QZone.Common.Filer.write(path, { data: res, type: "blob" }, (fileEntry) => {
-                    resolve(fileEntry);
+                await window.QZonePlatform.fs.writeFile(path, res).then((r) => {
+                    resolve(r);
                 }, (e) => {
                     reject(e);
                 });
@@ -449,52 +424,16 @@ API.Utils = {
      * 切换根目录
      */
     switchToRoot() {
-        return new Promise(async function(resolve, reject) {
-            QZone.Common.Filer.cd('/', (root) => {
-                resolve(root);
-            }, (e) => {
-                reject(e);
-            });
-        });
+        return window.QZonePlatform.fs.list('/');
     },
 
     /**
      * 压缩
+     * 桌面端：打包由主进程 archiver 承担（M2b）；引擎侧仅保留签名以兼容调用方
      * @param {string} root 文件或文件夹路径
-     * @param {function} doneFun 
-     * @param {function} failFun 
      */
     Zip(root) {
-        return new Promise(async function(resolve, reject) {
-            let zipOneFile = function(entry) {
-                let newName = encodeURIComponent(entry.name);
-                let fullPath = entry.fullPath.replace(entry.name, newName);
-                QZone.Common.Filer.open(fullPath, (f) => {
-                    let reader = new FileReader();
-                    reader.onload = function(event) {
-                        QZone.Common.Zip.file(entry.fullPath.startsWith('/') ? entry.fullPath.substr(1) : entry.fullPath, event.target.result, { binary: true });
-                    }
-                    reader.readAsArrayBuffer(f);
-                }, reject);
-            };
-
-            (function(path) {
-                let cl = arguments.callee;
-                QZone.Common.Filer.ls(path, (entries) => {
-                    var i = 0;
-                    for (i = 0; i < entries.length; i++) {
-                        var entry = entries[i];
-                        if (entry.isDirectory) {
-                            QZone.Common.Zip.folder(entry.fullPath.startsWith('/') ? entry.fullPath.substr(1) : entry.fullPath);
-                            cl(entry.fullPath);
-                        } else {
-                            zipOneFile(entry);
-                        }
-                    }
-                    resolve();
-                }, reject);
-            })(root);
-        });
+        return window.QZonePlatform.zip.generate(root);
     },
 
     /**
@@ -895,14 +834,8 @@ API.Utils = {
      * @param {string} name 
      */
     getCookie(name) {
-        if (location.protocol === 'chrome-extension:') {
-            chrome.cookies.get({
-                url: "https://user.qzone.qq.com",
-                name: name
-            }, (res) => {
-                console.info("cookie", name, res);
-            });
-        }
+        // 桌面端：引擎窗口运行于 qzone 同源页面，直接读 document.cookie；
+        // httpOnly cookie 经 QZonePlatform.cookies.get 读取
         var value = "; " + document.cookie;
         var parts = value.split("; " + name + "=");
         if (parts.length == 2) {
@@ -1060,22 +993,16 @@ API.Utils = {
     },
 
     /**
-     * 检查文件是否已存在于 Filer 文件系统
+     * 检查文件是否已存在（桌面端：QZonePlatform.fs）
      * 用于文件复用：已存在则跳过下载
      * @param {string} filepath 完整文件路径
      * @returns {Promise<boolean>}
      */
     fileExists(filepath) {
-        return new Promise((resolve) => {
-            if (!QZone.Common.Filer || !filepath) {
-                resolve(false);
-                return;
-            }
-            QZone.Common.Filer.open(filepath,
-                () => resolve(true),
-                () => resolve(false)
-            );
-        });
+        if (!filepath) {
+            return Promise.resolve(false);
+        }
+        return window.QZonePlatform.fs.exists(filepath);
     },
 
     /**
@@ -1347,13 +1274,7 @@ API.Utils = {
      * @param {string} path 
      */
     createFolder(path) {
-        return new Promise(function(resolve, reject) {
-            QZone.Common.Filer.mkdir(path, false, (entry) => {
-                resolve(entry);
-            }, (e) => {
-                reject(e);
-            });
-        });
+        return window.QZonePlatform.fs.mkdir(path);
     },
 
     /**
@@ -1626,28 +1547,18 @@ API.Utils = {
     },
 
     /**
-     * 浏览器下载(发送消息给背景页下载)
+     * 原生下载（桌面端：主进程 DownloadManager 流式下载）
      * @param {BrowserTask} task
      */
     downloadByBrowser(task) {
-        return new Promise(async function(resolve, reject) {
-            chrome.runtime.sendMessage({
-                from: 'content',
-                type: 'download_browser',
-                downloadThread: QZone_Config.Common.downloadThread,
-                task: API.Utils.transformBrowserTask(task)
-            }, function(id) {
-                if (chrome.runtime.lastError) {
-                    // 把底层错误挂到 task 上，供 indicator / 日志面板展示
-                    task.lastError = chrome.runtime.lastError.message;
-                    task.setId(0);
-                    console.error('添加到下载器失败：' + chrome.runtime.lastError.message, task);
-                    resolve(task);
-                    return;
-                }
-                task.setId(id);
-                resolve(task);
-            })
+        return window.QZonePlatform.download.enqueue({
+            url: task.url,
+            name: task.name,
+            dir: task.dir,
+            module: task.module
+        }).then((id) => {
+            task.setId(id);
+            return task;
         });
     },
 
@@ -1701,48 +1612,19 @@ API.Utils = {
     },
 
     /**
-     * 获取浏览器下载管理器的列表
+     * 获取下载管理器列表（桌面端：主进程 DownloadManager 维护，UI 走 download:get-state）
      * @param {string} state
      */
     getDownloadList(state) {
-        return new Promise(function(resolve, reject) {
-            chrome.runtime.sendMessage({
-                from: 'content',
-                type: 'download_list',
-                options: {
-                    limit: 0,
-                    orderBy: ['-startTime'],
-                    state: state
-                }
-            }, function(data) {
-                if (chrome.runtime.lastError) {
-                    // 发生异常，默认当作成功
-                    resolve([]);
-                    return;
-                }
-                resolve(data);
-            })
-        });
+        return Promise.resolve([]);
     },
 
     /**
-     * 恢复下载
+     * 恢复下载（桌面端：DownloadManager 断点续传由主进程管理，M2b）
      * @param {integer} downloadId
      */
     resumeDownload(downloadId) {
-        return new Promise(function(resolve, reject) {
-            chrome.runtime.sendMessage({
-                from: 'content',
-                type: 'download_resume',
-                downloadId: downloadId
-            }, function(data) {
-                if (chrome.runtime.lastError) {
-                    resolve(0);
-                    return;
-                }
-                resolve(data);
-            })
-        });
+        return Promise.resolve(0);
     },
 
     /**
@@ -4854,19 +4736,8 @@ API.Statistics = {
      * @param {string} code 文件URL
      */
     getMapJson(code) {
-        return new Promise(function(resolve, reject) {
-            chrome.runtime.sendMessage({
-                from: 'content',
-                type: 'getMapJson',
-                url: 'https://geo.datav.aliyun.com/areas_v3/bound/' + code + '_full.json'
-            }, function(data) {
-                if (chrome.runtime.lastError) {
-                    reject(null);
-                    return;
-                }
-                resolve(data);
-            })
-        });
+        // 桌面端：主进程带 Referer 获取（等价扩展 background getMapJson）
+        return window.QZonePlatform.network.getJson('https://geo.datav.aliyun.com/areas_v3/bound/' + code + '_full.json');
     },
 
     /**

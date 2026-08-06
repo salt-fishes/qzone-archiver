@@ -20,6 +20,7 @@ releases/
 # 桌面版构建产物
 desktop/dist/
 desktop/release/
+desktop/src/renderer/dist/
 
 # ============ 依赖 ============
 node_modules/

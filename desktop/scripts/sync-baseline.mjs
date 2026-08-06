@@ -40,6 +40,7 @@ const DIR_MAP = [
   ['src/js/modules', 'modules'],
   ['src/templates', 'templates'],
   ['src/export', 'export-resources'],
+  ['src/vendor/turndown', 'vendor/turndown'],
 ];
 
 // M1 五层目标目录（P0 起在 engine/ 内落地，骨架先建空目录）

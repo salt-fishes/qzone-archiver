@@ -784,9 +784,10 @@ var QZone = {
             ZIP_NAME: 'QQ空间备份'
         },
         FILE_URLS: new Map(),
-        Zip: window['JSZip'] ? new JSZip() : undefined,
+        // 桌面端：打包/文件系统由主进程承担（P1/P5），MD 需 turndown 库（Markdown 导出时再挂载）
+        Zip: undefined,
         MD: window['TurndownService'] ? new TurndownService() : undefined,
-        Filer: window['Filer'] ? new Filer() : undefined,
+        Filer: undefined,
         ExportFiles: ExportFiles,
         SpaExportFiles: SpaExportFiles
     },
