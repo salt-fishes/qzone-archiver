@@ -35,47 +35,120 @@
   window.checkExportState = checkExportState;
 
   // ---------- 任务层临时垫片（P6 迁移：tasks/progress.js） ----------
+  // 接口对齐 content.js StatusIndicator（659-922）：setItem/setTotal/setIndex/setTotalPage/
+  // setNextTip/addDownload/addFailed/addSuccess/setFailed/setSuccess/addSkip/setSkip/print/complete
+  // 桌面端无提示 DOM，进度经 QZonePlatform.notify.progress 上报
   class StatusIndicator {
     constructor(key) {
       this.key = key || 'Default';
-      this.current = 0;
       this.total = 0;
-      this.success = 0;
-      this.failed = 0;
+      this.index = 0;
+      this.pageSize = 0;
+      this.totalPage = 0;
+      this.downloaded = 0;
+      this.downloading = 0;
+      this.downloadFailed = 0;
       this.skip = 0;
+      this.item = '';
+      this.startTime = Date.now();
     }
 
     setTotal(total) {
       this.total = total;
-      return this;
-    }
-
-    setIndex(index) {
-      this.current = index;
-      this._emit();
-      return Promise.resolve(this);
-    }
-
-    addSuccess(step) {
-      this.success += step || 1;
       this._emit();
       return this;
     }
 
-    addFailed(step) {
-      this.failed += step || 1;
+    setTotalPage(totalPage) {
+      this.totalPage = totalPage;
       this._emit();
       return this;
     }
 
-    addSkip(step) {
-      this.skip += step || 1;
+    setNextTip(tip) {
+      // 桌面端仅记录，无 DOM 提示
+      this.nextTip = String(tip == null ? '' : tip);
       this._emit();
       return this;
     }
 
-    addDownload(step) {
-      // 桌面端下载由主进程 DownloadManager 执行，无需计数
+    setItem(name) {
+      this.item = String(name == null ? '' : name);
+      this._emit();
+      return this;
+    }
+
+    async setIndex(index) {
+      this.index = typeof index === 'number' ? index : String(index);
+      this._emit();
+      // 检查点：暂停/取消语义与 content.js 一致
+      if (await checkExportState()) {
+        const err = new Error('[ExportState] 导出已取消');
+        err.__exportCancelled = true;
+        throw err;
+      }
+      return this;
+    }
+
+    addSuccess(item) {
+      let count = 1;
+      if (Array.isArray(item)) count = item.length;
+      else if (typeof item === 'number') count = item;
+      this.downloaded += count;
+      this.downloading = Math.max(0, this.downloading - count);
+      this._emit();
+      return this;
+    }
+
+    setSuccess(item) {
+      let count = 1;
+      if (Array.isArray(item)) count = item.length;
+      else if (typeof item === 'number') count = item;
+      this.downloaded = count;
+      this.downloading = 0;
+      this._emit();
+      return this;
+    }
+
+    addFailed(item) {
+      let count = 1;
+      if (Array.isArray(item)) count = item.length;
+      else if (item instanceof window.PageInfo) count = item.size || 1;
+      this.downloadFailed += count;
+      this.downloading = Math.max(0, this.downloading - count);
+      this._emit();
+      return this;
+    }
+
+    setFailed(item) {
+      let count = 1;
+      if (Array.isArray(item)) count = item.length;
+      else if (item instanceof window.PageInfo) count = item.size || 1;
+      this.downloadFailed = count;
+      this.downloading = 0;
+      this._emit();
+      return this;
+    }
+
+    addSkip(item) {
+      let count = 1;
+      if (Array.isArray(item)) count = item.length;
+      this.skip += count;
+      this._emit();
+      return this;
+    }
+
+    setSkip(count) {
+      if (Array.isArray(count)) count = count.length;
+      this.skip = count;
+      this._emit();
+      return this;
+    }
+
+    addDownload(pageSize) {
+      this.downloading = this.downloaded + pageSize;
+      this._emit();
+      return this;
     }
 
     print() {
@@ -84,7 +157,7 @@
     }
 
     complete() {
-      this.current = this.total || this.current;
+      this.index = this.total || this.index;
       this._emit('complete');
       return this;
     }
@@ -94,10 +167,16 @@
         window.QZonePlatform.notify.progress({
           module: window.__engineExportState.currentModule,
           phase: this.key,
-          done: this.current,
+          done: this.downloaded || this.index || 0,
           total: this.total,
-          percent: this.total ? Math.min(100, Math.round((this.current / this.total) * 100)) : 0,
-          extra: { success: this.success, failed: this.failed, skip: this.skip },
+          percent: this.total ? Math.min(100, Math.round(((this.downloaded || this.index) / this.total) * 100)) : 0,
+          extra: {
+            success: this.downloaded,
+            failed: this.downloadFailed,
+            skip: this.skip,
+            item: this.item,
+            elapsed: Math.floor((Date.now() - this.startTime) / 1000),
+          },
           status: status || 'running',
         });
       } catch (e) {
@@ -182,6 +261,85 @@
       this.size = 0;
     }
   };
+
+  // ---------- 下载调度临时垫片（迁移自 content.js:1775-1895，P6 → tasks/downloader.js） ----------
+  // 桌面端：媒体下载经 QZonePlatform.download.enqueue 交给主进程 DownloadManager（流式，M2b 完善断点）
+  const downloadTasks = [];
+  const browserTasks = [];
+  const thunderInfo = new window.ThunderInfo();
+
+  API.Utils.newDownloadTask = (module, url, folder, name, source, makeOrg) => {
+    if (!url) {
+      return;
+    }
+    url = makeOrg ? url : API.Utils.makeDownloadUrl(url, true);
+    const dlUrl = API.Common.isFile() ? API.Utils.toHttps(url) : url;
+    // 收集任务（兼容原数组 + 迅雷链接导出）
+    downloadTasks.push(new window.DownloadTask(module, folder, name, dlUrl, source));
+    thunderInfo.addTask(new window.ThunderTask(module, folder, name, url, source));
+    // 桌面端：入队主进程 DownloadManager（fire-and-forget，采集不阻塞）
+    try {
+      window.QZonePlatform.download
+        .enqueue({ module, url: dlUrl, dir: folder, name })
+        .catch((e) => console.warn('[desktop-runner] 下载入队失败', e && e.message));
+    } catch (e) {
+      console.warn('[desktop-runner] 下载入队失败', e && e.message);
+    }
+  };
+
+  API.Utils.addDownloadTasks = async (module, item, url, module_dir, source, FILE_URLS, suffix) => {
+    if (await checkExportState()) {
+      const err = new Error('[ExportState] 导出已取消');
+      err.__exportCancelled = true;
+      throw err;
+    }
+    url = API.Utils.toHttp(url);
+    item.custom_url = url;
+    if (API.Common.isQzoneUrl()) {
+      return;
+    }
+    let filename = FILE_URLS.get(url);
+    if (!filename) {
+      // URL 确定性哈希文件名（跨会话复用）
+      filename = API.Utils.hashUrl(url);
+      if (suffix) {
+        filename = filename + suffix;
+        item.custom_mimeType = suffix;
+      } else {
+        const autoSuffix = await API.Utils.autoFileSuffix(url);
+        filename = filename + autoSuffix;
+        item.custom_mimeType = autoSuffix;
+      }
+    }
+    item.custom_filename = filename;
+    item.custom_filepath = 'images/' + filename;
+    if (!FILE_URLS.has(url)) {
+      API.Utils.newDownloadTask(module, url, module_dir, filename, source, suffix);
+      FILE_URLS.set(url, filename);
+    }
+  };
+
+  API.Utils.downloadAllFiles = async () => {
+    const downloadType = QZone_Config.Common.downloadType;
+    if (downloadType === 'QZone') {
+      return;
+    }
+    if (downloadTasks.length === 0 || thunderInfo.tasks.length === 0) {
+      return;
+    }
+    switch (downloadType) {
+      case 'Thunder_Link':
+      case 'Thunder_Clipboard':
+        // 迅雷：写入链接 txt（Clipboard 模式在桌面端同样落为链接文件，剪贴板由主进程管理）
+        await API.Common.writeThunderTaskToFile(thunderInfo);
+        break;
+      default:
+        // File/Aria2/Browser：桌面端媒体已由主进程 DownloadManager 流式下载（M2b 完善断点续传）
+        break;
+    }
+  };
+
+  API.Utils.getDownloadTasks = () => (QZone_Config.Common.downloadType === 'File' ? downloadTasks : []);
 
   // ---------- 模块序列执行 ----------
   async function runModule(mod) {
