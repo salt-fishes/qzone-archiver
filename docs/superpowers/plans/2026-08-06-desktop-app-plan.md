@@ -9,6 +9,18 @@
 - 扩展端 `src/js`、`background.js`、`content.js`、全部页面与 `manifest.json` **冻结 v3.3.0 不回写**，作为每一步产物 diff 基准。
 - 一切改动落在 `desktop/` 目录。
 
+## 0.5 执行进度
+
+| 里程碑 | 状态 | 说明 |
+|---|---|---|
+| M0 基线准备 | ✅ | desktop/ 骨架 + sync-baseline 快照 v3.3.0（dbd8329） |
+| M1.P0 引擎骨架 | ✅ | 五层目录 + adapters/runner；引擎 18 脚本注入 qzone 页无 console 错误 |
+| M2a 桌面壳（工程侧） | ✅ | 主进程/窗口/IPC 契约全量/preload 双桥/引擎注入/登录检测（c01cdb0） |
+| M1.P1 平台适配层 | ✅ | QZonePlatform 全接口经 IPC；引擎内 chrome.*/Filer/JSZip/saveAs 收敛完成；资源改经 IPC 读取 |
+| M2a 验收 | ✅ | 扫码登录 + Messages 单模块备份跑通（数据 + 媒体落盘），2026-08-06 用户确认 |
+| M1.P2 采集层 | ⏳ | 从 modules/* 抽取 getAllList 等至 collectors/*；api.js 保留网络原语 |
+| M2b 下载打包断点 | ⏳ | 流式下载（Readable.fromWeb 背压）+ .part 断点 + archiver 打包 |
+
 ## 1. 依赖链与执行策略
 
 ```
