@@ -274,13 +274,14 @@
     }
     url = makeOrg ? url : API.Utils.makeDownloadUrl(url, true);
     const dlUrl = API.Common.isFile() ? API.Utils.toHttps(url) : url;
-    // 收集任务（兼容原数组 + 迅雷链接导出）
+    // 收集任务（兼容原数组 + 迅雷链接导出；迅雷链接保留 http）
     downloadTasks.push(new window.DownloadTask(module, folder, name, dlUrl, source));
     thunderInfo.addTask(new window.ThunderTask(module, folder, name, url, source));
     // 桌面端：入队主进程 DownloadManager（fire-and-forget，采集不阻塞）
+    // 直连下载统一走 https（http 会被 Chromium 网络栈 ERR_BLOCKED_BY_CLIENT 拦截）
     try {
       window.QZonePlatform.download
-        .enqueue({ module, url: dlUrl, dir: folder, name })
+        .enqueue({ module, url: API.Utils.toHttps(dlUrl), dir: folder, name })
         .catch((e) => console.warn('[desktop-runner] 下载入队失败', e && e.message));
     } catch (e) {
       console.warn('[desktop-runner] 下载入队失败', e && e.message);
