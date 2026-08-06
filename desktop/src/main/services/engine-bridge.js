@@ -13,6 +13,19 @@ import { stateStore } from './state-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** 引擎隔离世界 ID（与 preload engine-bridge.cjs 保持一致） */
+export const ENGINE_WORLD_ID = 100;
+
+/** 在引擎窗口隔离世界执行 JS（引擎命名空间 QZonePlatform/API/__engineCommands 均在该世界） */
+function execInEngine(wc, code) {
+  // 追加 ;void 0; 抑制 executeJavaScript 返回脚本末值（部分脚本末值为不可克隆对象会报错）
+  return wc.executeJavaScriptInIsolatedWorld(
+    ENGINE_WORLD_ID,
+    [{ code: code + '\n;void 0;' }],
+    true
+  );
+}
+
 /** 注入顺序（依赖关系：适配器 → 运行时库 → 基础工具 → 五层 → runner） */
 export const ENGINE_SCRIPTS = [
   'desktop-adapters.js',
@@ -98,8 +111,7 @@ export const engineBridge = {
       const file = path.join(ENGINE_DIR, rel);
       const code = fs.readFileSync(file, 'utf8');
       try {
-        // 追加 ;void 0; 抑制 executeJavaScript 返回脚本末值（部分脚本末值为不可克隆对象会报错）
-        await wc.executeJavaScript(code + '\n;void 0;', true);
+        await execInEngine(wc, code);
       } catch (e) {
         console.error(`[engine-bridge] 注入失败: ${rel}`, e);
         throw e;
@@ -109,13 +121,13 @@ export const engineBridge = {
     sendToUi('backup:state-changed', { state: 'engine-ready', message: '引擎已就绪' });
   },
 
-  /** 执行一段引擎侧 JS（返回序列化结果） */
+  /** 执行一段引擎侧 JS（隔离世界，返回序列化结果） */
   async exec(code) {
     const wc = windows.engine?.webContents;
     if (!wc || wc.isDestroyed()) {
       throw new Error('引擎窗口不存在');
     }
-    return wc.executeJavaScript(code, true);
+    return execInEngine(wc, code);
   },
 
   /** 启动备份（runner.__engineCommands.start） */
