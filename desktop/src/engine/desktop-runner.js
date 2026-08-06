@@ -109,7 +109,8 @@
 
   // ---------- 模块序列执行 ----------
   async function runModule(mod) {
-    const fn = window.API && window.API[mod] && window.API[mod].export;
+    // 注意：API 由 api.js 以 `const API` 声明（词法全局，不挂 window），此处直接引用
+    const fn = API && API[mod] && API[mod].export;
     if (!fn) {
       window.QZonePlatform.notify.log({ level: 'warn', message: `模块 ${mod} 无导出入口` });
       return;
@@ -144,8 +145,8 @@
 
       // 初始化 QQ 身份（uin / g_tk）
       try {
-        if (window.API && window.API.Utils && window.API.Utils.initUin) {
-          window.API.Utils.initUin();
+        if (API && API.Utils && API.Utils.initUin) {
+          API.Utils.initUin();
         }
       } catch (e) {
         console.warn('[desktop-runner] initUin 失败（不阻塞）', e);
@@ -198,11 +199,11 @@
 
     async getLoginStatus() {
       try {
-        const uin = (window.API.Utils.getCookie('uin') || '').replace(/\D/g, '');
+        const uin = (API.Utils.getCookie('uin') || '').replace(/\D/g, '');
         const targetUin = window.QZone.Common.Target && window.QZone.Common.Target.uin;
         let info = null;
         try {
-          const data = await window.API.Common.getUserInfos();
+          const data = await API.Common.getUserInfos();
           const d = data && (data.data || data);
           info = d && (d.userinfo || d.UserInfo || d);
         } catch (e) {
