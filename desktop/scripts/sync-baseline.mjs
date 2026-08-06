@@ -36,10 +36,15 @@ const FILE_MAP = [
 ];
 
 // 目录映射：源 → 目标（递归复制）
+// 引擎运行时库（与扩展端 content_scripts 依赖一致：jQuery/lodash/turndown/template/sheetjs）
 const DIR_MAP = [
   ['src/js/modules', 'modules'],
   ['src/templates', 'templates'],
   ['src/export', 'export-resources'],
+  ['src/vendor/jquery', 'vendor/jquery'],
+  ['src/vendor/lodash', 'vendor/lodash'],
+  ['src/vendor/template', 'vendor/template'],
+  ['src/vendor/sheetjs', 'vendor/sheetjs'],
   ['src/vendor/turndown', 'vendor/turndown'],
 ];
 

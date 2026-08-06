@@ -13,11 +13,15 @@ import { stateStore } from './state-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-/** 注入顺序（依赖关系：适配器 → 基础库 → 五层 → runner） */
+/** 注入顺序（依赖关系：适配器 → 运行时库 → 基础工具 → 五层 → runner） */
 export const ENGINE_SCRIPTS = [
   'desktop-adapters.js',
-  'utils.js',
+  'vendor/jquery/jquery.min.js',
+  'vendor/lodash/lodash.min.js',
   'vendor/turndown/turndown.js',
+  'vendor/template/template.js',
+  'vendor/sheetjs/xlsx.full.min.js',
+  'utils.js',
   'config.js',
   'templates-compiled.js',
   'api.js',

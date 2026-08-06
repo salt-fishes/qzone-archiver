@@ -107,6 +107,82 @@
   }
   window.StatusIndicator = StatusIndicator;
 
+  // ---------- 任务层临时垫片（迁移自 content.js:7-167，P6 → tasks/downloader.js） ----------
+  // 各模块 getList 失败分支/迅雷链接导出依赖这些类；模块以全局名 `new PageInfo(...)` 调用，
+  // 故必须挂到 window（class 声明默认是词法绑定，不挂 window）
+  window.DownloadTask = class DownloadTask {
+    constructor(module, dir, name, url, source) {
+      this.module = module;
+      this.dir = dir;
+      this.name = name;
+      this.url = url;
+      this.downloadState = 'in_progress';
+      this.source = source;
+    }
+    setState(downloadState) {
+      this.downloadState = downloadState;
+    }
+  };
+
+  window.ThunderTask = class ThunderTask {
+    constructor(module, dir, name, url, source) {
+      this.module = module;
+      this.dir = dir;
+      this.name = name;
+      this.url = url;
+      this.downloadState = 'in_progress';
+      this.source = source;
+    }
+    setState(downloadState) {
+      this.downloadState = downloadState;
+    }
+  };
+
+  window.ThunderInfo = class ThunderInfo {
+    constructor(taskGroupName, threadCount, tasks) {
+      this.taskGroupName = taskGroupName;
+      this.tasks = tasks || [];
+      this.threadCount = threadCount;
+      this.hideYunPan = '1';
+      this.referer = 'https://user.qzone.qq.com/';
+    }
+    addTask(task) {
+      this.tasks.push(task);
+    }
+    delTask(index) {
+      this.tasks.splice(index, 1);
+    }
+    removeTask(url) {
+      this.tasks.remove(url, 'url');
+    }
+  };
+
+  window.BrowserTask = class BrowserTask {
+    constructor(module, url, root, folder, name, source) {
+      this.module = module;
+      this.id = 0;
+      this.url = url;
+      this.dir = folder;
+      this.name = name;
+      this.filename = root + '/' + folder + '/' + name;
+      this.downloadState = 'in_progress';
+      this.source = source;
+    }
+    setId(id) {
+      this.id = id;
+    }
+    setState(downloadState) {
+      this.downloadState = downloadState;
+    }
+  };
+
+  window.PageInfo = class PageInfo {
+    constructor(index, size) {
+      this.index = 0;
+      this.size = 0;
+    }
+  };
+
   // ---------- 模块序列执行 ----------
   async function runModule(mod) {
     // 注意：API 由 api.js 以 `const API` 声明（词法全局，不挂 window），此处直接引用
