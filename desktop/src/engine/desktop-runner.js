@@ -163,6 +163,11 @@
     }
 
     _emit(status) {
+      // 无 total 的概要型 indicator（如 Messages_Row_Infos 总结行）不产生百分比进度，
+      // 跳过避免 0% 事件覆盖真实阶段进度
+      if (!this.total) {
+        return;
+      }
       try {
         window.QZonePlatform.notify.progress({
           module: window.__engineExportState.currentModule,
