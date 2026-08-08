@@ -18,7 +18,9 @@
 | M2a 桌面壳（工程侧） | ✅ | 主进程/窗口/IPC 契约全量/preload 双桥/引擎注入/登录检测（c01cdb0） |
 | M1.P1 平台适配层 | ✅ | QZonePlatform 全接口经 IPC；引擎内 chrome.*/Filer/JSZip/saveAs 收敛完成；资源改经 IPC 读取 |
 | M2a 验收 | ✅ | 扫码登录 + Messages 单模块备份跑通（数据 + 媒体落盘），2026-08-06 用户确认 |
-| M1.P2 采集层 | ⏳ | 从 modules/* 抽取 getAllList 等至 collectors/*；api.js 保留网络原语 |
+| M1.P2a 采集层骨架 | ✅ | collectors/base + index + messages（getListRaw）+ 注入接线（47b14cc） |
+| M1.P2b Messages 采集迁移 | ✅ | 10 个采集循环逐字迁入 collectors/messages.js，modules 委托（54a7b60） |
+| M1.P2c 其余模块采集迁移 | ⏳ | Blogs/Diaries/Photos/Videos/Boards/Favorites/Shares/Friends/Visitors 同模式迁移 |
 | M2b 下载打包断点 | ⏳ | 流式下载（Readable.fromWeb 背压）+ .part 断点 + archiver 打包 |
 
 ## 1. 依赖链与执行策略
