@@ -163,9 +163,32 @@
     }
 
     _emit(status) {
-      // 无 total 的概要型 indicator（如 Messages_Row_Infos 总结行）不产生百分比进度，
-      // 跳过避免 0% 事件覆盖真实阶段进度
+      // 概要型 indicator（如 Messages_Row_Infos）无 total，无法计算百分比：
+      // - running 态跳过，避免 0% 事件覆盖真实阶段进度
+      // - complete 态补发 100% 事件，让进度行明确显示模块阶段已结束
       if (!this.total) {
+        if (status !== 'complete') {
+          return;
+        }
+        try {
+          window.QZonePlatform.notify.progress({
+            module: window.__engineExportState.currentModule,
+            phase: this.key,
+            done: 1,
+            total: 1,
+            percent: 100,
+            extra: {
+              success: this.downloaded,
+              failed: this.downloadFailed,
+              skip: this.skip,
+              item: this.item,
+              elapsed: Math.floor((Date.now() - this.startTime) / 1000),
+            },
+            status: 'complete',
+          });
+        } catch (e) {
+          /* 进度上报失败不阻塞采集 */
+        }
         return;
       }
       try {
