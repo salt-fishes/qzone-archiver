@@ -20,7 +20,9 @@
 | M2a 验收 | ✅ | 扫码登录 + Messages 单模块备份跑通（数据 + 媒体落盘），2026-08-06 用户确认 |
 | M1.P2a 采集层骨架 | ✅ | collectors/base + index + messages（getListRaw）+ 注入接线（47b14cc） |
 | M1.P2b Messages 采集迁移 | ✅ | 10 个采集循环逐字迁入 collectors/messages.js，modules 委托（54a7b60） |
-| M1.P2c 其余模块采集迁移 | ⏳ | Blogs/Diaries/Photos/Videos/Boards/Favorites/Shares/Friends/Visitors 同模式迁移 |
+| M1.P2c 全模块采集迁移 | ✅ | Blogs/Diaries/Boards/Favorites/Photos/Videos/Visitors/Friends/Shares 共 42 函数迁入（5817a20, bbf8b4e） |
+| M1.P2 验收（Messages 回归） | ⏳ | 重启桌面版跑 Messages 备份，产物与上次一致 |
+| M1.P3 仓库层 | ⏳ | convert/writeJsonToJs/incremental 迁至 repos/* |
 | M2b 下载打包断点 | ⏳ | 流式下载（Readable.fromWeb 背压）+ .part 断点 + archiver 打包 |
 
 ## 1. 依赖链与执行策略
