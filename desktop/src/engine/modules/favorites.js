@@ -44,6 +44,11 @@ API.Favorites.getPageList = QZoneCollectors.Favorites.getPageList;
 API.Favorites.getAllList = QZoneCollectors.Favorites.getAllList;
 
 /**
+ * 转换数据（P3：委托 repos/Favorites）
+ */
+API.Favorites.convert = QZoneRepo.Favorites.convert;
+
+/**
  * 导出收藏
  * @param {Array} favorites 收藏列表
  */

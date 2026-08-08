@@ -47,6 +47,12 @@ API.Shares.export = async() => {
 API.Shares.getAllList = QZoneCollectors.Shares.getAllList;
 
 /**
+ * 转换分享网页到数据（P3：委托 repos/Shares）
+ * @param {String} html 分享页面内容
+ */
+API.Shares.convert = QZoneRepo.Shares.convert;
+
+/**
  * 获取单条分享的全部评论列表（P2：委托 collectors/Shares）
  * @param {object} item 分享
  * @param {StatusIndicator} indicator 状态更新器
