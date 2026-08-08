@@ -164,30 +164,7 @@ API.Blogs.getItemAllCommentList = QZoneCollectors.Blogs.getItemAllCommentList;
  * 所有日志转换成导出文件
  * @param {Array} items 日志列表
  */
-API.Blogs.exportAllListToFiles = async(items) => {
-    // 获取用户配置
-    let exportType = QZone_Config.Blogs.exportType;
-    switch (exportType) {
-        case 'HTML':
-            await API.Blogs.exportToHtml(items);
-            break;
-        case 'PDF':
-            await API.Blogs.exportToPDF(items);
-            break;
-        case 'MarkDown':
-            await API.Blogs.exportToMarkdown(items);
-            break;
-        case 'JSON':
-            await API.Blogs.exportToJson(items);
-            break;
-        case 'SPA':
-            await API.Blogs.exportToSpa(items);
-            break;
-        default:
-            console.warn('未支持的导出类型', exportType);
-            break;
-    }
-}
+API.Blogs.exportAllListToFiles = QZoneExporters.Blogs.exportAllListToFiles;
 
 /**
  * 导出日志到 SPA
@@ -205,113 +182,13 @@ API.Blogs.exportAllListToFiles = async(items) => {
  *
  * @param {Array} items 日志列表
  */
-API.Blogs.exportToSpa = async(items) => {
-    // 进度更新器
-    const indicator = new StatusIndicator('Blogs_Export_Other');
-    await indicator.setIndex('SPA');
-
-    try {
-        // 模块文件夹路径
-        const moduleFolder = API.Common.getModuleRoot('Blogs');
-        // 创建 data 子目录（SPA 专用数据文件目录）
-        const dataFolder = moduleFolder + '/data';
-        await API.Utils.createFolder(dataFolder);
-
-        // 1. 生成轻量索引：仅保留 SPA 首屏需要的字段
-        const index = items.map(it => {
-            // 发布时间：pubTime 通常为 unix 秒
-            const ts = it.pubTime || it.pubtime || 0;
-            const timeStr = ts ? API.Utils.formatDate(ts) : '';
-            // 摘要：html 是 base64 编码的内容，无法直接提取文本；
-            //        优先用 effect / category 作为辅助描述
-            const abstract = (it.effect || it.category || '').toString();
-            // 是否有正文内容（base64）
-            const hasContent = !!(it.custom_html || it.html);
-            // 是否有配图
-            const hasImages = !!(it.img && it.img.length);
-            // 评论数
-            const commentCount = (it.comments && it.comments.length) || it.replynum || 0;
-            // 点赞数
-            const likeCount = (it.likes && it.likes.length) || (it.like && it.like.total) || 0;
-            return {
-                blogId: it.blogId || it.blogid || '',
-                title: it.custom_title || it.title || '',
-                category: it.category || '',
-                desc: abstract,
-                time: timeStr,
-                pubTime: ts,
-                commentCount,
-                likeCount,
-                hasContent,
-                hasImages
-            };
-        });
-        await API.Common.writeJsonToJs('blogsIndex', index, dataFolder + '/blogs-index.js');
-        console.info('生成 SPA 日志索引完成', { total: index.length });
-
-        // 2. 按年分片全量数据（pubTime 为 unix 秒，groupedByTime 会自动 *1000）
-        const yearMaps = API.Utils.groupedByTime(items, ['pubTime', 'pubtime'], 'year');
-        for (const [year, yearItems] of yearMaps) {
-            await API.Common.writeJsonToJs(
-                `blogs_${year}`,
-                yearItems,
-                `${dataFolder}/blogs-${year}.js`
-            );
-            console.info('生成 SPA 日志年份分片完成', { year, count: yearItems.length });
-        }
-
-        console.info('导出日志到 SPA 完成', { total: items.length, years: yearMaps.size });
-
-    } catch (error) {
-        console.error('导出日志到 SPA 异常', error, items);
-    }
-
-    // 完成
-    indicator.complete();
-    return items;
-}
+API.Blogs.exportToSpa = QZoneExporters.Blogs.exportToSpa;
 
 /**
  * 导出日志到HTML文件
  * @param {Array} items 日志列表
  */
-API.Blogs.exportToHtml = async(items) => {
-    // 进度更新器
-    const indicator = new StatusIndicator('Blogs_Export_Other');
-    await indicator.setIndex('HTML');
-
-    try {
-
-        // 模块文件夹路径
-        const moduleFolder = API.Common.getModuleRoot('Blogs');
-        // 创建模块文件夹
-        await API.Utils.createFolder(moduleFolder + '/json');
-
-        // 基于JSON生成JS
-        await API.Common.writeJsonToJs('blogs', items, moduleFolder + '/json/blogs.js');
-
-        // 基于模板生成HTML
-        await API.Common.writeHtmlofTpl('blogs', undefined, moduleFolder + "/index.html");
-
-        // 生成日志详情HTML
-        await API.Common.writeHtmlofTpl('bloginfo', undefined, moduleFolder + "/info.html");
-
-        // 每篇日志生成单独的HTML
-        for (let i = 0; i < items.length; i++) {
-            const blog = items[i];
-            const orderNum = API.Utils.prefixNumber(i + 1, items.length.toString().length);
-            await API.Common.writeHtmlofTpl('bloginfo_static', { blog: blog }, moduleFolder + "/{0}_{1}.html".format(orderNum, API.Utils.filenameValidate(blog.title)));
-        }
-
-    } catch (error) {
-        console.error('导出日记到HTML异常', error);
-    }
-
-    // 更新进度信息
-    indicator.complete();
-
-    return items;
-}
+API.Blogs.exportToHtml = QZoneExporters.Blogs.exportToHtml;
 
 
 /**
@@ -349,45 +226,7 @@ API.Blogs.exportToPDF = async(items) => {
  * 导出日志到MarkDown文件
  * @param {Array} items 日志列表
  */
-API.Blogs.exportToMarkdown = async(items) => {
-    // 进度更新器
-    const indicator = new StatusIndicator('Blogs_Export');
-    indicator.setTotal(items.length);
-
-    for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-        // 获取日志MD内容
-        const content = await API.Blogs.getMarkdown(item);
-        // 写入内容到文件
-        // 标签
-        const labels = API.Blogs.getBlogLabel(item);
-        // const date = new Date(item.pubtime * 1000).format('yyyyMMddhhmmss');
-        const date = (item.pubTime || new Date(item.pubtime * 1000).format('yyyyMMddhhmmss')).replace(' ', '');
-        // 序号
-        const orderNum = API.Utils.prefixNumber(index + 1, QZone.Blogs.total.toString().length);
-        // 文件名
-        let filename = API.Utils.filenameValidate(orderNum + "_" + date + "_【" + item.title + "】");
-        if (labels && labels.length > 0) {
-            filename = API.Utils.filenameValidate(orderNum + "_" + date + "_" + labels.join("_") + "【" + item.title + "】");
-        }
-        // 文件夹路径
-        const categoryFolder = API.Common.getModuleRoot('Blogs') + "/" + item.category;
-        // 创建文件夹
-        await API.Utils.createFolder(categoryFolder);
-        // 日志文件路径
-        const filepath = categoryFolder + '/' + filename + ".md";
-        await API.Utils.writeText(content, filepath).then(() => {
-            // 更新成功信息
-            indicator.addSuccess(item);
-        }).catch((e) => {
-            indicator.addFailed(item);
-            console.error('写入日志文件异常', item, e);
-        })
-    }
-    // 更新完成信息
-    indicator.complete();
-    return items;
-}
+API.Blogs.exportToMarkdown = QZoneExporters.Blogs.exportToMarkdown;
 
 /**
  * 获取单篇日志的MD内容
@@ -613,14 +452,7 @@ API.Blogs.handerMedias = async(item, embeds) => {
  * 导出日志到JSON文件
  * @param {Array} items 日志列表
  */
-API.Blogs.exportToJson = async(items) => {
-    let indicator = new StatusIndicator('Blogs_Export_Other');
-    await indicator.setIndex('JSON');
-    let json = JSON.stringify(items);
-    await API.Utils.writeText(json, API.Common.getModuleRoot('Blogs') + '/blogs.json');
-    indicator.complete();
-    return items;
-}
+API.Blogs.exportToJson = QZoneExporters.Blogs.exportToJson;
 
 /**
  * 日志自定义排序（置顶排前，同是置顶最新发表在前，非置顶最新发表在前）

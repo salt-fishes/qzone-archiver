@@ -22,7 +22,9 @@
 | M1.P2b Messages 采集迁移 | ✅ | 10 个采集循环逐字迁入 collectors/messages.js，modules 委托（54a7b60） |
 | M1.P2c 全模块采集迁移 | ✅ | Blogs/Diaries/Boards/Favorites/Photos/Videos/Visitors/Friends/Shares 共 42 函数迁入（5817a20, bbf8b4e） |
 | M1.P2 验收（Messages 回归） | ✅ | 用户重启备份通过，产物一致；修复概要 indicator 0% 覆盖进度（ef18f6c） |
-| M1.P3 仓库层 | ⏳ | convert/writeJsonToJs/incremental 迁至 repos/* |
+| M1.P3 仓库层 | ✅ | writer/incremental/convert 迁至 repos/*，模块委托（ae2d8b1） |
+| M1.P4 导出层 | ✅ | 43 个导出函数迁至 exporters/*（12 文件），模块委托 + ENGINE_SCRIPTS 接线 |
+| M1.P5 打包层 | ⏳ | manifest/links 迁至 packagers/*；zip 归主进程 archiver |
 | M2b 下载打包断点 | ⏳ | 流式下载（Readable.fromWeb 背压）+ .part 断点 + archiver 打包 |
 
 ## 1. 依赖链与执行策略
