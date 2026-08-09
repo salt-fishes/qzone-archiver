@@ -728,7 +728,108 @@ const ExportFiles = [{
     target: 'Statistics/js/maps/world/world.js'
 }, {
     original: 'templates/statistics.html',
-    target: 'Statistics/index.html'
+    target: 'Statistics/index.html'}, {
+    original: 'export/vendor/bootstrap-table/css/bootstrap-table.min.css',
+    target: 'Common/vendor/bootstrap-table/css/bootstrap-table.min.css'
+}, {
+    original: 'export/vendor/bootstrap-table/js/bootstrap-table.min.js',
+    target: 'Common/vendor/bootstrap-table/js/bootstrap-table.min.js'
+}, {
+    original: 'export/vendor/bootstrap-table/js/locale/bootstrap-table-zh-CN.min.js',
+    target: 'Common/vendor/bootstrap-table/js/locale/bootstrap-table-zh-CN.min.js'
+}, {
+    original: 'export/vendor/bootstrap/css/bootstrap.min.css',
+    target: 'Common/vendor/bootstrap/css/bootstrap.min.css'
+}, {
+    original: 'export/vendor/bootstrap/js/bootstrap.bundle.min.js',
+    target: 'Common/vendor/bootstrap/js/bootstrap.bundle.min.js'
+}, {
+    original: 'export/vendor/echarts/echarts.min.js',
+    target: 'Common/vendor/echarts/echarts.min.js'
+}, {
+    original: 'export/vendor/font-awesome/css/font-awesome.min.css',
+    target: 'Common/vendor/font-awesome/css/font-awesome.min.css'
+}, {
+    original: 'export/vendor/font-awesome/fonts/FontAwesome.otf',
+    target: 'Common/vendor/font-awesome/fonts/FontAwesome.otf'
+}, {
+    original: 'export/vendor/font-awesome/fonts/fontawesome-webfont.ttf',
+    target: 'Common/vendor/font-awesome/fonts/fontawesome-webfont.ttf'
+}, {
+    original: 'export/vendor/font-awesome/fonts/fontawesome-webfont.woff',
+    target: 'Common/vendor/font-awesome/fonts/fontawesome-webfont.woff'
+}, {
+    original: 'export/vendor/font-awesome/fonts/fontawesome-webfont.woff2',
+    target: 'Common/vendor/font-awesome/fonts/fontawesome-webfont.woff2'
+}, {
+    original: 'export/vendor/jquery-mousewheel/jquery.mousewheel.min.js',
+    target: 'Common/vendor/jquery-mousewheel/jquery.mousewheel.min.js'
+}, {
+    original: 'export/vendor/jquery/jquery.min.js',
+    target: 'Common/vendor/jquery/jquery.min.js'
+}, {
+    original: 'export/vendor/jquery_lazyload/lazyload.min.js',
+    target: 'Common/vendor/jquery_lazyload/lazyload.min.js'
+}, {
+    original: 'export/vendor/lightgallery/css/lightgallery-bundle.min.css',
+    target: 'Common/vendor/lightgallery/css/lightgallery-bundle.min.css'
+}, {
+    original: 'export/vendor/lightgallery/css/lightgallery.min.css',
+    target: 'Common/vendor/lightgallery/css/lightgallery.min.css'
+}, {
+    original: 'export/vendor/lightgallery/fonts/lg.svg',
+    target: 'Common/vendor/lightgallery/fonts/lg.svg'
+}, {
+    original: 'export/vendor/lightgallery/fonts/lg.ttf',
+    target: 'Common/vendor/lightgallery/fonts/lg.ttf'
+}, {
+    original: 'export/vendor/lightgallery/fonts/lg.woff',
+    target: 'Common/vendor/lightgallery/fonts/lg.woff'
+}, {
+    original: 'export/vendor/lightgallery/fonts/lg.woff2',
+    target: 'Common/vendor/lightgallery/fonts/lg.woff2'
+}, {
+    original: 'export/vendor/lightgallery/images/loading.gif',
+    target: 'Common/vendor/lightgallery/images/loading.gif'
+}, {
+    original: 'export/vendor/lightgallery/lightgallery.min.js',
+    target: 'Common/vendor/lightgallery/lightgallery.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/autoplay/lg-autoplay.min.js',
+    target: 'Common/vendor/lightgallery/plugins/autoplay/lg-autoplay.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/comment/lg-comment.min.js',
+    target: 'Common/vendor/lightgallery/plugins/comment/lg-comment.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/fullscreen/lg-fullscreen.min.js',
+    target: 'Common/vendor/lightgallery/plugins/fullscreen/lg-fullscreen.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/hash/lg-hash.min.js',
+    target: 'Common/vendor/lightgallery/plugins/hash/lg-hash.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/rotate/lg-rotate.min.js',
+    target: 'Common/vendor/lightgallery/plugins/rotate/lg-rotate.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/thumbnail/lg-thumbnail.min.js',
+    target: 'Common/vendor/lightgallery/plugins/thumbnail/lg-thumbnail.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/video/lg-video.min.js',
+    target: 'Common/vendor/lightgallery/plugins/video/lg-video.min.js'
+}, {
+    original: 'export/vendor/lightgallery/plugins/zoom/lg-zoom.min.js',
+    target: 'Common/vendor/lightgallery/plugins/zoom/lg-zoom.min.js'
+}, {
+    original: 'export/vendor/lodash/lodash.min.js',
+    target: 'Common/vendor/lodash/lodash.min.js'
+}, {
+    original: 'export/vendor/moment/locale/zh-cn.min.js',
+    target: 'Common/vendor/moment/locale/zh-cn.min.js'
+}, {
+    original: 'export/vendor/moment/moment.min.js',
+    target: 'Common/vendor/moment/moment.min.js'
+}, {
+    original: 'export/vendor/template/index.aio.min.js',
+    target: 'Common/vendor/template/index.aio.min.js'
 }]
 
 /**

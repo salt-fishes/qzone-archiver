@@ -2086,7 +2086,10 @@ API.Common = {
      * 获取用户空间的头像在线地址
      */
     getUserLogoUrl(uin) {
-        if (!_.isFinite(uin)) {
+        // 桌面端修复：接口返回的 uin 可能是数字字符串（'2568678134'），
+        // _.isFinite 对字符串返回 false 会误入 py.qlogo.cn/friend（该端点已失效，返回 400）；
+        // 统一按「纯数字」判断走 store.qq.com，仅真正的非数字 uin（朋友网/腾讯微博）走 py 分支。
+        if (!/^\d+$/.test(String(uin == null ? '' : uin))) {
             // 这里简单判断一下，不是数字，就认为是朋友网的，腾讯微博的，也当朋友网，使用who判断太麻烦了。
             return 'http://py.qlogo.cn/friend/{0}/audited/100'.format(uin);
         }

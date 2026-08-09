@@ -624,7 +624,9 @@ API.Common = {
      * 获取用户空间的头像地址
      */
     getUserLogoUrl(uin) {
-        if (!_.isFinite(uin)) {
+        // 桌面端修复：uin 可能是数字字符串（'2568678134'），_.isFinite 对字符串返回 false
+        // 会误入已失效的 py.qlogo.cn/friend 端点（HTTP 400）；统一按纯数字判断走 store.qq.com
+        if (!/^\d+$/.test(String(uin == null ? '' : uin))) {
             // 这里简单判断一下，不是数字，就认为是朋友网的，腾讯微博的，也当朋友网，使用who判断太麻烦了。
             return 'http://py.qlogo.cn/friend/{0}/audited/100'.format(uin);
         }
@@ -2709,3 +2711,31 @@ TPL.FRIENDS_GROUP_LIST = `
     </div>
 </div>
 `
+/**
+ * ===== 桌面端增强：图片懒加载兜底 =====
+ * 页面原本依赖 CDN 的 jquery_lazyload，离线/慢网时不可用；
+ * 此处提供全局 lazyload()（各模块页面脚本会调用）与本地 IntersectionObserver 实现：
+ * 无论 CDN 是否可用都能按需加载图片，同时消除 lazyload() 未定义的报错。
+ */
+(function () {
+    function nativeLazyLoad() {
+        if (!window.IntersectionObserver) return;
+        var imgs = document.querySelectorAll('img.lazyload[data-src]');
+        var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (entry) {
+                if (!entry.isIntersecting) return;
+                var img = entry.target;
+                io.unobserve(img);
+                var src = img.getAttribute('data-src');
+                var cur = img.getAttribute('src') || '';
+                if (src && src !== 'null' && cur.indexOf('loading.gif') > -1) {
+                    img.setAttribute('src', src);
+                }
+            });
+        }, { rootMargin: '300px 0px' });
+        imgs.forEach(function (img) { io.observe(img); });
+    }
+    window.lazyload = window.lazyload || nativeLazyLoad;
+    // 脚本位于 body 末尾，DOM 已就绪，立即执行一次
+    nativeLazyLoad();
+})();

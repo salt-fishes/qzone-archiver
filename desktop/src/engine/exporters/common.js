@@ -8,12 +8,16 @@ QZoneExporters.Common = {
     /**
      * 检测指定导出类型是否被任一模块启用
      * 用于判断是否需要复制 SPA 静态资源等共享行为
+     * 仅检查本次实际备份的模块（桌面端），未备份模块的配置不参与判断
      * @param {string} exportType 导出类型，如 'SPA' / 'HTML' / 'MarkDown' / 'JSON'
      * @returns {boolean}
      */
     hasExportType: (exportType) => {
-        const modules = ['Messages', 'Blogs', 'Diaries', 'Photos', 'Videos',
-            'Boards', 'Friends', 'Favorites', 'Shares', 'Visitors'];
+        const backupModules = (window.__engineExportState && window.__engineExportState.modules) || [];
+        const modules = backupModules.length
+            ? backupModules
+            : ['Messages', 'Blogs', 'Diaries', 'Photos', 'Videos',
+                'Boards', 'Friends', 'Favorites', 'Shares', 'Visitors'];
         return modules.some(m => QZone_Config[m] && QZone_Config[m].exportType === exportType);
     },
 
