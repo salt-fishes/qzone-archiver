@@ -479,6 +479,16 @@
           });
         }
       }
+      // 收尾：生成备份清单与统计报告（manifest.json / report.json）
+      if (!s.cancelled) {
+        try {
+          if (window.QZonePackagers && QZonePackagers.Manifest) {
+            await QZonePackagers.Manifest.generate();
+          }
+        } catch (e) {
+          P.notify.log({ level: 'warn', message: `生成备份清单失败：${(e && e.message) || e}` });
+        }
+      }
       s.currentModule = null;
       s.running = false;
       P.notify.state({ taskId, state: 'completed', results });

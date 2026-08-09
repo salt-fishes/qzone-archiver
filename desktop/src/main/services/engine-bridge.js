@@ -68,6 +68,8 @@ export const ENGINE_SCRIPTS = [
   'exporters/visitors.js',
   'exporters/friends.js',
   'exporters/shares.js',
+  'packagers/links.js',
+  'packagers/manifest.js',
   'modules/common.js',
   'modules/messages.js',
   'modules/blogs.js',
