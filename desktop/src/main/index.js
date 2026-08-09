@@ -6,6 +6,7 @@ import { app } from 'electron';
 import { createMainWindow, createEngineWindow, ensureWindows, windows } from './windows.js';
 import { registerIpc } from './ipc/index.js';
 import { registerEngineIpc } from './ipc/engine.js';
+import { watchAuthStatus } from './ipc/auth.js';
 import { engineBridge } from './services/engine-bridge.js';
 import { downloadManager } from './services/download-manager.js';
 
@@ -23,6 +24,9 @@ if (!gotLock) {
     downloadManager.load();
     createMainWindow();
     createEngineWindow();
+
+    // 登录态自动监听（扫码登录后 UI 自动更新，无需手动刷新）
+    watchAuthStatus();
 
     // 引擎窗口加载到 qzone 页面后注入引擎（登录跳转完成后也会触发）
     const engineWc = windows.engine?.webContents;

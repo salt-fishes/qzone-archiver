@@ -1,29 +1,58 @@
 /**
- * auth IPC：登录状态检测 / 显示登录窗口 / 注销
+ * auth IPC：登录状态检测 / 显示登录窗口 / 注销 / 自动监听
  * 登录态由引擎窗口 session（persist:qzone）持久化
  */
 import { ipcMain } from 'electron';
 import { engineBridge, sendToUi } from '../services/engine-bridge.js';
 import { showEngineWindow, windows } from '../windows.js';
 
+/** 检测当前登录状态（p_skey 为登录凭证，httpOnly 只能从 session 读） */
+export async function getAuthStatus() {
+  const pSkey = await engineBridge.getCookie('p_skey');
+  if (!pSkey) {
+    return { loggedIn: false };
+  }
+  const detail = await engineBridge.getLoginStatus().catch(() => null);
+  if (!detail) {
+    return { loggedIn: true, qqNumber: await engineBridge.getCookie('uin').then(cleanUin) };
+  }
+  return {
+    loggedIn: true,
+    qqNumber: detail.qqNumber || (await engineBridge.getCookie('uin').then(cleanUin)),
+    nickname: detail.nickname,
+    avatar: detail.avatar,
+  };
+}
+
+let authTimer = null;
+let lastLoggedIn = null;
+
+/**
+ * 启动登录态自动监听：扫码登录 / 退出后无需手动刷新，
+ * 状态变化时推送 auth:status-changed 到主 UI。
+ */
+export function watchAuthStatus(intervalMs = 5000) {
+  if (authTimer) return;
+  // 建立初始基准（不推送，UI 已通过 auth:get-status 初始化）
+  getAuthStatus()
+    .then((s) => (lastLoggedIn = !!s.loggedIn))
+    .catch(() => (lastLoggedIn = false));
+  authTimer = setInterval(async () => {
+    try {
+      const status = await getAuthStatus();
+      const loggedIn = !!status.loggedIn;
+      if (loggedIn !== lastLoggedIn) {
+        lastLoggedIn = loggedIn;
+        sendToUi('auth:status-changed', status);
+      }
+    } catch (e) {
+      // 引擎窗口未就绪等瞬时错误忽略，下轮重试
+    }
+  }, intervalMs);
+}
+
 export function registerAuthIpc() {
-  ipcMain.handle('auth:get-status', async () => {
-    // p_skey 为登录凭证（httpOnly，只能从 session 读）
-    const pSkey = await engineBridge.getCookie('p_skey');
-    if (!pSkey) {
-      return { loggedIn: false };
-    }
-    const detail = await engineBridge.getLoginStatus().catch(() => null);
-    if (!detail) {
-      return { loggedIn: true, qqNumber: await engineBridge.getCookie('uin').then(cleanUin) };
-    }
-    return {
-      loggedIn: true,
-      qqNumber: detail.qqNumber || (await engineBridge.getCookie('uin').then(cleanUin)),
-      nickname: detail.nickname,
-      avatar: detail.avatar,
-    };
-  });
+  ipcMain.handle('auth:get-status', () => getAuthStatus());
 
   ipcMain.handle('auth:show-login', () => {
     showEngineWindow();

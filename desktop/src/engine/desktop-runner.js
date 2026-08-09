@@ -14,12 +14,29 @@
     return;
   }
 
+  // ---------- 配置深度合并（UI 设置的 QZone_Config 为部分结构，须逐级并入默认，避免丢失子项） ----------
+  function mergeDeep(...sources) {
+    const out = {};
+    for (const src of sources) {
+      if (!src || typeof src !== 'object' || Array.isArray(src)) continue;
+      for (const [key, val] of Object.entries(src)) {
+        if (val && typeof val === 'object' && !Array.isArray(val) && out[key] && typeof out[key] === 'object') {
+          out[key] = mergeDeep(out[key], val);
+        } else {
+          out[key] = val;
+        }
+      }
+    }
+    return out;
+  }
+
   // ---------- 任务层临时垫片（P6 迁移：tasks/state.js） ----------
   window.__engineExportState = {
     running: false,
     paused: false,
     cancelled: false,
     currentModule: null,
+    modules: [], // 本次备份勾选的模块（首页 SPA/HTML 判断依据）
   };
 
   async function checkExportState() {
@@ -372,6 +389,15 @@
 
   // ---------- 模块序列执行 ----------
   async function runModule(mod) {
+    if (mod === 'Statistics') {
+      // Statistics 模块 = 其它信息收尾（等价扩展 OperatorType.OTHERS_INFO）：
+      // 用户信息 / 头像 / 配置 / 备份清单 / index.html 首页与 SPA 入口
+      window.QZonePlatform.notify.log({ level: 'info', message: `开始模块：${mod}` });
+      await API.Common.exportOthers();
+      window.QZonePlatform.notify.log({ level: 'info', message: `模块完成：${mod}` });
+      window.QZonePlatform.notify.moduleDone({ module: mod });
+      return;
+    }
     // 注意：API 由 api.js 以 `const API` 声明（词法全局，不挂 window），此处直接引用
     const fn = API && API[mod] && API[mod].export;
     if (!fn) {
@@ -394,13 +420,14 @@
       const P = window.QZonePlatform;
       P.setTargetDir(targetDir);
 
-      // 装配配置：合入默认值并持久化（等价 chrome.storage.sync.set(QZone_Config)）
+      // 装配配置：引擎默认打底 → 深度合入已保存 → 深度合入本次备份配置，并持久化
+      // （UI 设置传部分结构（如 { Messages: { exportType } }），深度合并保留其余子项）
       if (config) {
         try {
           const saved = await P.storage.get('QZone_Config');
-          const merged = Object.assign({}, (saved && saved.QZone_Config) || {}, config);
-          window.QZone_Config = merged;
-          await P.storage.set({ QZone_Config: merged });
+          const savedCfg = (saved && saved.QZone_Config) || {};
+          window.QZone_Config = mergeDeep(window.QZone_Config || {}, savedCfg, config);
+          await P.storage.set({ QZone_Config: window.QZone_Config });
         } catch (e) {
           console.error('[desktop-runner] 配置保存失败', e);
         }
@@ -422,7 +449,9 @@
       P.notify.state({ taskId, state: 'running', modules });
 
       const results = {};
-      for (const mod of modules || []) {
+      const moduleList = modules || [];
+      s.modules = moduleList;
+      for (const mod of moduleList) {
         if (s.cancelled) break;
         s.currentModule = mod;
         try {
@@ -433,6 +462,20 @@
           P.notify.log({
             level: 'error',
             message: `模块 ${mod} 失败：${(e && e.message) || e}`,
+          });
+        }
+      }
+      // 收尾：未勾选 Statistics 时也补跑，确保生成 index.html 首页 / SPA 入口（等价扩展 OTHERS_INFO 阶段）
+      if (!s.cancelled && !moduleList.includes('Statistics')) {
+        s.currentModule = 'Statistics';
+        try {
+          await runModule('Statistics');
+          results['Statistics'] = 'ok';
+        } catch (e) {
+          results['Statistics'] = 'error';
+          P.notify.log({
+            level: 'error',
+            message: `模块 Statistics 失败：${(e && e.message) || e}`,
           });
         }
       }
