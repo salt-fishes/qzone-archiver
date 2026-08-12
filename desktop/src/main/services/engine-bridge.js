@@ -16,12 +16,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** 引擎隔离世界 ID（与 preload engine-bridge.cjs 保持一致） */
 export const ENGINE_WORLD_ID = 100;
 
-/** 在引擎窗口隔离世界执行 JS（引擎命名空间 QZonePlatform/API/__engineCommands 均在该世界） */
-function execInEngine(wc, code) {
+/**
+ * 在引擎窗口隔离世界执行 JS（引擎命名空间 QZonePlatform/API/__engineCommands 均在该世界）
+ * @param {boolean} [opts.returnValue] true 时不追加 ;void 0;，保留末值（Promise 会被等待并返回），用于需要取回结果的命令
+ */
+function execInEngine(wc, code, opts = {}) {
+  const src = opts.returnValue ? code : code + '\n;void 0;';
   // 追加 ;void 0; 抑制 executeJavaScript 返回脚本末值（部分脚本末值为不可克隆对象会报错）
   return wc.executeJavaScriptInIsolatedWorld(
     ENGINE_WORLD_ID,
-    [{ code: code + '\n;void 0;' }],
+    [{ code: src }],
     true
   );
 }
@@ -36,6 +40,7 @@ export const ENGINE_SCRIPTS = [
   'vendor/sheetjs/xlsx.full.min.js',
   'utils.js',
   'config.js',
+  'emoticons.js',
   'templates-compiled.js',
   'api.js',
   'collectors/index.js',
@@ -81,6 +86,10 @@ export const ENGINE_SCRIPTS = [
   'modules/shares.js',
   'modules/friends.js',
   'modules/visitors.js',
+  'tasks/state.js',
+  'tasks/progress.js',
+  'tasks/downloader.js',
+  'tasks/orchestrator.js',
   'desktop-runner.js',
 ];
 
@@ -153,21 +162,22 @@ export const engineBridge = {
     sendToUi('backup:state-changed', { state: 'engine-ready', message: '引擎已就绪' });
   },
 
-  /** 执行一段引擎侧 JS（隔离世界，返回序列化结果） */
-  async exec(code) {
+  /** 执行一段引擎侧 JS（隔离世界；returnValue=true 时返回末值/Promise 结果） */
+  async exec(code, opts = {}) {
     const wc = windows.engine?.webContents;
     if (!wc || wc.isDestroyed()) {
       throw new Error('引擎窗口不存在');
     }
-    return execInEngine(wc, code);
+    return execInEngine(wc, code, opts);
   },
 
   /** 启动备份（runner.__engineCommands.start） */
   async start({ taskId, config, modules, targetDir }) {
     setActiveBackup({ taskId, config, modules, targetDir });
     const payload = { taskId, config: config || null, modules: modules || [], targetDir };
+    // 守卫：__engineCommands 缺失时明确报错，避免静默失败导致 UI 卡 0%
     return this.exec(
-      `window.__engineCommands && window.__engineCommands.start(${JSON.stringify(payload)})`
+      `window.__engineCommands ? window.__engineCommands.start(${JSON.stringify(payload)}) : (() => { throw new Error('引擎任务层未就绪，请确认已登录 QQ 空间') })()`
     );
   },
 
@@ -181,7 +191,7 @@ export const engineBridge = {
     return this.exec('window.__engineCommands && window.__engineCommands.cancel()');
   },
   getLoginStatus() {
-    return this.exec('window.__engineCommands ? window.__engineCommands.getLoginStatus() : null');
+    return this.exec('window.__engineCommands ? window.__engineCommands.getLoginStatus() : null', { returnValue: true });
   },
 
   /** 读取引擎窗口 session cookie（httpOnly 也可读） */

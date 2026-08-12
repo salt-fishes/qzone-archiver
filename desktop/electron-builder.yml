@@ -11,6 +11,7 @@ files:
   - src/preload/**/*
   - src/engine/**/*
   - dist/**/*
+  - assets/**/*
   - package.json
 
 # 打包时无需额外下载的资源可忽略；引擎资源随 files 一并打入

@@ -29,5 +29,10 @@ export function registerDownloadIpc() {
     return { ok: true };
   });
 
+  ipcMain.handle('download:clear-done', async () => {
+    await downloadManager.clearDone();
+    return { ok: true };
+  });
+
   ipcMain.handle('download:get-state', () => downloadManager.getState());
 }

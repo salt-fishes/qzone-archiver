@@ -50,10 +50,8 @@ const Default_Config = {
     // 开发者
     Dev: {
         Maps: {
-            // 腾讯Key
-            TxKey: "",
-            BdKey: "",
-            GdKey: ""
+            // 腾讯地图Key（用于微信朋友圈说说坐标转地址）
+            TxKey: ""
         }
     },
     // 说说模块
@@ -113,9 +111,8 @@ const Default_Config = {
         ],
         hasThatYearToday: true,
         refreshWeChatLbs: false, // 刷新朋友圈坐标信息
-        GetVoice: false, // 是否获取语音说说
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2
@@ -169,7 +166,7 @@ const Default_Config = {
         IncrementTime: Default_IncrementTime, // 增量时间
         IncrementField: "pubTime", // 增量字段
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2
@@ -211,7 +208,7 @@ const Default_Config = {
         IncrementTime: Default_IncrementTime, // 增量时间
         IncrementField: "pubtime", // 增量字段
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2
@@ -235,7 +232,7 @@ const Default_Config = {
             max: 2
         },
         Comments: {
-            isGet: false, // 是否获取评论，默认不获取
+            isGet: true, // 是否获取评论，默认不获取
             pageSize: 100,
             randomSeconds: {
                 min: 2,
@@ -252,7 +249,7 @@ const Default_Config = {
                 max: 4
             },
             Comments: {
-                isGet: false, // 是否获取评论，默认不获取
+                isGet: true, // 是否获取评论，默认不获取
                 pageSize: 100,
                 randomSeconds: {
                     min: 2,
@@ -277,7 +274,7 @@ const Default_Config = {
         IncrementTime: Default_IncrementTime, // 增量时间
         IncrementField: "uploadTime", // 增量字段
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2
@@ -303,7 +300,7 @@ const Default_Config = {
         },
         pageSize: 20,
         Comments: {
-            isGet: false, // 是否获取评论，默认不获取
+            isGet: true, // 是否获取评论，默认不获取
             pageSize: 20,
             randomSeconds: {
                 min: 1,
@@ -314,7 +311,7 @@ const Default_Config = {
         IncrementTime: Default_IncrementTime, // 增量时间
         IncrementField: "uploadTime", // 增量字段
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2
@@ -388,7 +385,7 @@ const Default_Config = {
         IncrementField: "shareTime", // 增量字段
         hasThatYearToday: true,
         Like: {
-            isGet: false, //是否获取赞
+            isGet: true, //是否获取赞
             randomSeconds: {
                 min: 1,
                 max: 2

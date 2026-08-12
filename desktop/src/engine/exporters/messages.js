@@ -187,7 +187,6 @@ QZoneExporters.Messages = {
   exportToSpa: async(messages) => {
     // 进度更新器
     const indicator = new StatusIndicator('Messages_Export_Other');
-    await indicator.setIndex('SPA');
 
     try {
         // 模块文件夹路径
@@ -196,7 +195,14 @@ QZoneExporters.Messages = {
         const dataFolder = moduleFolder + '/data';
         await API.Utils.createFolder(dataFolder);
 
+        // 导出进度：索引 + 各年分片作为 total（概要型 indicator 无 total 时 running 态不发事件，
+        // 会导致导出阶段数秒无反馈，界面像卡在点赞阶段）
+        const yearMaps = API.Utils.groupedByTime(messages, "custom_create_time", 'year');
+        indicator.setTotal(yearMaps.size + 1);
+        let step = 0;
+
         // 1. 生成轻量索引：仅保留 SPA 首屏需要的字段
+        await indicator.setIndex(++step);
         const index = messages.map(m => {
             // 配图：扩展端转换后 custom_images 与 pic 等价，pic_list 为旧字段（可能为空）
             const pics = m.custom_images || m.pic || m.pic_list || [];
@@ -223,8 +229,8 @@ QZoneExporters.Messages = {
         console.info('生成 SPA 说说索引完成', { total: index.length });
 
         // 2. 按年分片全量数据
-        const yearMaps = API.Utils.groupedByTime(messages, "custom_create_time", 'year');
         for (const [year, yearItems] of yearMaps) {
+            await indicator.setIndex(++step);
             // 变量名形如 messages_2026（与 SPA 端 data-loader 约定一致）
             await API.Common.writeJsonToJs(
                 `messages_${year}`,
@@ -250,6 +256,8 @@ QZoneExporters.Messages = {
                     console.info('未发现已删除说说');
                 }
             } catch (e) {
+                // 取消：向上传播中止整个备份流程
+                if (e && e.__exportCancelled) throw e;
                 console.error('恢复已删除说说异常', e);
             }
         }

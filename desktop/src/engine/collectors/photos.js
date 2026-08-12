@@ -217,7 +217,9 @@ QZoneCollectors.Photos = {
    */
   getAllAlbumImageList: async(items) => {
       for (const item of items) {
-          if (!_.some(QZone.Photos.Album.Select, ['id', item.id])) {
+          // 未选择相册（Select 为空/null）时备份全部；仅在 Select 非空且不含该相册时跳过
+          const selects = QZone.Photos.Album.Select || [];
+          if (selects.length && !_.some(selects, ['id', item.id])) {
               // 不是用户选中的相册，暂不处理
               console.log('不是用户选中的相册，暂不处理');
               continue;

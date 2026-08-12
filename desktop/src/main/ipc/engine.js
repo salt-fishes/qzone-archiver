@@ -7,8 +7,9 @@
 import { ipcMain, net } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveEnginePath, sendToUi } from '../services/engine-bridge.js';
+import { resolveEnginePath, sendToUi, getActiveBackup } from '../services/engine-bridge.js';
 import { engineStorage } from '../services/config-store.js';
+import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { ENGINE_DIR } from '../paths.js';
 
@@ -144,6 +145,15 @@ export function registerEngineIpc() {
       case 'state':
         sendToUi('backup:state-changed', data);
         if (data?.state === 'completed') {
+          // 备份完成 → 自动记录历史统计（供概览累计/上次备份展示，不依赖目录扫描）
+          const active = getActiveBackup();
+          const rec = backupStats.recordBackup({
+            taskId: data.taskId || active.taskId,
+            targetDir: active.targetDir,
+            modules: active.modules,
+            results: data.results,
+          });
+          if (rec) sendToUi('backup:history-changed', backupStats.getHistory());
           sendToUi('backup:completed', data);
         }
         break;

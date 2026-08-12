@@ -203,13 +203,6 @@ const MAX_MSG = {
         '总共 <span style="color: #1ca5fc;">{total}</span> 条',
         '请稍候..'
     ],
-    Messages_Voices: [
-        '正在获取第 <span style="color: #1ca5fc;">{index}</span> 条说说的语音信息',
-        '已获取 <span style="color: #1ca5fc;">{downloaded}</span> 条',
-        '已跳过 <span style="color: #1ca5fc;">{skip}</span> 条',
-        '总共 <span style="color: #1ca5fc;">{total}</span> 条',
-        '请稍候..'
-    ],
     Messages_Comments: [
         '正在获取第 <span style="color: #1ca5fc;">{index}</span> 条说说的评论列表',
         '已获取 <span style="color: #1ca5fc;">{downloaded}</span> 条',

@@ -26,9 +26,6 @@ API.Messages.export = async() => {
         // 获取所有图片（超9张需单独获取）
         items = await API.Messages.getAllImages(items);
 
-        // 获取所有的语音说说信息
-        items = await API.Messages.getAllVoices(items);
-
         // 获取所有的说说评论
         items = await API.Messages.getItemsAllCommentList(items);
 
@@ -211,7 +208,10 @@ API.Messages.getDeletedMessages = async(existingItems) => {
     const totalPages = Math.ceil(totalCount / pageSize);
     let firstFeedLogged = false;
     let wafBlocked = false;
+    let consecutiveFailures = 0;
     for (let page = 0; page < totalPages && !wafBlocked; page++) {
+        // 暂停/取消检查点：暂停时挂起等待恢复；取消时抛错中止（让上层取消生效）
+        await window.checkExportState();
         const offset = page * pageSize;
         try {
             const response = await API.Messages.getFeeds(offset, pageSize);
@@ -224,9 +224,18 @@ API.Messages.getDeletedMessages = async(existingItems) => {
             }
             const data = API.Utils.toJson(response, /^_Callback\(/);
             if (!data || data.code !== 0 || !data.data) {
+                // 接口异常：连续失败达阈值后停止，避免逐页重复请求（如 501 服务端异常）
+                consecutiveFailures++;
                 console.warn('[getDeletedMessages] 拉取互动消息分页异常', { page, data });
+                if (consecutiveFailures >= 3) {
+                    console.warn(`[getDeletedMessages] 连续 ${consecutiveFailures} 页拉取失败，接口异常，停止恢复已删除说说`);
+                    indicator.setNextTip(`第 ${page + 1}/${totalPages} 页异常，已停止恢复已删除说说`);
+                    break;
+                }
+                await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
                 continue;
             }
+            consecutiveFailures = 0;
             // 兼容 data.data.data 和 data.data.feeds 两种结构
             const feeds = data.data.data || data.data.feeds || [];
             if (!feeds.length) continue;
@@ -274,7 +283,15 @@ API.Messages.getDeletedMessages = async(existingItems) => {
             }
             await indicator.setIndex(offset + feeds.length);
         } catch (e) {
+            // 取消：向上传播，让上层中止整个恢复流程
+            if (e && e.__exportCancelled) throw e;
+            consecutiveFailures++;
             console.error('[getDeletedMessages] 拉取互动消息分页异常', { page, error: e });
+            if (consecutiveFailures >= 3) {
+                console.warn(`[getDeletedMessages] 连续 ${consecutiveFailures} 页拉取失败，接口异常，停止恢复已删除说说`);
+                indicator.setNextTip(`第 ${page + 1}/${totalPages} 页异常，已停止恢复已删除说说`);
+                break;
+            }
         }
         // 请求间隔
         await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
@@ -569,12 +586,6 @@ API.Messages.addMediaToTasks = async(dataList) => {
             indicator.addSuccess(1);
         }
 
-        // 下载语音
-        for (const voice of item.custom_voices) {
-            await API.Utils.addDownloadTasks('Messages', voice, voice.custom_url, module_dir, item, QZone.Messages.FILE_URLS, '.mp3');
-            indicator.addSuccess(1);
-        }
-
         // 下载表情
         API.Messages.addDownloadEmoticonTasks(item);
 
@@ -605,12 +616,6 @@ API.Messages.addMediaToTasks = async(dataList) => {
  * @param {Array} items 说说列表
  */
 API.Messages.getAllImages = QZoneCollectors.Messages.getAllImages;
-
-/**
- * 获取语音说说的实际地址（P2：委托 collectors/Messages）
- * @param {Array} items 说说列表
- */
-API.Messages.getAllVoices = QZoneCollectors.Messages.getAllVoices;
 
 /**
  * 处理数据

@@ -860,9 +860,6 @@
         // 微信坐标
         renderValueToDom(options, 'refreshWeChatLbs');
 
-        // 语音说说
-        renderValueToDom(options, 'GetVoice');
-
         // 图片类型识别
         renderValueToDom(options, 'isAutoFileSuffix');
 
@@ -1160,9 +1157,6 @@
 
         // 微信坐标
         setValueByFrom(QZone_Config, 'refreshWeChatLbs');
-
-        // 语音说说
-        setValueByFrom(QZone_Config, 'GetVoice');
 
         // 图片类型识别
         setValueByFrom(QZone_Config, 'isAutoFileSuffix');

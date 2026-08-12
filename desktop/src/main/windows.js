@@ -8,6 +8,9 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// 应用图标（沿用扩展 icon-128.png）
+const APP_ICON = path.join(__dirname, 'icon.png');
+
 export const windows = {
   main: null,
   engine: null,
@@ -28,6 +31,7 @@ export function createMainWindow() {
     minWidth: 960,
     minHeight: 640,
     title: 'QQ空间档案备份',
+    icon: APP_ICON,
     show: false,
     webPreferences: {
       preload: path.join(PRELOAD_DIR, 'ui-bridge.cjs'),

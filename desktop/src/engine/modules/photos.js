@@ -375,7 +375,9 @@ API.Photos.getAllAlbumImageList = QZoneCollectors.Photos.getAllAlbumImageList;
  */
 API.Photos.getAllAlbumImageListByDetail = async(items) => {
     for (const item of items) {
-        if (!_.some(QZone.Photos.Album.Select, ['id', item.id])) {
+        // 未选择相册（Select 为空/null）时备份全部；仅在 Select 非空且不含该相册时跳过
+        const selects = QZone.Photos.Album.Select || [];
+        if (selects.length && !_.some(selects, ['id', item.id])) {
             // 不是用户选中的相册，暂不处理
             console.log('不是用户选中的相册，暂不处理');
             continue;
@@ -1265,11 +1267,14 @@ API.Photos.isNewItem = (albumId, photo) => {
 API.Photos.initAlbums = async() => {
     // 备份的相册清单
     const albumList = QZone.Photos.Album.Data || [];
-    // 用户挑选的相册清单
-    const selects = QZone.Photos.Album.Select || [];
-    if (selects.length === 0) {
-        // 用户没有选择时，默认获取所有相册列表
+    // 用户挑选的相册清单；三态：null/undefined = 未配置（全部），[] = 明确不备份，非空 = 按选择
+    const selects = QZone.Photos.Album.Select;
+    if (selects === null || selects === undefined) {
+        // 用户没有选择（未配置/预取失败回退）时，默认获取所有相册列表
         albumList.push(...await API.Photos.getAllAlbumList());
+    } else if (selects.length === 0) {
+        // 明确空数组 = 不备份相册（albumList 保持为空，后续相册导出自然跳过）
+        console.info('未选择相册，本次不备份相册');
     } else {
         // 如果用户选择了备份指定的相册
         // 合并数据

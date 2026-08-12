@@ -294,6 +294,8 @@ API.Common.downloadsByAjax = async(tasks) => {
     let skippedCount = 0;
 
     for (let i = 0; i < _tasks.length; i++) {
+        // 暂停/取消检查点：暂停时挂起，取消时中止（下载循环也必须响应）
+        await window.checkExportState();
         const list = _tasks[i];
         let down_tasks = [];
         for (let j = 0; j < list.length; j++) {
@@ -344,6 +346,8 @@ API.Common.downloadsByBrowser = async(tasks) => {
     // 开始下载
     const _tasks = _.chunk(tasks, QZone_Config.Common.downloadThread);
     for (let i = 0; i < _tasks.length; i++) {
+        // 暂停/取消检查点：暂停时挂起，取消时中止（下载循环也必须响应）
+        await window.checkExportState();
         const list = _tasks[i];
         for (let j = 0; j < list.length; j++) {
             const task = list[j];
@@ -404,6 +408,8 @@ API.Common.downloadByAria2 = async(tasks) => {
     // 开始下载
     const _tasks = _.chunk(tasks, QZone_Config.Common.downloadThread);
     for (let i = 0; i < _tasks.length; i++) {
+        // 暂停/取消检查点：暂停时挂起，取消时中止（下载循环也必须响应）
+        await window.checkExportState();
         const list = _tasks[i];
         for (let j = 0; j < list.length; j++) {
             const task = list[j];
@@ -475,6 +481,8 @@ API.Common.invokeThunder = async(thunderInfo) => {
     const tasks = _thunderInfo.tasks || [];
     const _tasks = _.chunk(tasks, QZone_Config.Common.thunderTaskNum);
     for (let i = 0; i < _tasks.length; i++) {
+        // 暂停/取消检查点（下载循环也必须响应）
+        await window.checkExportState();
         const index = i + 1;
         await indicator.setIndex(index);
 
@@ -525,6 +533,8 @@ API.Common.copyThunderTasksToClipboard = async(thunderInfo) => {
     const tasks = _thunderInfo.tasks || [];
     const _tasks = _.chunk(tasks, QZone_Config.Common.thunderTaskNum);
     for (let i = 0; i < _tasks.length; i++) {
+        // 暂停/取消检查点（下载循环也必须响应）
+        await window.checkExportState();
         const index = i + 1;
         await indicator.setIndex(index);
 
@@ -846,7 +856,7 @@ API.Common.hasIncrementBackup = () => {
         if (!incrCfg) {
             continue;
         }
-        if (incrCfg === true || ['LastTime', 'Custom'].includes(incrCfg)) {
+        if (incrCfg === true || ['Last', 'LastTime', 'Custom'].includes(incrCfg)) {
             hasIncrementBackup = true;
             break;
         }
@@ -1146,12 +1156,12 @@ API.Common.isGetNextPage = (oldItems, pageItems, moduleCfg) => {
         // 如果是全量备份，需要继续获取下一页，是否获取到末页不在这里判断，在hasNextPage判断
         return true;
     }
-    if (API.Common.isCustom(moduleCfg)) {
-        // 如果是自定义备份，则需判断是否备份到指定时间的位置
+    if (moduleCfg.IncrementType === 'Last' || API.Common.isCustom(moduleCfg)) {
+        // 上次/自定义备份：翻到增量时间点位置即停（Last 首次时 IncrementTime 为默认，等价全量）
         return !API.Common.isPreBackupPos(pageItems, moduleCfg);
     }
     if (API.Common.isLast(moduleCfg)) {
-        // 如果是上次备份，则需要判断是否达到上次备份的位置
+        // 兼容旧配置「上次备份」（LastTime）：有历史时提前停，无历史全量
         if (_.isEmpty(oldItems)) {
             return true;
         }

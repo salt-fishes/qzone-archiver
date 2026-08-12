@@ -21,9 +21,6 @@ const REST_URLS = {
     /** 说说、视频评论列表URL */
     MESSAGES_VIDEOS_COMMONTS_URL: "https://user.qzone.qq.com/proxy/domain/taotao.qzone.qq.com/cgi-bin/emotion_cgi_getcmtreply_v6",
 
-    /** 语音详情URL */
-    MESSAGES_VOICE_INFO_URL: "https://user.qzone.qq.com/proxy/domain/snsapp.qzone.qq.com/cgi-bin/sound/GetVoice",
-
     /** 日志列表URL */
     BLOGS_LIST_URL: "https://user.qzone.qq.com/proxy/domain/b.qzone.qq.com/cgi-bin/blognew/get_abs",
 
@@ -3381,15 +3378,6 @@ API.Messages = {
             "qzonetoken": QZone.Common.Config.token || API.Utils.getQZoneToken()
         }
         return API.Utils.get(REST_URLS.MESSAGES_VIDEOS_COMMONTS_URL, params);
-    },
-
-    /**
-     * 获取说说语音的实际地址
-     * @param {Object} voice 语音信息
-     */
-    getVoiceInfo(voice) {
-        const params = API.Utils.toParams(voice.url);
-        return API.Utils.get(REST_URLS.MESSAGES_VOICE_INFO_URL, params);
     },
 
     /**

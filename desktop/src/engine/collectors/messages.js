@@ -335,59 +335,6 @@ QZoneCollectors.Messages = {
   },
 
   /**
-   * 获取语音说说的实际地址（迁移自 modules/messages.js getAllVoices）
-   * @param {Array} items 说说列表
-   */
-  async getAllVoices(items) {
-    if (!items || !QZone_Config.Messages.GetVoice) {
-      return items;
-    }
-
-    // 状态更新器
-    const indicator = new StatusIndicator('Messages_Voices');
-    indicator.setTotal(items.length);
-
-    for (let index = 0; index < items.length; index++) {
-      const item = items[index];
-
-      // 当前处理位置
-      await indicator.setIndex(index + 1);
-
-      if (!API.Common.isNewItem(item)) {
-        // 已备份数据跳过不处理
-        indicator.addSkip(item);
-        continue;
-      }
-
-      const voices = item.custom_voices;
-      if (voices.length === 0) {
-        // 没有语音信息跳过
-        indicator.addSkip(item);
-        continue;
-      }
-      for (const voice of voices) {
-        await API.Messages.getVoiceInfo(voice).then((voiceInfo) => {
-          voiceInfo = API.Utils.toJson(voiceInfo, /^_Callback\(/);
-          if (voiceInfo.code < 0) {
-            // 获取异常
-            console.warn('获取语音说说的实际地址异常：', voiceInfo);
-          }
-          voiceInfo.data = voiceInfo.data || {};
-          voice.custom_url = voiceInfo.data.url;
-        }).catch((error) => {
-          console.error('获取说说语音失败', item, error);
-        });
-      }
-
-      // 已处理
-      indicator.addSuccess(item);
-    }
-    // 完成
-    indicator.complete();
-    return items;
-  },
-
-  /**
    * 获取说说赞记录（迁移自 modules/messages.js getAllLikeList）
    * @param {Array} items 说说列表
    */
@@ -400,8 +347,8 @@ QZoneCollectors.Messages = {
     const indicator = new StatusIndicator('Messages_Like');
     indicator.setTotal(items.length);
 
-    // 同时请求数
-    const _items = _.chunk(items, 10);
+    // 同时请求数（15 并发 + 页间限流，兼顾速度与风控）
+    const _items = _.chunk(items, 15);
 
     // 获取点赞列表
     let count = 0;
@@ -431,8 +378,8 @@ QZoneCollectors.Messages = {
       }
 
       await Promise.all(tasks);
-      // 每一批次完成后暂停半秒
-      await API.Utils.sleep(500);
+      // 每一批次完成后短暂停留（页内已有 0.3~0.8s 限流，批次间隔从 500ms 降至 200ms）
+      await API.Utils.sleep(200);
     }
 
     // 已备份数据跳过不处理

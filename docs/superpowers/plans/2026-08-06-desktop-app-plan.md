@@ -25,7 +25,10 @@
 | M1.P3 仓库层 | ✅ | writer/incremental/convert 迁至 repos/*，模块委托（ae2d8b1） |
 | M1.P4 导出层 | ✅ | 43 个导出函数迁至 exporters/*（12 文件），模块委托 + ENGINE_SCRIPTS 接线 |
 | M1.P5 打包层 | ✅ | links.js（writeThunderTaskToFile）+ manifest.js（manifest/checksum/report），zip 留主进程 archiver |
-| M2b 下载打包断点 | ⏳ | 流式下载（Readable.fromWeb 背压）+ .part 断点 + archiver 打包 |
+| M1.P6 任务层收口 | ✅ | 垫片迁至 tasks/{state,progress,downloader,orchestrator}.js，desktop-runner 薄壳；注入链路运行时验证通过 |
+| M2b 下载打包断点 | ✅ | 下载管理器流式（Readable.fromWeb+背压）+ .part 断点 + Range + 已存在跳过 + statfs 预检 + 空闲超时 + 大文件限流 + 进度节流；packager archiver v7 流式 zip + 进度；state-store 检查点/队列持久化 |
+| M2c 主界面 | ⏳ | 概览/备份/任务/下载/设置/欢迎/帮助 ✅；历史备份视图（fs:scan-backups + viewer 浏览）已补 |
+| M2d 打包发布 | ⏳ | electron-builder（NSIS+portable）+ README 就绪；dist:win 待执行验证 |
 
 ## 1. 依赖链与执行策略
 

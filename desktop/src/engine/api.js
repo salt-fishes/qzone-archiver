@@ -21,9 +21,6 @@ const REST_URLS = {
     /** 说说、视频评论列表URL */
     MESSAGES_VIDEOS_COMMONTS_URL: "https://user.qzone.qq.com/proxy/domain/taotao.qzone.qq.com/cgi-bin/emotion_cgi_getcmtreply_v6",
 
-    /** 语音详情URL */
-    MESSAGES_VOICE_INFO_URL: "https://user.qzone.qq.com/proxy/domain/snsapp.qzone.qq.com/cgi-bin/sound/GetVoice",
-
     /** 日志列表URL */
     BLOGS_LIST_URL: "https://user.qzone.qq.com/proxy/domain/b.qzone.qq.com/cgi-bin/blognew/get_abs",
 
@@ -684,19 +681,29 @@ API.Utils = {
                 url: url,
                 type: 'GET',
                 data: params,
+                // 强制按文本处理：qzone JSONP 接口返回 text/javascript，jQuery 会误判为 script 并 globalEval 执行
+                // （如 shine0_Callback({...})），依赖页面定义的回调——桌面引擎窗口页面未定义该回调会 ReferenceError 导致请求失败。
+                // 统一按文本返回后由 toJson 字符串截取解析，行为与扩展端一致。
+                dataType: 'text',
                 xhrFields: {
                     withCredentials: true
                 },
+                // 请求超时：qzone 接口偶发无响应时 jQuery 默认无限等待（timeout=0），
+                // 相册等翻页采集会永久卡住；30s 无响应走 error 分支重试，避免卡死
+                timeout: 30000,
                 retries: QZone_Config.Common.listRetryCount, // 重试次数
                 retryInterval: QZone_Config.Common.listRetrySleep * 1000, // 每次重试间隔秒数
                 success: function(result) {
                     try {
                         const resJson = API.Utils.toJson(result);
                         // 0 正常场景
-                        // -4009 权限问题，无需重试
-                        if (resJson.code && resJson.code != 0 && resJson.code != -4009) {
+                        // -4009 权限问题，无需重试；内容已删除等永久错误同样不重试（重试只会浪费请求、增加限流风险）
+                        const code = resJson && resJson.code;
+                        const msgText = (resJson && resJson.message) || '';
+                        const isPermanent = code === -4009 || /原文已经被删除|已被删除|无法查看|无权限/.test(msgText);
+                        if (code && code != 0 && !isPermanent) {
                             console.warn('接口请求成功，接口处理返回错误，将尝试重试，接口：%s，参数：%o，返回值：%o', this.url, params, resJson);
-                            if (resJson.code === -10000 || resJson.message === '使用人数过多，请稍后再试') {
+                            if (code === -10000 || msgText === '使用人数过多，请稍后再试') {
                                 let isWaitTimeRest = false;
                                 for (const cfgUrlKey of QZone_Config.Common.RestSleepUrls) {
                                     if (this.url.includes(REST_URLS[cfgUrlKey])) {
@@ -710,7 +717,7 @@ API.Utils = {
                                     this.retryInterval = QZone_Config.Common.waitTime * 1000;
                                 }
                             }
-                            this.customMessage = resJson.message;
+                            this.customMessage = msgText;
                             retryRequest(this);
                             return;
                         }
@@ -726,6 +733,18 @@ API.Utils = {
                 error: function(xhr, status, error) {
                     // 使用统一的错误构造器，自动识别 WAF 403 / 超时 / CORS / Motrix 端口 等
                     this.customMessage = API.Utils.buildNetworkErrorMessage(xhr, status, error, this.url);
+                    // HTTP 501：服务端异常（接口不支持/该请求不可用），重试无法恢复，快速失败避免请求风暴
+                    if (xhr.status === 501) {
+                        $('#errorTips').hide();
+                        reject(new Error(this.customMessage));
+                        return;
+                    }
+                    // 401/403：登录态失效 / 权限 / WAF 风控拦截，重试无法恢复（WAF 重试反而加重风控），与 POST 保持一致快速失败
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        $('#errorTips').hide();
+                        reject(new Error(this.customMessage));
+                        return;
+                    }
                     retryRequest(this, reject, error);
                 }
             });
@@ -749,6 +768,8 @@ API.Utils = {
                 url: url,
                 type: 'POST',
                 data: data,
+                // 同上：POST 接口同样按文本返回，避免 jQuery 误判 script 执行 JSONP 回调
+                dataType: 'text',
                 contentType: options.contentType || "application/json;charset=utf-8",
                 timeout: (options.timeout || 15) * 1000,
                 success: function(result) {
@@ -2243,11 +2264,20 @@ API.Common = {
         if (this.isQzoneUrl() || !content) {
             return content;
         }
+        // 内置表情库清单（emoticons.js 注入）：命中的表情无需网络下载，
+        // 备份时由主进程从内置库直接复制到 Common/images/
+        const manifest = window.__EMOTICONS_MANIFEST || { qq: [], wx: [] };
+        const qqSet = new Set((manifest.qq || []).map(String));
 
         // 匹配QQ表情地址
         const imageUrls = content.match(/(https|http):\/\/qzonestyle.gtimg.cn\/qzone\/em\/e\d+.gif/g) || [];
         // 遍历，并添加任务
         for (const imageUrl of imageUrls) {
+            // 内置表情：跳过下载
+            const em = /e(\d+)\.gif$/.exec(imageUrl);
+            if (em && qqSet.has(em[1])) {
+                continue;
+            }
             let custom_filename = QZone.Common.FILE_URLS.get(imageUrl);
             if (custom_filename) {
                 continue;
@@ -2265,6 +2295,11 @@ API.Common = {
         const wxImageUrls = content.match(/https:\/\/cdn.jsdelivr.net\/gh\/ShunCai\/QZoneExport@dev\/src\/img\/emoji\/(.{1,15}).png/g) || [];
         // 遍历，并添加任务
         for (const imageUrl of wxImageUrls) {
+            // 内置表情：跳过下载
+            const wm = /\/([^/]+)\.png$/.exec(imageUrl);
+            if (wm && (manifest.wx || []).includes(wm[1])) {
+                continue;
+            }
             let custom_filename = QZone.Common.FILE_URLS.get(imageUrl);
             if (custom_filename) {
                 continue;
@@ -3128,6 +3163,8 @@ API.Messages = {
             while (lowerBound <= upperBound && retry < maxRetries && !blocked) {
                 retry++;
                 try {
+                    // 暂停/取消检查点（暂停时挂起；取消时中止探测）
+                    await window.checkExportState();
                     // count=100 对齐 Python RequestUtil.py:91，避免 count 太小误判无数据
                     const response = await API.Messages.getFeeds(total, 100);
                     // WAF 拦截检测：响应为 HTML 且含 waf.tencent.com
@@ -3170,6 +3207,8 @@ API.Messages = {
                     // 参照 Python RequestUtil.py:66 每次探测后 sleep，避免触发 WAF
                     await API.Utils.sleep(3000);
                 } catch (e) {
+                    // 取消：向上传播中止探测
+                    if (e && e.__exportCancelled) throw e;
                     log(`第${retry}次探测异常: ${e.message || e}`);
                     break;
                 }
@@ -3266,15 +3305,6 @@ API.Messages = {
             "qzonetoken": QZone.Common.Config.token || API.Utils.getQZoneToken()
         }
         return API.Utils.get(REST_URLS.MESSAGES_VIDEOS_COMMONTS_URL, params);
-    },
-
-    /**
-     * 获取说说语音的实际地址
-     * @param {Object} voice 语音信息
-     */
-    getVoiceInfo(voice) {
-        const params = API.Utils.toParams(voice.url);
-        return API.Utils.get(REST_URLS.MESSAGES_VOICE_INFO_URL, params);
     },
 
     /**

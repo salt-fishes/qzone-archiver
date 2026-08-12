@@ -15,6 +15,7 @@
     "dist:win": "npm run build:renderer && electron-builder --win"
   },
   "dependencies": {
+    "archiver": "^8.0.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"

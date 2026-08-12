@@ -8,6 +8,46 @@
  *   storage / fs / zip / download / notify / cookies / network / resources
  */
 (function () {
+  // 引擎侧 console 包装：格式化 %s/%d/%i/%f/%o/%% 占位符、对象转 JSON。
+  // 主进程 console-message 事件拿不到调用参数，不预格式化会导致日志出现原始占位符（如 共有日志%i篇 0）
+  // 或 [object Object]，影响排查可读性。
+  (function () {
+    const fmt = (format, args) => {
+      let i = 0;
+      return String(format).replace(/%[sdifoO%]/g, (m) => {
+        if (m === '%%') return '%';
+        const v = args[i++];
+        if (m === '%o' || m === '%O') {
+          try {
+            return JSON.stringify(v);
+          } catch (e) {
+            return String(v);
+          }
+        }
+        if (m === '%d' || m === '%i') return String(parseInt(v, 10));
+        if (m === '%f') return String(parseFloat(v));
+        return v === undefined ? 'undefined' : String(v);
+      });
+    };
+    for (const name of ['log', 'info', 'warn', 'error', 'debug']) {
+      const orig = console[name];
+      console[name] = function (...args) {
+        if (typeof args[0] === 'string' && /%[sdifoO%]/.test(args[0])) {
+          return orig.call(console, fmt(args[0], args.slice(1)));
+        }
+        if (args.length > 1) {
+          // 无占位符但带附加参数：对象转 JSON，避免 [object Object]
+          const tail = args
+            .slice(1)
+            .map((v) => (typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)))
+            .join(' ');
+          return orig.call(console, args[0] + (tail ? ' ' + tail : ''));
+        }
+        return orig.apply(console, args);
+      };
+    }
+  })();
+
   const bridge = window.engineBridge;
   if (!bridge) {
     console.error('[QZonePlatform] 未检测到 engineBridge preload，适配层不可用');

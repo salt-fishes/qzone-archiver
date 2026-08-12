@@ -26,9 +26,6 @@ API.Messages.export = async() => {
         // 获取所有图片（超9张需单独获取）
         items = await API.Messages.getAllImages(items);
 
-        // 获取所有的语音说说信息
-        items = await API.Messages.getAllVoices(items);
-
         // 获取所有的说说评论
         items = await API.Messages.getItemsAllCommentList(items);
 
@@ -1013,12 +1010,6 @@ API.Messages.addMediaToTasks = async(dataList) => {
             indicator.addSuccess(1);
         }
 
-        // 下载语音
-        for (const voice of item.custom_voices) {
-            await API.Utils.addDownloadTasks('Messages', voice, voice.custom_url, module_dir, item, QZone.Messages.FILE_URLS, '.mp3');
-            indicator.addSuccess(1);
-        }
-
         // 下载表情
         API.Messages.addDownloadEmoticonTasks(item);
 
@@ -1111,59 +1102,6 @@ API.Messages.getAllImages = async(items) => {
         });
     }
 
-    // 完成
-    indicator.complete();
-    return items;
-}
-
-/**
- * 获取语音说说的实际地址
- * @param {Array} items 说说列表
- */
-API.Messages.getAllVoices = async(items) => {
-    if (!items || !QZone_Config.Messages.GetVoice) {
-        return items;
-    }
-
-    // 状态更新器
-    const indicator = new StatusIndicator('Messages_Voices');
-    indicator.setTotal(items.length);
-
-    for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-
-        // 当前处理位置
-        await indicator.setIndex(index + 1);
-
-        if (!API.Common.isNewItem(item)) {
-            // 已备份数据跳过不处理
-            indicator.addSkip(item);
-            continue;
-        }
-
-        const voices = item.custom_voices;
-        if (voices.length === 0) {
-            // 没有语音信息跳过
-            indicator.addSkip(item);
-            continue;
-        }
-        for (const voice of voices) {
-            await API.Messages.getVoiceInfo(voice).then((voiceInfo) => {
-                voiceInfo = API.Utils.toJson(voiceInfo, /^_Callback\(/);
-                if (voiceInfo.code < 0) {
-                    // 获取异常
-                    console.warn('获取语音说说的实际地址异常：', voiceInfo);
-                }
-                voiceInfo.data = voiceInfo.data || {};
-                voice.custom_url = voiceInfo.data.url;
-            }).catch((error) => {
-                console.error('获取说说语音失败', item, error);
-            });
-        }
-
-        // 已处理
-        indicator.addSuccess(item);
-    }
     // 完成
     indicator.complete();
     return items;

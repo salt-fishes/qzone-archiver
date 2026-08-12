@@ -44,6 +44,15 @@ export function watchAuthStatus(intervalMs = 5000) {
       if (loggedIn !== lastLoggedIn) {
         lastLoggedIn = loggedIn;
         sendToUi('auth:status-changed', status);
+        if (loggedIn) {
+          // 登录成功：等 qzone 页面跳转完成后自动最小化引擎窗口（扫码后无需手动收起）
+          setTimeout(() => {
+            if (windows.engine && !windows.engine.isDestroyed()) {
+              windows.engine.minimize();
+              console.info('[auth] 登录成功，已自动最小化 QQ 空间窗口');
+            }
+          }, 2000);
+        }
       }
     } catch (e) {
       // 引擎窗口未就绪等瞬时错误忽略，下轮重试
@@ -69,12 +78,18 @@ export function registerAuthIpc() {
     if (wc) {
       await wc.session.clearStorageData();
       await wc.session.clearCache();
-      // 清除 qzone 域 cookie
-      const cookies = await wc.session.cookies.get({ domain: 'qzone.qq.com' });
-      for (const c of cookies) {
-        await wc.session.cookies.remove(c.url, c.name);
+      // 清除全部会话 cookie（登录凭证 p_skey/skey 等散落在 .qq.com 各子域，须全量清除）
+      try {
+        const cookies = await wc.session.cookies.get({});
+        for (const c of cookies) {
+          await wc.session.cookies.remove(c.url, c.name).catch(() => {});
+        }
+      } catch (e) {
+        console.warn('[auth] 清除 cookie 失败', e);
       }
     }
+    // 同步自动监听基准，避免下轮检测 p_skey 残留而重新推回登录态
+    lastLoggedIn = false;
     sendToUi('auth:status-changed', { loggedIn: false });
     return null;
   });
