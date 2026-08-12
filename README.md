@@ -1,34 +1,78 @@
 # qzone-archiver
 
-> QQ 空间本地化备份与档案浏览工具。基于 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 二次开发，升级至 Manifest V3，并新增 SPA 单页档案浏览器。
+> QQ 空间本地化备份与档案浏览工具。提供 **Windows 桌面版（Electron）** 与 **Chrome 扩展（Manifest V3）** 两种形态，均基于 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 二次开发。**v4.0.0** 起新增桌面版，内嵌登录 → 采集 → 打包 → 内置 SPA 浏览一体化闭环。
 
 ## 简介
 
-**qzone-archiver** 是一款 Chrome 扩展（Manifest V3），用于将 QQ 空间中的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客共 10 类内容一键备份到本地。备份结果既包含传统离线 HTML 页面，也支持新一代 **SPA 档案浏览器**——解压后双击 `index.html` 即可离线浏览，支持按年份归档、全文搜索、虚拟滚动、图片 / 视频画廊等现代化体验。
+**qzone-archiver** 可将 QQ 空间中的说说、日志、日记、相册、视频、留言、好友、收藏、分享、访客共 **10 类内容**一键备份到本地。备份产物为「传统离线 HTML + 新一代 **SPA 档案浏览器**」双形态：解压后双击 `index.html` 即可离线浏览，支持按年份归档、全文搜索、虚拟滚动、图片 / 视频画廊、年度档案报告等现代化体验。
 
 - 项目地址：https://github.com/salt-fishes/qzone-archiver
 - 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)（Apache-2.0）
 
+## 版本一览
+
+| 形态 | 平台 | 版本 | 获取方式 |
+| --- | --- | --- | --- |
+| **桌面版**（推荐） | Windows 10+（x64） | v4.0.0 | 安装版 `QZoneArchiver-4.0.0-setup.exe` / 免安装版 `QZoneArchiver-4.0.0-portable.exe`（解压即用） |
+| **扩展版** | Chrome / Edge（含 macOS） | v4.0.0 | 加载仓库 `src/` 目录，或 GitHub Release 压缩包 |
+
+> 桌面版集成了完整的备份流程，无需额外安装浏览器扩展；扩展版适合在浏览器内随用随装，或在 macOS 上使用。
+
 ## 主要特性
 
-- **Manifest V3 扩展**：兼容最新 Chrome / Edge 等 Chromium 内核浏览器
+### 通用能力
+
 - **全模块备份**：说说 / 日志 / 日记 / 相册 / 视频 / 留言 / 收藏 / 分享 / 好友 / 访客
 - **多种备份类型**：`SPA`（默认，推荐） / `HTML` / `MarkDown` / `JSON`，可按模块独立选择
-- **SPA 档案浏览器**（Vue 3 + Pinia）
-  - `file://` 协议直接打开，无需 Web 服务器
-  - 按年份 / 分组 / 相册分片加载，首屏只加载索引
-  - 虚拟滚动列表（vue-virtual-scroller）支撑万级数据流畅浏览
-  - FlexSearch 全文搜索
-  - 原生图片 / 视频就地预览（键盘 ←/→/Esc 切换）
-  - 复古档案馆风格 UI（纸张纹理 + 暖色设计系统）
-  - anime.js 全链路动效：路由/章节/列表/卡片/模态/年报入场动画，数字滚动、柱状图生长、hover 弹性反馈（尊重系统「减少动态效果」）
-  - 相册列表多照片预览网格，说说/分享/收藏列表大尺寸缩略图
 - **已删除说说恢复**：通过好友互动通知接口逆向恢复已删除说说（仅限有互动记录的内容）
-- **多媒体下载方式**：浏览器直接下载（默认）/ Ajax / Aria2(RPC) / 迅雷（唤醒 / 剪贴板 / 链接清单）
-- **断点续传**：导出过程支持暂停 / 恢复 / 取消，状态持久化至 `chrome.storage.session`，检查点覆盖采集与下载各阶段
+- **断点续传**：导出过程支持暂停 / 恢复 / 取消，检查点覆盖采集与下载各阶段
 - **增量备份**：基于最后备份时间 / 自定义时间增量拉取新内容，文件按 URL 哈希命名实现跨会话复用
-- **资源全本地化**：所有扩展页面与导出页面依赖均来自本地 `vendor/`，无远程 CDN，断网可查看
+- **多媒体下载方式**：浏览器直接下载（默认）/ Ajax / Aria2(RPC) / 迅雷（唤醒 / 剪贴板 / 链接清单）
+- **资源全本地化**：所有页面依赖均来自本地 `vendor/`，无远程 CDN，断网可查看
 - **模板预编译**：art-template 预编译为 `templates-compiled.js`，符合 MV3 CSP（禁 `eval` / `new Function`）
+
+### 桌面版（v4.0.0 新增）
+
+- **一体化流程**：内嵌 QQ 空间登录（扫码 / 验证码）→ 采集 → 打包 → 内置 SPA 浏览，全程无浏览器依赖
+- **双安装包发布**：`setup.exe` 安装版（可选安装目录、桌面快捷方式）+ `portable.exe` 免安装版（单文件自解压，解压即用）
+- **Vue 3 + Pinia 主界面**：首页 / 备份 / 设置 / 档案浏览四视图，配置记忆、登录态自动检测、备份进度与日志面板
+- **引擎五层重构**：采集层 / 导出层 / 仓库层 / 打包层 / 任务层 分层解耦，与扩展端行为逐字节一致，独立演进
+- **内置备份产物浏览**：备份完成后直接打开 SPA 档案浏览器窗口查看
+
+### SPA 档案浏览器（Vue 3 + Pinia）
+
+- `file://` 协议直接打开，无需 Web 服务器
+- 按年份 / 分组 / 相册分片加载，首屏只加载索引
+- 虚拟滚动列表（vue-virtual-scroller）支撑万级数据流畅浏览
+- FlexSearch 全文搜索
+- 原生图片 / 视频就地预览（键盘 ←/→/Esc 切换）
+- 复古档案馆风格 UI（纸张纹理 + 暖色设计系统）
+- anime.js 全链路动效：路由 / 章节 / 列表 / 卡片 / 模态 / 年报入场动画，数字滚动、柱状图生长、hover 弹性反馈（尊重系统「减少动态效果」）
+- 相册列表多照片预览网格，说说 / 分享 / 收藏列表大尺寸缩略图
+- 年度档案报告：全屏独立路由，巨型排版逐字揭示 + 粒子背景，一键导出 PNG 长图
+
+## 快速开始
+
+### 桌面版（Windows）
+
+1. 从 [GitHub Releases](https://github.com/salt-fishes/qzone-archiver/releases) 下载 v4.0.0 安装包：
+   - **安装版**：`QZoneArchiver-4.0.0-setup.exe`，双击按向导安装（可自定义安装目录）
+   - **免安装版**：`QZoneArchiver-4.0.0-portable.exe`，下载后直接双击运行，无需安装
+2. 首次启动进入「首页」，点击「登录」打开内嵌 QQ 空间页面，扫码 / 验证码登录
+3. 切换到「备份」页，勾选要备份的模块与备份类型，选择保存目录后开始备份
+4. 采集与下载完成后，可在「档案浏览」或备份目录中打开 SPA 档案浏览器查看
+
+> 请仅从官方渠道（GitHub 仓库 / 官方网盘）下载，其它第三方地址存在安全风险。
+
+### 扩展版（Chrome / Edge）
+
+1. 从 [GitHub Releases](https://github.com/salt-fishes/qzone-archiver/releases) 下载压缩包并解压（或直接克隆仓库）
+2. 打开 `chrome://extensions/`，开启右上角「开发者模式」
+3. 点击「加载已解压的扩展程序」，选择 `src/` 目录
+4. 登录并访问需要备份的 QQ 空间（`user.qzone.qq.com/{QQ号}`）
+5. 点击扩展图标，选择「个人模式 / 他人模式」，勾选模块后点击「开始备份」
+6. 采集完成后点击「打包下载」获取文案内容压缩包；多媒体文件由下载工具（浏览器 / Aria2 / 迅雷）获取
+7. 浏览备份：SPA 模式解压后双击根目录 `index.html` 自动跳转；HTML 模式直接打开根目录 `index.html`
 
 ## 目录结构
 
@@ -38,61 +82,47 @@ qzone-archiver/
 │   ├── manifest.json             # MV3 清单
 │   ├── html/                     # 扩展页面（options / popup / about / docs / faq / privacy / usage / tools / indicator）
 │   ├── css/                      # theme.css（复古暖色设计系统）+ content / options / popup
-│   ├── js/                       # 扩展逻辑
-│   │   ├── background.js         # Service Worker（下载调度 / 消息中枢 / DNR 规则）
-│   │   ├── content.js            # 内容脚本（状态机 / 类定义 / 进度指示）
-│   │   ├── api.js                # QQ 空间 REST API 封装
-│   │   ├── config.js             # 默认配置 + 全局状态 + 导出资源清单
-│   │   ├── templates-compiled.js # 预编译模板（规避 MV3 CSP）
-│   │   └── modules/              # 各模块备份逻辑（含 exportToSpa）
+│   ├── js/                       # 扩展逻辑（background / content / api / config / templates-compiled / modules/）
 │   ├── templates/                # art-template 模板（17 个，离线 HTML 导出）
-│   ├── export/                   # 离线导出资源（css / images / js / maps）
-│   │   └── spa-dist/             # SPA 构建产物（gitignore，`npm run build` 生成）
-│   ├── spa/                      # SPA 档案浏览器源码
-│   │   ├── src/                  # views / components / stores / api / styles
-│   │   ├── public/               # 测试数据（gitignore）+ export-entry.html
-│   │   ├── vite.config.ts        # IIFE 打包 + file:// 兼容修复
-│   │   └── package.json
+│   ├── export/                   # 离线导出资源（css / images / js / maps / spa-dist）
+│   ├── spa/                      # SPA 档案浏览器源码（Vue 3 + Pinia，构建到 export/spa-dist/）
 │   ├── img/                      # 图标 + 表情包 + 网盘渠道图标
 │   └── vendor/                   # 本地第三方库（无 CDN 依赖）
-├── LICENSE
+├── desktop/                      # Windows 桌面版（Electron）
+│   ├── package.json              # electron + electron-builder + vue3 + pinia
+│   ├── electron-builder.yml      # NSIS 安装版 + portable 免安装版打包配置
+│   ├── scripts/                  # 引擎基线快照 / 模板重编译脚本
+│   └── src/
+│       ├── main/                 # 主进程（窗口 / IPC / 下载 / 打包 / 状态持久化）
+│       ├── preload/              # ui-bridge（window.api）+ engine-bridge（引擎最小桥）
+│       ├── renderer/             # Vue 3 主界面（构建产物 dist/）
+│       └── engine/               # 引擎五层（采集 / 导出 / 仓库 / 打包 / 任务）
 ├── CODE_WIKI.md                  # 代码结构 Wiki
-└── SPA_IMPLEMENTATION_PLAN.md    # SPA 实施计划（历史记录）
+└── LICENSE
 ```
-
-## 快速开始
-
-### 1. 安装扩展
-
-1. 从 [GitHub Releases](https://github.com/salt-fishes/qzone-archiver/releases) 下载压缩包并解压（或直接克隆仓库）
-2. 打开 `chrome://extensions/`
-3. 开启右上角「开发者模式」
-4. 点击「加载已解压的扩展程序」，选择 `src/` 目录
-5. 浏览器工具栏出现「qzone-archiver」图标
-
-> 请仅从官方渠道（GitHub 仓库 / 官方网盘）下载安装，其它第三方地址存在安全风险。
-
-### 2. 备份
-
-1. 登录并访问需要备份的 QQ 空间（`user.qzone.qq.com/{QQ号}`）
-2. 点击扩展图标，选择「个人模式 / 他人模式」，勾选要备份的模块
-3. 点击「开始备份」，弹出进度面板；采集过程支持暂停 / 恢复 / 取消
-4. 采集完成后点击「打包下载」获取文案内容压缩包；多媒体文件由下载工具（浏览器 / Aria2 / 迅雷）获取
-5. 合并「文案内容备份文件夹」与「多媒体文件备份文件夹」为完整备份文件夹
-
-### 3. 浏览备份
-
-- **SPA 模式**：解压后双击根目录 `index.html`，自动跳转到 SPA 档案浏览器
-- **HTML 模式**：直接用浏览器打开根目录 `index.html` 浏览各模块页面
 
 ## 开发指南
 
 ### 环境要求
 
 - Node.js 18+
-- Chrome 100+
+- 桌面版：Windows 10+（x64）
+- 扩展版：Chrome 100+
 
-### SPA 开发
+### 桌面版开发
+
+```bash
+cd desktop
+npm install
+
+# 首次：快照扩展端引擎基线（只读，仅需要时执行）
+npm run sync:baseline
+
+# 构建渲染器并启动
+npm run start:dev
+```
+
+### 扩展版 SPA 开发
 
 ```bash
 cd src/spa
@@ -101,19 +131,46 @@ npm run dev       # 开发服务器 http://localhost:5175
 npm run build     # 构建到 src/export/spa-dist/
 ```
 
-构建产物（`index.html` / `assets/index.js` / `assets/style.css`）为单 IIFE bundle，兼容 `file://` 直开；构建后由扩展端按 `SpaExportFiles` 清单复制进备份 ZIP 的 `Common/spa/`。
+构建产物（`index.html` / `assets/index.js` / `assets/style.css`）为单 IIFE bundle，兼容 `file://` 直开。
 
 ### 模板预编译
 
-修改 `src/templates/` 下模板后需同步更新 `src/js/templates-compiled.js`（MV3 CSP 禁止运行时 `new Function` / `eval` 编译）。
+修改 `src/templates/` 下模板后需同步更新 `src/js/templates-compiled.js`（MV3 CSP 禁止运行时 `new Function` / `eval` 编译）：
+
+```bash
+cd desktop && npm run sync:templates   # 或按 scripts/recompile-templates.mjs 手动执行
+```
 
 ## 发布
 
+### 桌面版
+
+```bash
+cd desktop
+npm run dist:win   # 构建渲染器 + electron-builder，产出在 desktop/release/
+```
+
+产物：
+
+- `QZoneArchiver-{version}-setup.exe`（NSIS 安装版）
+- `QZoneArchiver-{version}-portable.exe`（免安装版，解压即用）
+
+### 扩展版
+
 1. 在 `src/spa` 下执行 `npm run build` 生成最新 SPA 产物
 2. 将 `src/` 目录打包为 zip（排除 `node_modules` / 测试数据）
-3. 打 tag 并创建 GitHub Release（参考 [v3.3.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v3.3.0)）
+3. 打 tag 并创建 GitHub Release（参考 [v4.0.0](https://github.com/salt-fishes/qzone-archiver/releases/tag/v4.0.0)）
 
 ## 更新日志
+
+### v4.0.0（2026-08-12）
+
+- **新增 Windows 桌面版（Electron）**：内嵌 QQ 空间登录（扫码 / 验证码）→ 采集 → 打包 → 内置 SPA 浏览一体化闭环，无需浏览器扩展
+- **桌面版双安装包**：`setup.exe` 安装版 + `portable.exe` 免安装版（解压即用），扩展版同步升级至 v4.0.0
+- **引擎五层重构**：采集层 / 导出层 / 仓库层 / 打包层 / 任务层 分层解耦，42 个采集函数与 43 个导出函数迁移完成，与扩展端行为逐字节一致
+- **桌面版主界面**：Vue 3 + Pinia 四视图（首页 / 备份 / 设置 / 档案浏览），配置记忆、登录态自动检测、备份进度与日志面板
+- **全量备份修复**：对齐扩展 INIT 阶段初始化（Data / OLD_Data），修复日记 / 留言 / 收藏 / 访客读 `.items` 崩溃；相册未勾选时按全部相册备份，避免误判跳过
+- **备份产物浏览**：备份完成后内置窗口直接打开 SPA 档案浏览器
 
 ### v3.3.0（2026-08-04）
 
@@ -149,7 +206,7 @@ npm run build     # 构建到 src/export/spa-dist/
 
 ### 近期（P0）
 
-- **SPA「那年今日」**：新增 `/today` 视图，按"今天"日期筛出历年同一天的说说/留言/分享记录，数据已在现有索引中，纯前端实现
+- **SPA「那年今日」**：新增 `/today` 视图，按"今天"日期筛出历年同一天的说说 / 留言 / 分享记录，数据已在现有索引中，纯前端实现
 - **下载失败自动重试**：`downloadsByBrowser` / `downloadByAria2` 增加按模块配置的 `retryCount`，失败项自动重试（带退避），降低备份遗漏
 - **Aria2 任务状态回查**：任务添加完成后通过 RPC `tellStatus` 批量查询，日志汇总"成功 X / 失败 Y / 等待 Z"，替代仅报"已添加 N 条"
 
@@ -157,6 +214,7 @@ npm run build     # 构建到 src/export/spa-dist/
 
 - **安全模式**：为方便将备份部署到服务器，提供"安全模式"开关——开启后采集阶段**不获取评论 / 点赞 / 访客 / 好友等他人互动数据**，备份仅包含自己的内容（最彻底的脱敏口径）
 - **SPA 足迹地图**：将 HTML 版 ECharts 足迹地图迁移接入 SPA
+- **桌面版 macOS / Linux 支持**：Electron 跨平台基础已具备，按需适配打包目标
 
 ### 长期（P2）
 
@@ -170,11 +228,13 @@ npm run build     # 构建到 src/export/spa-dist/
 ## 致谢
 
 - 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) —— Apache-2.0，感谢原作者 ShunCai
-- SPA 框架：Vue 3、Pinia、vue-router
+- 桌面框架：Electron、electron-builder
+- 前端框架：Vue 3、Pinia、vue-router
 - 虚拟滚动：vue-virtual-scroller
 - 图片画廊：LightGallery
 - 全文搜索：FlexSearch
 - 模板引擎：art-template
+- 动效：anime.js、three.js
 
 ## License
 
