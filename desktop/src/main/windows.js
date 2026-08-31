@@ -47,9 +47,11 @@ export function createMainWindow() {
   windows.main.on('closed', () => {
     windows.main = null;
   });
-  // 外链一律交给系统浏览器
+  // 外链一律交给系统浏览器（仅 http/https；deny 其他协议，防 file:/javascript: 等经应用打开）
   windows.main.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    }
     return { action: 'deny' };
   });
   return windows.main;
@@ -74,6 +76,14 @@ export function createEngineWindow() {
     },
   });
   windows.engine.loadURL('https://user.qzone.qq.com');
+  // P5.1：qzone 页面弹窗一律不在应用内开窗——http/https 交系统浏览器，其余直接拒绝
+  // （引擎窗口带 preload 隔离世界注入，禁止其派生子窗口继承 webPreferences）
+  windows.engine.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
   windows.engine.on('closed', () => {
     windows.engine = null;
   });
@@ -92,6 +102,8 @@ export function createViewerWindow(backupPath) {
     },
   });
   viewer.loadFile(backupPath);
+  // P5.1：内置浏览窗口为本地静态产物渲染器，禁止派生任何子窗口（无 preload，链接可经主窗口白名单打开）
+  viewer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   viewer.on('closed', () => {
     if (windows.viewer === viewer) {
       windows.viewer = null;

@@ -23,7 +23,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../../src/main/services/engine-bridge.js', () => ({
-  getActiveBackup: () => ({ ...mocks.activeCtx }),
+  getActiveTaskContext: () => ({ ...mocks.activeCtx }),
   sendToUi: mocks.sendToUi,
 }));
 

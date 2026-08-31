@@ -8,7 +8,8 @@
 import { ipcMain, net } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveEnginePath, sendToUi, getActiveBackup } from '../services/engine-bridge.js';
+import { resolveEnginePath, sendToUi, getActiveTaskContext, dropTaskContext } from '../services/engine-bridge.js';
+import { resolveWithin } from '../services/path-guard.js';
 import { engineStorage } from '../services/config-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
@@ -127,13 +128,10 @@ export function registerEngineIpc() {
   });
 
   // ---------- 引擎本地资源读取（等价扩展 chrome.runtime.getURL + fetch） ----------
+  // P5.1：路径校验收敛到 path-guard（与 resolveEnginePath 同一实现）
   guardInvoke(Channels.engine.resourceRead, async (e, { path: rel, encoding = 'utf8' } = {}) => {
-    const safeRel = String(rel || '').replace(/^\/+/, '').replace(/\\/g, '/');
-    if (!safeRel || safeRel.includes('..')) {
-      return { ok: false, error: 'INVALID_PATH' };
-    }
-    const full = path.normalize(path.join(ENGINE_DIR, safeRel));
-    if (full !== ENGINE_DIR && !full.startsWith(ENGINE_DIR + path.sep)) {
+    const full = resolveWithin(ENGINE_DIR, rel);
+    if (!full) {
       return { ok: false, error: 'INVALID_PATH' };
     }
     if (!fs.existsSync(full)) {
@@ -198,23 +196,27 @@ export function registerEngineIpc() {
           cancelled: 'cancel',
         }[data?.state];
         if (ev) taskMachine.dispatch(ev, data);
-        if (data?.state === 'completed') {
-          // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
-          // P3-4：目录统计已异步化，fire-and-forget 不阻塞 completed 推送
-          const active = getActiveBackup();
-          backupStats
-            .recordBackup({
-              taskId: data.taskId || active.taskId,
-              targetDir: active.targetDir,
-              modules: active.modules,
-              results: data.results,
-              errors: data.errors,
-            })
-            .then((rec) => {
-              if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
-            })
-            .catch((e) => console.error('[backup-stats] 记录历史失败', e));
-          sendToUi(PushChannels.backupCompleted, data);
+        if (data?.state === 'completed' || data?.state === 'cancelled') {
+          if (data?.state === 'completed') {
+            // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
+            // P3-4：目录统计已异步化，fire-and-forget 不阻塞 completed 推送
+            const active = getActiveTaskContext();
+            backupStats
+              .recordBackup({
+                taskId: data.taskId || active?.taskId,
+                targetDir: active?.targetDir,
+                modules: active?.modules || [],
+                results: data.results,
+                errors: data.errors,
+              })
+              .then((rec) => {
+                if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
+              })
+              .catch((e) => console.error('[backup-stats] 记录历史失败', e));
+            sendToUi(PushChannels.backupCompleted, data);
+          }
+          // P5.2：终态清理任务上下文
+          dropTaskContext(data.taskId);
         }
         break;
       }

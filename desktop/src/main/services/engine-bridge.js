@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { stateStore } from './state-store.js';
+import { assertWithin } from './path-guard.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -120,50 +121,51 @@ export const ENGINE_SCRIPTS = [
   'desktop-runner.js',
 ];
 
-/** 当前激活的备份上下文（fs 映射 / 命令路由依据） */
-const activeBackup = {
-  taskId: null,
-  targetDir: null,
-  config: null,
-  modules: [],
-};
+/**
+ * 任务上下文注册表（P5.2 §7.2）：taskId → { taskId, targetDir, config, modules }
+ *
+ * 替换原全局 activeBackup 单例：服务层不再有「单活跃任务」假设，
+ * fs 映射 / 下载 enqueue / notify 路由均可按 taskId 取上下文（为多任务铺路）。
+ * v1 仍限制单活跃任务（状态机拒绝并发 prepare + activeTaskId 指向最近注册的任务）。
+ */
+const taskContexts = new Map();
+let activeTaskId = null;
 
-export function setActiveBackup(ctx) {
-  Object.assign(activeBackup, ctx);
+/** 注册/刷新任务上下文，并将其置为活跃任务 */
+export function registerTaskContext(ctx) {
+  taskContexts.set(ctx.taskId, { ...ctx });
+  activeTaskId = ctx.taskId;
 }
 
-export function getActiveBackup() {
-  return { ...activeBackup };
+/** 按 taskId 取上下文（不存在的 taskId 返回 null） */
+export function getTaskContext(taskId) {
+  const ctx = taskContexts.get(taskId);
+  return ctx ? { ...ctx } : null;
 }
 
-export function clearActiveBackup() {
-  activeBackup.taskId = null;
-  activeBackup.targetDir = null;
-  activeBackup.config = null;
-  activeBackup.modules = [];
+/** 当前活跃任务上下文（v1 语义：fs 映射 / enqueue 印章的默认取值） */
+export function getActiveTaskContext() {
+  return getTaskContext(activeTaskId);
+}
+
+/** 终态清理：移除任务上下文；taskId 缺省时清理活跃任务 */
+export function dropTaskContext(taskId) {
+  const id = taskId ?? activeTaskId;
+  taskContexts.delete(id);
+  if (activeTaskId === id) activeTaskId = null;
 }
 
 /**
  * Filer 虚拟路径 → 目标目录真实路径
  * '/QQ空间备份_uin/xxx' → targetDir/xxx（桌面版一段式：目标文件夹即备份根目录）
+ * 路径规范化与越界拒绝统一收敛到 path-guard（P5.1 §7.1）
  */
 export function resolveEnginePath(rawPath) {
-  const base = activeBackup.targetDir;
-  if (!base) {
+  const ctx = getActiveTaskContext();
+  if (!ctx?.targetDir) {
     throw new Error('备份目标目录未设置（请先 backup:start）');
   }
-  let p = String(rawPath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-  const segs = p.split('/');
-  if (segs.length && /^QQ空间备份/.test(segs[0])) {
-    segs.shift();
-  }
-  const rel = segs.join('/');
-  const root = path.resolve(base);
-  const full = path.resolve(root, rel || '.');
-  if (full !== root && !full.startsWith(root + path.sep)) {
-    throw new Error(`非法路径: ${rawPath}`);
-  }
-  return full;
+  return assertWithin(ctx.targetDir, rawPath, { stripFilerRoot: true });
 }
 
 export const engineBridge = {
@@ -205,7 +207,7 @@ export const engineBridge = {
 
   /** 启动备份（runner.__engineCommands.start） */
   async start({ taskId, config, modules, targetDir }) {
-    setActiveBackup({ taskId, config, modules, targetDir });
+    registerTaskContext({ taskId, config, modules, targetDir });
     const payload = { taskId, config: config || null, modules: modules || [], targetDir };
     // 守卫：__engineCommands 缺失时明确报错，避免静默失败导致 UI 卡 0%
     return this.exec(

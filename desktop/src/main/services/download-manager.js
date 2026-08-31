@@ -21,7 +21,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { getActiveBackup, sendToUi } from './engine-bridge.js';
+import { getActiveTaskContext, sendToUi } from './engine-bridge.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
 import { stateStore } from './state-store.js';
 
@@ -46,7 +46,7 @@ let pausedTaskId = null;
 
 /** 当前暂停位应绑定的任务标识：活跃备份 taskId，无则独立暂停哨兵 */
 function pauseKey() {
-  return getActiveBackup().taskId || STANDALONE_PAUSE;
+  return getActiveTaskContext()?.taskId || STANDALONE_PAUSE;
 }
 
 function persist() {
@@ -125,7 +125,7 @@ export const downloadManager = {
   },
 
   async enqueue(task) {
-    const active = getActiveBackup();
+    const active = getActiveTaskContext();
     const record = {
       id: task.id || `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       url: toHttps(task.url),

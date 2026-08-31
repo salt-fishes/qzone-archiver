@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineBridge, setActiveBackup } from '../services/engine-bridge.js';
+import { engineBridge, registerTaskContext, dropTaskContext } from '../services/engine-bridge.js';
 import { stateStore } from '../services/state-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
@@ -77,7 +77,7 @@ export function registerBackupIpc() {
     if (!pre.ok) {
       return { ok: false, error: `已有备份任务${pre.snapshot.state === 'paused' ? '处于暂停' : '进行中'}，请先完成或取消` };
     }
-    setActiveBackup(ctx);
+    registerTaskContext(ctx);
     // 内置表情库复制到目标目录（表情无需网络下载）
     try {
       const n = copyBuiltinEmoticons(targetDir);
@@ -104,6 +104,7 @@ export function registerBackupIpc() {
     } catch (e) {
       console.error('[backup:start] 引擎 start 失败', e);
       taskMachine.dispatch('fail', { taskId: id, error: e.message });
+      dropTaskContext(id); // P5.2：终态清理任务上下文
       return { ok: false, error: e.message };
     }
   });
@@ -140,6 +141,7 @@ export function registerBackupIpc() {
     try {
       await engineBridge.cancel();
       await downloadManager.cancel();
+      dropTaskContext(taskMachine.getSnapshot().taskId); // P5.2：终态清理任务上下文
       return { ok: true };
     } catch (e) {
       return { ok: false, error: e.message };
