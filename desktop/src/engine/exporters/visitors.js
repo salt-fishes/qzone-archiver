@@ -237,4 +237,75 @@ QZoneExporters.Visitors = {
     indicator.complete();
     return visitorInfo;
   },
+
+  /**
+   * 获取单篇访客的Markdown内容（P2-4：迁自 modules/visitors.js getMarkdown）
+   * @param {ShareInfo} item 访客
+   */
+  getMarkdown: (item) => {
+    const contents = [];
+    // 访问时间
+    contents.push('###### {0}  \n'.format(API.Utils.formatDate(item.time)));
+
+    // 访客
+    let user_name = API.Common.formatContent(item.name, 'MD', false, false, false, false, true);
+    user_name = API.Common.getUserLink(item.uin, user_name, 'MD', true);
+
+    // 访问内容
+    if (API.Visitors.isHome(item)) {
+        // 主页
+        contents.push('{0} 访问了主页  \n'.format(user_name));
+        contents.push('---');
+        return contents.join('\n');
+    }
+    // 说说
+    if (item.shuoshuoes.length > 0) {
+        contents.push('{0} 查看了说说  '.format(user_name));
+        for (const message of item.shuoshuoes) {
+            contents.push('- {0}   '.format(API.Common.formatContent(message.name, 'MD', false, false, false, false, true)));
+            if (message.imgsrc) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(message.custom_url, message.custom_filepath)) + '  ');
+            }
+        }
+        contents.push('\n  ');
+    }
+    // 日志
+    if (item.blogs.length > 0) {
+        contents.push('{0} 查看了日志  '.format(user_name));
+        for (const blog of item.blogs) {
+            contents.push('- {0}  '.format(API.Common.formatContent(blog.name, 'MD', false, false, false, false, true)));
+        }
+        contents.push('\n  ');
+    }
+    // 相册
+    if (item.photoes.length > 0) {
+        contents.push('{0} 查看了相册  '.format(user_name));
+        for (const photo of item.photoes) {
+            contents.push('> {0}  '.format(API.Common.formatContent(photo.name, 'MD', false, false, false, false, true)));
+            contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(photo.custom_url, photo.custom_filepath)) + '  ');
+            contents.push('\n  ');
+        }
+        contents.push('\n  ');
+    }
+    // 分享
+    if (item.shares.length > 0) {
+        contents.push('{0} 查看了分享  '.format(user_name));
+        for (const share of item.shares) {
+            contents.push('- {0}   '.format(API.Common.formatContent(share.name, 'MD', false, false, false, false, true)));
+            if (share.imgsrc) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(share.custom_url, share.custom_filepath)) + '  ');
+            }
+        }
+        contents.push('\n  ');
+    }
+    // 其它访客
+    if (item.uins && item.uins.length > 0) {
+        contents.push('以下这些访客当天也访问了这些内容： ');
+        for (const uinItem of item.uins) {
+            contents.push('- {0} *{1}*   '.format(API.Common.formatContent(uinItem.name, 'MD'), API.Utils.formatDate(uinItem.time)));
+        }
+    }
+    contents.push('---');
+    return contents.join('\n');
+},
 };

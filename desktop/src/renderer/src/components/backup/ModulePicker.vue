@@ -72,8 +72,18 @@ const incremental = computed<boolean>({
       <span class="mp-title">备份哪些内容？</span>
       <div class="mp-actions">
         <span class="mp-count">已选 {{ selectedCount }} 项</span>
-        <button class="btn sm" @click="selectAll">全选</button>
-        <button class="btn sm" @click="selectNone">全不选</button>
+        <button
+          class="btn sm"
+          @click="selectAll"
+        >
+          全选
+        </button>
+        <button
+          class="btn sm"
+          @click="selectNone"
+        >
+          全不选
+        </button>
       </div>
     </div>
 
@@ -84,8 +94,21 @@ const incremental = computed<boolean>({
         class="mod"
         :class="{ picked: selected[m] }"
       >
-        <input type="checkbox" v-model="selected[m]" class="mod-check" />
-        <svg class="mod-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <input
+          v-model="selected[m]"
+          type="checkbox"
+          class="mod-check"
+        >
+        <svg
+          class="mod-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path :d="MODULE_ICONS[m]" />
         </svg>
         <span class="mod-name">{{ MODULE_META[m].label }}</span>
@@ -100,50 +123,109 @@ const incremental = computed<boolean>({
       </div>
       <div class="ms-row">
         <span class="ms-label">备份格式</span>
-        <CSelect v-model="exportType" :options="EXPORT_OPTS" :label-map="EXPORT_MAP" class="ms-control" />
+        <CSelect
+          v-model="exportType"
+          :options="EXPORT_OPTS"
+          :label-map="EXPORT_MAP"
+          class="ms-control"
+        />
         <span class="ms-help">备份产物的呈现方式；「网页版」便于浏览</span>
       </div>
       <label class="ms-check">
-        <input type="checkbox" v-model="incremental" />
+        <input
+          v-model="incremental"
+          type="checkbox"
+        >
         <span>只备份新增内容（上次备份后新增的数据，速度更快）</span>
       </label>
     </div>
 
     <!-- 相册选择（勾选「相册」模块时显示；状态与设置模态共享） -->
-    <div v-if="selected.Photos" class="mp-albums">
+    <div
+      v-if="selected.Photos"
+      class="mp-albums"
+    >
       <div class="mp-albums-head">
         <span class="mp-albums-title">相册选择</span>
         <span class="ms-sub">默认全选；取消勾选则不备份</span>
       </div>
       <div class="album-sel-actions">
-        <button class="btn sm" :disabled="albumsLoading || !auth.loggedIn" @click="loadAlbums">
+        <button
+          class="btn sm"
+          :disabled="albumsLoading || !auth.loggedIn"
+          @click="loadAlbums"
+        >
           {{ albumsLoading ? '加载中…' : albums.length ? '重新加载' : '加载相册列表' }}
         </button>
         <template v-if="albums.length">
-          <button class="btn sm" @click="albumSelAll">全选</button>
-          <button class="btn sm" @click="albumSelNone">清空</button>
+          <button
+            class="btn sm"
+            @click="albumSelAll"
+          >
+            全选
+          </button>
+          <button
+            class="btn sm"
+            @click="albumSelNone"
+          >
+            清空
+          </button>
         </template>
       </div>
-      <div v-if="albumError" class="album-error">{{ albumError }}</div>
-      <div v-else-if="!albums.length && !albumsLoading" class="album-empty">
+      <div
+        v-if="albumError"
+        class="album-error"
+      >
+        {{ albumError }}
+      </div>
+      <div
+        v-else-if="!albums.length && !albumsLoading"
+        class="album-empty"
+      >
         {{ auth.loggedIn ? '点击「加载相册列表」获取你的相册' : '请先登录 QQ 空间再加载相册列表' }}
       </div>
-      <div v-else-if="albums.length" class="album-list">
-        <div v-for="g in albumClassNames" :key="g.cls" class="album-group">
-          <div class="album-group-name">{{ g.cls }}</div>
-          <label v-for="a in g.items" :key="a.id" class="album-item">
-            <input type="checkbox" :value="String(a.id)" v-model="albumSel" class="album-check" />
-            <span class="album-name" :title="a.desc || a.name">{{ a.name }}</span>
+      <div
+        v-else-if="albums.length"
+        class="album-list"
+      >
+        <div
+          v-for="g in albumClassNames"
+          :key="g.cls"
+          class="album-group"
+        >
+          <div class="album-group-name">
+            {{ g.cls }}
+          </div>
+          <label
+            v-for="a in g.items"
+            :key="a.id"
+            class="album-item"
+          >
+            <input
+              v-model="albumSel"
+              type="checkbox"
+              :value="String(a.id)"
+              class="album-check"
+            >
+            <span
+              class="album-name"
+              :title="a.desc || a.name"
+            >{{ a.name }}</span>
             <span class="album-cnt">{{ a.total ?? 0 }} 张</span>
           </label>
         </div>
       </div>
-      <div class="album-foot" v-if="albums.length">
+      <div
+        v-if="albums.length"
+        class="album-foot"
+      >
         已选 <b>{{ albumSel.length }}</b> 个相册{{ albumSel.length ? '' : '（将不备份相册）' }}
       </div>
     </div>
 
-    <p class="mp-hint">数字为上次备份的数据量估算；未备份过则显示 —。模块的更多细项（评论/赞/访客等）可在「设置」中调整。</p>
+    <p class="mp-hint">
+      数字为上次备份的数据量估算；未备份过则显示 —。模块的更多细项（评论/赞/访客等）可在「设置」中调整。
+    </p>
   </div>
 </template>
 

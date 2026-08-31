@@ -82,20 +82,47 @@ onBeforeUnmount(() => {
   <section class="home">
     <!-- 主行动：欢迎/登录 + 主 CTA（首屏焦点） -->
     <div class="home-hero">
-      <section v-if="auth.loggedIn" class="panel welcome-card">
-        <h2 class="welcome-title">欢迎回来{{ auth.nickname ? `，${auth.nickname}` : '' }}</h2>
-        <p class="welcome-sub">你的空间记忆已备妥，随时可以开启新一轮备份。</p>
+      <section
+        v-if="auth.loggedIn"
+        class="panel welcome-card"
+      >
+        <h2 class="welcome-title">
+          欢迎回来{{ auth.nickname ? `，${auth.nickname}` : '' }}
+        </h2>
+        <p class="welcome-sub">
+          你的空间记忆已备妥，随时可以开启新一轮备份。
+        </p>
       </section>
       <LoginCard v-else />
       <div class="hero-cta">
-        <button class="btn primary cta-btn" @click="onStart">
-          <svg class="cta-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="5" y="10" width="14" height="10" rx="2" />
+        <button
+          class="btn primary cta-btn"
+          @click="onStart"
+        >
+          <svg
+            class="cta-ico"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect
+              x="5"
+              y="10"
+              width="14"
+              height="10"
+              rx="2"
+            />
             <path d="M8 10V7a4 4 0 0 1 8 0v3" />
           </svg>
           开始备份
         </button>
-        <p class="cta-hint">{{ auth.loggedIn ? '选择内容，一键备份到本地' : '登录后即可开始备份你的空间' }}</p>
+        <p class="cta-hint">
+          {{ auth.loggedIn ? '选择内容，一键备份到本地' : '登录后即可开始备份你的空间' }}
+        </p>
       </div>
     </div>
 

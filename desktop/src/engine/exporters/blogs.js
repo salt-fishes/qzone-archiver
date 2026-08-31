@@ -213,4 +213,90 @@ QZoneExporters.Blogs = {
     indicator.complete();
     return items;
   },
+
+  /**
+   * 导出日志到HTML文件（迁移自 modules/blogs.js exportToPDF）
+   * @param {Array} items 日志列表
+   */
+  exportToPDF: async(items) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Blogs_Export_Other');
+    await indicator.setIndex('PDF');
+
+    // 每篇日志生成单独的HTML
+    for (let i = 0; i < items.length; i++) {
+        const blog = items[i];
+        const orderNum = API.Utils.prefixNumber(i + 1, items.length.toString().length);
+        const doc = new jsPDF();
+        doc.setFont('QZoneExport');
+        const html = API.Utils.base64ToUtf8(blog.html);
+        doc.html($(html)[0], {
+            callback: function(doc) {
+                doc.save("{0}_{1}.pdf".format(orderNum, API.Utils.filenameValidate(blog.title)));
+            },
+            x: 10,
+            y: 10
+        });
+    }
+
+    indicator.addSuccess(items);
+    // 更新完成信息
+    indicator.complete();
+    return items;
+  },
+
+  /**
+   * 获取单篇日志的MD内容（迁移自 modules/blogs.js getMarkdown）
+   * @param {object} item 日志信息
+   */
+  getMarkdown: async(item) => {
+    const contents = [];
+    // 标题
+    contents.push("# " + item.title);
+    // 日期
+    contents.push("> " + API.Utils.formatDate(item.pubTime || item.pubtime));
+    contents.push('\r\n');
+    // 内容
+    // 根据HTML获取MD内容
+    let markdown = QZone.Common.MD.turndown(API.Utils.base64ToUtf8(item.custom_html));
+    contents.push(markdown.replace(/\n/g, "\r\n"));
+
+    // 评论
+    contents.push("> 评论({0})".format(item.replynum));
+    contents.push('\r\n');
+
+    let comments = item.comments || [];
+    for (const comment of comments) {
+        // 评论人
+        let poster = comment.poster.name || QZone.Common.Target.nickname || '';
+        poster = API.Common.formatContent(poster, 'MD', false, false, false, false, true);
+        poster = API.Common.getUserLink(comment.poster.id, poster, 'MD', true);
+
+        // 评论内容
+        let content = API.Common.formatContent(comment.content, 'MD', false, false, false, false, true);
+        // 替换换行符
+        content = content.replace(/\n/g, "");
+
+        // 添加评论内容
+        contents.push('* {0}：{1}'.format(poster, content));
+
+        // 评论的回复
+        const replies = comment.replies || [];
+        for (const rep of replies) {
+            // 回复人
+            let repPoster = rep.poster.name || QZone.Common.Target.nickname || '';
+            repPoster = API.Common.formatContent(repPoster, 'MD', false, false, false, false, true);
+            repPoster = API.Common.getUserLink(rep.poster.id, repPoster, 'MD', true);
+
+            // 回复内容
+            let repContent = API.Common.formatContent(rep.content, 'MD', false, false, false, false, true);
+            // 替换换行符
+            repContent = repContent.replace(/\n/g, "");
+
+            // 添加评论内容
+            contents.push('\t* {0}：{1}'.format(repPoster, repContent));
+        }
+    }
+    return contents.join('\r\n');
+  },
 };

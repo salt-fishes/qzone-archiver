@@ -99,4 +99,115 @@ QZoneCollectors.Boards = {
 
     return QZone.Boards.Data;
   },
+
+  /**
+   * 处理数据（P2-4：迁自 modules/boards.js handerData）
+   * @param {Array} boardInfo 留言信息
+   */
+  handerData: async(boardInfo) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Boards_Images_Mime');
+
+    // 处理留言数据
+    for (const board of boardInfo.items) {
+        if (!API.Common.isNewItem(board)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        board.uin = board.uin || 0;
+        board.nickname = API.Boards.getOwner(board);
+        board.htmlContent = board.htmlContent || '';
+        // 他人模式兼容私密留言
+        if (board.secret == 1 && !board.htmlContent) {
+            // 私密留言提示
+            board.htmlContent = '主人收到一条私密留言，仅彼此可见';
+            continue;
+        }
+
+        // 处理留言内容
+        const $boardDom = jQuery('<div>{0}</div>'.format(board.htmlContent));
+        // 处理图片信息
+        const images = $boardDom.find("img") || [];
+        for (let i = 0; i < images.length; i++) {
+            const $img = $(images[i]);
+
+            // 处理相对协议
+            let url = $img.attr('orgsrc') || $img.attr('src');
+            if (!url) {
+                console.warn('board img url is null', board, $img);
+                continue;
+            }
+            // 处理表情表情相对协议
+            url = url.replace(/^\/qzone\/em/g, 'http://qzonestyle.gtimg.cn/qzone/em');
+            url = API.Utils.toHttp(url);
+
+            // 添加下载任务
+            if (!API.Common.isQzoneUrl()) {
+                // 非QQ空间外链
+                let custom_filename = API.Utils.newSimpleUid(8, 16);
+                let autoSuffix = await API.Utils.autoFileSuffix(url);
+                custom_filename = custom_filename + autoSuffix;
+
+                // 添加下载任务
+                API.Utils.newDownloadTask('Boards', url, 'Boards/images', custom_filename, board);
+
+                // 图片离线地址
+                url = 'images/' + custom_filename;
+            }
+
+            // 修改日志中的图片链接
+            $img.attr('src', url);
+            // 更改图片索引
+            $img.attr('data-idx', i);
+
+            // 图片上层的超链接
+            const $imageLink = $img.parent('a');
+
+            // 修改图片点击事件
+            if ($imageLink && $imageLink.length > 0) {
+                // 更改图片地址
+                $imageLink.attr('href', url);
+                // 画廊查看大图
+                $imageLink.addClass('lightgallery');
+            } else {
+                // 没有超链接的，需要添加超链接，用于生成画廊
+                $img.wrap('<a class="lightgallery" href="' + url + '"></a>');
+            }
+
+            indicator.addSuccess(1);
+        }
+
+        // 替换无协议图片地址
+        board.htmlContent = $boardDom.html();
+    }
+
+    // 完成
+    indicator.complete();
+    return boardInfo;
+},
+
+  /**
+   * 添加下载表情任务（P2-4：迁自 modules/boards.js addDownloadEmoticonTasks）
+   * @param {Message} items 相册列表
+   */
+  addDownloadEmoticonTasks: (items) => {
+    if (API.Common.isQzoneUrl()) {
+        // QQ空间外链，跳过
+        return;
+    }
+
+    // 遍历
+    for (const item of items) {
+
+        if (API.Common.isQzoneUrl()) {
+            // QQ空间外链或已备份项，跳过
+            return;
+        }
+
+        // 添加任务
+        API.Common.addCommentEmoticonDownloadTasks(item);
+    }
+
+},
 };

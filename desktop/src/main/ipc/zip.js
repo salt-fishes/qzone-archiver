@@ -3,9 +3,10 @@
  */
 import { ipcMain } from 'electron';
 import { packager } from '../services/packager.js';
+import { Channels } from '../../shared/ipc-contract.mjs';
 
 export function registerZipIpc() {
-  ipcMain.handle('zip:create', async (event, { srcDir, destPath }) => {
+  ipcMain.handle(Channels.zip.create, async (event, { srcDir, destPath }) => {
     try {
       const result = await packager.createZip({ srcDir, destPath });
       return { ok: true, ...result };

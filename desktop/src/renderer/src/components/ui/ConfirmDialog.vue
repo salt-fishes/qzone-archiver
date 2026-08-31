@@ -12,13 +12,33 @@ const emit = defineEmits<{ confirm: []; cancel: [] }>();
 </script>
 
 <template>
-  <div v-if="show" class="overlay cd-overlay" @click.self="emit('cancel')">
+  <div
+    v-if="show"
+    class="overlay cd-overlay"
+    @click.self="emit('cancel')"
+  >
     <div class="confirm-dialog">
-      <h3 class="cd-title">{{ title }}</h3>
-      <p v-if="message" class="cd-msg">{{ message }}</p>
+      <h3 class="cd-title">
+        {{ title }}
+      </h3>
+      <p
+        v-if="message"
+        class="cd-msg"
+      >
+        {{ message }}
+      </p>
       <div class="cd-actions">
-        <button class="btn" @click="emit('cancel')">{{ cancelText || '取消' }}</button>
-        <button class="btn" :class="danger ? 'danger' : 'primary'" @click="emit('confirm')">
+        <button
+          class="btn"
+          @click="emit('cancel')"
+        >
+          {{ cancelText || '取消' }}
+        </button>
+        <button
+          class="btn"
+          :class="danger ? 'danger' : 'primary'"
+          @click="emit('confirm')"
+        >
           {{ confirmText || '确定' }}
         </button>
       </div>

@@ -6,13 +6,14 @@
  */
 import { ref, computed, watch } from 'vue';
 import { auth } from './auth';
+import modulesData from '../../../shared/modules.json';
 
-/* ============ 模块元数据 ============ */
+/* ============ 模块元数据（P1-4 单一来源：src/shared/modules.json 派生） ============ */
 
-export const MODULES = [
-  'Messages', 'Blogs', 'Diaries', 'Photos', 'Videos', 'Boards',
-  'Favorites', 'Shares', 'Friends', 'Visitors', 'Statistics',
-];
+type ModuleDef = { key: string; zh: string; exportable: boolean };
+const MODULE_DEFS = modulesData as ModuleDef[];
+
+export const MODULES: string[] = MODULE_DEFS.map((m) => m.key);
 
 /** 模块图标（内联 SVG path，统一 1.5 stroke 几何风格） */
 export const MODULE_ICONS: Record<string, string> = {
@@ -29,18 +30,12 @@ export const MODULE_ICONS: Record<string, string> = {
   Statistics: 'M5 20V12 M10 20V7 M15 20V10 M20 20V4',
 };
 
-export const MODULE_META: Record<string, { label: string }> = {
-  Messages: { label: '说说' }, Blogs: { label: '日志' }, Diaries: { label: '日记' },
-  Photos: { label: '相册' }, Videos: { label: '视频' }, Boards: { label: '留言' },
-  Favorites: { label: '收藏' }, Shares: { label: '分享' }, Friends: { label: '好友' },
-  Visitors: { label: '访客' }, Statistics: { label: '统计' },
-};
+export const MODULE_META: Record<string, { label: string }> = Object.fromEntries(
+  MODULE_DEFS.map((m) => [m.key, { label: m.zh }]),
+);
 
-/** 有导出类型设置的模块（设置模型键） */
-export const MODULE_KEYS = [
-  'Messages', 'Blogs', 'Diaries', 'Photos', 'Videos', 'Boards',
-  'Favorites', 'Shares', 'Friends', 'Visitors',
-];
+/** 有导出类型设置的模块（设置模型键；Statistics 为收尾统计，exportable:false） */
+export const MODULE_KEYS: string[] = MODULE_DEFS.filter((m) => m.exportable).map((m) => m.key);
 
 /* ============ 设置模型（完整 QZone_Config 形状，与引擎 config.js 默认对齐） ============ */
 

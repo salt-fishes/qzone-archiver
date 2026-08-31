@@ -8,17 +8,30 @@
 
   const P = window.QZonePlatform;
 
-  /** 模块中文名（日志展示用） */
-  const MODULE_NAMES = {
-    Messages: '说说', Blogs: '日志', Diaries: '日记', Photos: '相册', Videos: '视频',
-    Boards: '留言', Favorites: '收藏', Shares: '分享', Friends: '好友',
-    Visitors: '访客', Statistics: '统计',
-  };
+  /** 模块中文名（日志展示用；P1-4 单一来源：复用 config.js 从 shared/modules.json 派生的全局映射） */
   function modName(mod) {
-    return MODULE_NAMES[mod] || mod;
+    return (typeof MODULE_NAME_MAPS === 'object' && MODULE_NAME_MAPS[mod]) || mod;
   }
 
   // ---------- 模块序列执行 ----------
+
+  /**
+   * P0-3/P2-5：模块失败记录为结构化错误（随 completed 通知透传给渲染层展示）。
+   * P2-5 起模块层抛 ModuleError（含 module/phase/code/cause），此处统一取结构化字段；
+   * 兼容普通 Error（缺省 phase='run'、code='MODULE_FAILED'）。
+   * @param {{errors?:Array}} s 引擎导出状态
+   * @param {string} mod 模块名
+   * @param {Error} e 捕获的异常
+   */
+  function recordModuleError(s, mod, e) {
+    (s.errors = s.errors || []).push({
+      module: mod,
+      phase: (e && e.phase) || 'run',
+      code: (e && e.code) || 'MODULE_FAILED',
+      message: (e && (e.message || String(e))) || '未知错误',
+    });
+  }
+
   async function runModule(mod) {
     if (mod === 'Statistics') {
       // Statistics 模块 = 其它信息收尾（等价扩展 OperatorType.OTHERS_INFO）：
@@ -79,6 +92,7 @@
       s.cancelled = false;
       s.pauseToken = null;
       s.pauseWaiters = [];
+      s.errors = []; // P0-3：本次备份的模块级结构化错误，随 completed 通知透传
 
       // 重置各模块备份数据 + 初始化上次备份信息（等价扩展 INIT_USER_INFO 阶段）。
       // 缺失重置会让依赖 { items: [] } 结构的模块（日记/留言/收藏/访客）在读取 .items 时崩溃
@@ -132,6 +146,7 @@
           results[mod] = 'ok';
         } catch (e) {
           results[mod] = 'error';
+          recordModuleError(s, mod, e);
           P.notify.log({
             level: 'error',
             message: `模块 ${modName(mod)} 失败：${(e && e.message) || e}`,
@@ -146,6 +161,7 @@
           results['Statistics'] = 'ok';
         } catch (e) {
           results['Statistics'] = 'error';
+          recordModuleError(s, 'Statistics', e);
           P.notify.log({
             level: 'error',
             message: `模块 ${modName('Statistics')} 失败：${(e && e.message) || e}`,
@@ -164,7 +180,14 @@
       }
       s.currentModule = null;
       s.running = false;
-      P.notify.state({ taskId, state: 'completed', results });
+      // P0-3：errors 随 completed 通知透传（主进程 backup:completed 原样转发 → 成功页展示）
+      P.notify.state({ taskId, state: 'completed', results, errors: s.errors || [] });
+      if (s.errors && s.errors.length) {
+        P.notify.log({
+          level: 'warn',
+          message: `备份完成，但有 ${s.errors.length} 个模块失败：${s.errors.map((e) => modName(e.module)).join('、')}`,
+        });
+      }
       P.notify.log({ level: 'info', message: '备份完成' });
     },
 

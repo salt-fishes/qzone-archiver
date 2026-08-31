@@ -153,4 +153,191 @@ QZoneExporters.Common = {
         // 调用预编译函数，第二个参数为 modifierMap（在 templates-compiled.js 中定义）
         return render(params, window.__modifierMap__);
     },
+
+    /**
+     * 导出用户个人档信息
+     */
+    exportUser: async() => {
+
+        if (API.Common.isOnlyFileExport()) {
+            // 仅文件导出，无需生成首页文件
+            console.log('仅文件导出，无需生成首页文件');
+            return;
+        }
+
+        // 状态更新器
+        const indicator = new StatusIndicator('Init_User_Info_Export_Other');
+        indicator.print();
+
+        let userInfo = QZone.Common.Target
+
+        // 添加统计信息到用户信息
+        userInfo.messages = QZone.Messages.Data.length;
+        userInfo.blogs = QZone.Blogs.Data.length;
+        userInfo.diaries = QZone.Diaries.Data.length;
+        let photos = [];
+        for (const album of QZone.Photos.Album.Data) {
+            photos = photos.concat(album.photoList || []);
+        }
+        userInfo.photos = photos.length;
+        userInfo.videos = QZone.Videos.Data.length;
+        userInfo.boards = QZone.Boards.Data.total;
+        userInfo.favorites = QZone.Favorites.Data.length;
+        userInfo.shares = QZone.Shares.Data.length;
+        userInfo.friends = QZone.Friends.Data.length;
+        userInfo.visitors = QZone.Visitors.Data.total;
+
+        // 是否备份自身空间
+        userInfo.isOwner = QZone.Common.Target.uin === QZone.Common.Owner.uin;
+
+        // 根据导出类型导出数据
+        await API.Common.exportUserToJson(userInfo);
+
+        // 生成MarkDown
+        await API.Common.exportUserToMd(userInfo);
+
+        // 生成HTML
+        await API.Common.exportUserToHtml(userInfo);
+
+        // 生成SPA（任一模块启用 SPA 时复制 SPA 静态资源并生成入口 index.html）
+        await API.Common.exportUserToSpa(userInfo);
+
+        // 完成
+        indicator.complete();
+    },
+
+    /**
+     * 导出个人信息到JSON文件
+     * @param {Array} friends 好友列表
+     */
+    exportUserToJson: async(jsonObj) => {
+        const path = API.Common.getModuleRoot('Common') + '/json';
+
+        // 创建JSON文件夹
+        await API.Utils.createFolder(path);
+
+        // 写入JOSN
+        await API.Common.writeJsonToJs('userInfo', jsonObj, path + '/user.js').then((fileEntry) => {
+            console.info("导出用户个人档信息完成", fileEntry);
+        }).catch((error) => {
+            console.error("导出用户个人档信息异常", error);
+        });
+    },
+
+    /**
+     * 导出个人信息到MarkDown文件
+     * @param {Array} friends 好友列表
+     */
+    exportUserToMd: async(userInfo) => {
+        // 导出类型存在MarkDown的时候才生成首页MarkDown
+        // 说说
+        let hasMd = QZone_Config.Messages.exportType === 'MarkDown';
+        // 日志
+        hasMd = hasMd || QZone_Config.Blogs.exportType === 'MarkDown';
+        // 日记
+        hasMd = hasMd || QZone_Config.Diaries.exportType === 'MarkDown';
+        // 留言
+        hasMd = hasMd || QZone_Config.Boards.exportType === 'MarkDown';
+        // 好友
+        hasMd = hasMd || QZone_Config.Friends.exportType === 'MarkDown';
+        // 收藏
+        hasMd = hasMd || QZone_Config.Favorites.exportType === 'MarkDown';
+        // 分享
+        hasMd = hasMd || QZone_Config.Shares.exportType === 'MarkDown';
+        // 访客
+        hasMd = hasMd || QZone_Config.Visitors.exportType === 'MarkDown';
+        // 相册
+        hasMd = hasMd || QZone_Config.Photos.exportType === 'MarkDown';
+        // 视频
+        hasMd = hasMd || QZone_Config.Videos.exportType === 'MarkDown';
+
+        if (!hasMd) {
+            return;
+        }
+
+        console.info('导出空间预览到Markdown文件开始', userInfo);
+
+        const contents = [];
+        contents.push('### 个人信息');
+        contents.push('{nickname}({uin})'.format(QZone.Common.Target));
+
+        contents.push('### 空间名称');
+        contents.push('{spacename}'.format(QZone.Common.Target));
+
+        contents.push('### 空间说明');
+        contents.push('{desc}'.format(QZone.Common.Target));
+
+        contents.push('### 空间概览');
+        contents.push('说说|日志|日记|相册|视频|留言|收藏|分享|访客|好友');
+        contents.push('---|---|---|---|---|---|---|---');
+        contents.push('{messages}|{blogs}|{diaries}|{photos}|{videos}|{boards}|{favorites}|{shares}|{visitors}|{friends}'.format(QZone.Common.Target));
+
+        await API.Utils.writeText(contents.join('\r\n'), API.Common.getRootFolder() + "/index.md").then((fileEntry) => {
+            console.info("导出空间预览到Markdown文件完成", fileEntry, userInfo);
+        }).catch((error) => {
+            console.error("导出空间预览到Markdown文件异常", error, userInfo);
+        });
+    },
+
+    /**
+     * 导入备份数据到JSON文件
+     * @param {Object} backupInfos 已备份数据
+     */
+    exportBackupItemsToJson: async(backupInfos) => {
+
+        // 状态更新器
+        const indicator = new StatusIndicator('Backup_Export');
+        indicator.print();
+
+        const path = API.Common.getModuleRoot('Common') + '/json';
+
+        // 创建JSON文件夹
+        await API.Utils.createFolder(path);
+
+        // 导出的数据
+        const exportData = {
+            Backedup: {}
+        };
+        // 仅导出备份QQ
+        exportData.Backedup[QZone.Common.Target.uin] = backupInfos.Backedup[QZone.Common.Target.uin];
+
+        // 写入JOSN
+        await API.Utils.writeText(JSON.stringify(exportData), path + '/助手备份数据_' + QZone.Common.Target.uin + '.json').then((fileEntry) => {
+            console.info("导出助手备份数据完成", fileEntry);
+        }).catch((error) => {
+            console.error("导出助手备份数据异常", error);
+        });
+
+        // 完成
+        indicator.complete();
+    },
+
+    /**
+     * 导出助手到JSON文件
+     * @param {Array} friends 好友列表
+     */
+    exportConfigToJson: async() => {
+
+        if (API.Common.isOnlyFileExport()) {
+            // 仅文件导出，无需导出配置文件
+            console.log('仅文件导出，无需导出配置文件');
+            return;
+        }
+
+        // 状态更新器
+        const indicator = new StatusIndicator('User_Config_Infos');
+        indicator.print();
+
+        const path = API.Common.getModuleRoot('Common') + '/json';
+
+        console.info('生成助手配置JSON开始', QZone_Config);
+        // 创建JSON文件夹
+        await API.Utils.createFolder(path);
+        // 写入JOSN
+        const jsonFile = await API.Common.writeJsonToJs('QZone_Config', QZone_Config, API.Common.getModuleRoot('Common') + '/json/config.js');
+        console.info('生成助手配置JSON结束', jsonFile, QZone_Config);
+
+        // 完成
+        indicator.complete();
+    },
 };

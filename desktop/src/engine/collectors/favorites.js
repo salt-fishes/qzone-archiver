@@ -89,4 +89,73 @@ QZoneCollectors.Favorites = {
 
     return QZone.Favorites.Data;
   },
+
+  /**
+   * 添加多媒体下载任务（P2-4：迁自 modules/favorites.js addMediaToTasks）
+   * @param {Array} dataList
+   */
+  addMediaToTasks: async(dataList) => {
+    // 下载相对目录
+    const module_dir = 'Favorites/images';
+
+    for (const item of dataList) {
+
+        if (!API.Common.isNewItem(item)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        // 下载配图
+        for (const image of item.custom_images) {
+            await API.Utils.addDownloadTasks('Favorites', image, image.url, module_dir, item, QZone.Favorites.FILE_URLS);
+        }
+
+        // 下载配图
+        for (const image of item.custom_origin_images) {
+            await API.Utils.addDownloadTasks('Favorites', image, image.url, module_dir, item, QZone.Favorites.FILE_URLS);
+        }
+
+        // 下载视频预览图及视频
+        API.Videos.addDownloadTasks('Favorites', item.custom_videos, module_dir, item);
+
+        // 下载音乐预览图
+        for (const audio of item.custom_audios) {
+            await API.Utils.addDownloadTasks('Favorites', audio, audio.preview_img, module_dir, item, QZone.Favorites.FILE_URLS);
+        }
+
+        // 下载表情
+        API.Favorites.addDownloadEmoticonTasks(item);
+
+    }
+    return dataList;
+},
+
+  /**
+   * 添加下载表情任务（P2-4：迁自 modules/favorites.js addDownloadEmoticonTasks）
+   * @param {Message} favorite 收藏
+   */
+  addDownloadEmoticonTasks: (favorite) => {
+    if (API.Common.isQzoneUrl() || !API.Common.isNewItem(favorite)) {
+        // QQ空间外链，跳过
+        return;
+    }
+
+    // 收藏原作者
+    API.Common.formatContent(API.Favorites.getFavoriteOwner(favorite).name, 'HTML', false, false, false, true, false);
+
+    if (favorite.shuoshuo_info && favorite.shuoshuo_info.reason) {
+        API.Common.formatContent(favorite.shuoshuo_info.reason, 'HTML', false, true, false, true, false)
+    }
+
+    if (favorite.share_info && favorite.share_info.reason) {
+        API.Common.formatContent(favorite.share_info.reason, 'HTML', false, true, false, true, false)
+    }
+
+    if (favorite.shuoshuo_info && favorite.shuoshuo_info.detail_shuoshuo_info) {
+        API.Common.formatContent(favorite.shuoshuo_info.detail_shuoshuo_info.content, 'HTML', false, false, false, true, false);
+    }
+
+    API.Common.formatContent(favorite.abstract || favorite.desp, 'HTML', false, true, false, true, false);
+
+},
 };

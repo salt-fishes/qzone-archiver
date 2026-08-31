@@ -3,9 +3,10 @@
  */
 import { ipcMain } from 'electron';
 import { createViewerWindow } from '../windows.js';
+import { Channels } from '../../shared/ipc-contract.mjs';
 
 export function registerViewerIpc() {
-  ipcMain.handle('viewer:open', async (event, { backupPath }) => {
+  ipcMain.handle(Channels.viewer.open, async (event, { backupPath }) => {
     if (!backupPath) {
       return { ok: false, error: '缺少备份入口路径' };
     }

@@ -118,11 +118,30 @@ onMounted(() => {
     <template v-if="busy">
       <section class="panel">
         <div class="panel-title-row">
-          <h3 class="panel-title">备份进度</h3>
+          <h3 class="panel-title">
+            备份进度
+          </h3>
           <div class="bv-actions">
-            <button class="btn sm" :disabled="paused" @click="pause">暂停</button>
-            <button class="btn sm" :disabled="!paused" @click="resume">恢复</button>
-            <button class="btn danger sm" @click="showCancelConfirm = true">取消</button>
+            <button
+              class="btn sm"
+              :disabled="paused"
+              @click="pause"
+            >
+              暂停
+            </button>
+            <button
+              class="btn sm"
+              :disabled="!paused"
+              @click="resume"
+            >
+              恢复
+            </button>
+            <button
+              class="btn danger sm"
+              @click="showCancelConfirm = true"
+            >
+              取消
+            </button>
           </div>
         </div>
         <template v-if="progress.module">
@@ -132,16 +151,27 @@ onMounted(() => {
             <span class="prog-percent">{{ progress.percent ?? 0 }}%</span>
           </div>
           <div class="bar">
-            <div class="bar-fill" :style="{ width: (progress.percent ?? 0) + '%' }"></div>
+            <div
+              class="bar-fill"
+              :style="{ width: (progress.percent ?? 0) + '%' }"
+            />
           </div>
           <div class="prog-meta">
             <span>成功 {{ progExtra.success ?? 0 }}</span>
             <span v-if="(progExtra.skip ?? 0) > 0">跳过 {{ progExtra.skip }}</span>
-            <span v-if="(progExtra.failed ?? 0) > 0" class="fail">失败 {{ progExtra.failed }}</span>
+            <span
+              v-if="(progExtra.failed ?? 0) > 0"
+              class="fail"
+            >失败 {{ progExtra.failed }}</span>
             <span class="elapsed">用时 {{ fmtElapsed(elapsedSec) }}</span>
           </div>
         </template>
-        <p v-else class="prog-empty">正在启动备份…</p>
+        <p
+          v-else
+          class="prog-empty"
+        >
+          正在启动备份…
+        </p>
       </section>
 
       <!-- 下载明细 / 运行日志：独立子组件，progress 事件不再触发大列表整体 diff -->
@@ -151,7 +181,11 @@ onMounted(() => {
 
     <!-- 备份完成：成功页（C 端习惯：对勾动画 + 数据汇总 + 快捷操作） -->
     <template v-else-if="lastResult">
-      <SuccessPanel :result="lastResult" :elapsed="elapsedSec" @again="onAgain" />
+      <SuccessPanel
+        :result="lastResult"
+        :elapsed="elapsedSec"
+        @again="onAgain"
+      />
     </template>
 
     <!-- 未开始：三步向导 -->
@@ -161,19 +195,25 @@ onMounted(() => {
       <section class="panel bv-step">
         <!-- 步骤① 选择内容 -->
         <div v-if="step === 1">
-          <h3 class="panel-title">选择备份内容</h3>
+          <h3 class="panel-title">
+            选择备份内容
+          </h3>
           <ModulePicker :estimates="estimates" />
         </div>
 
         <!-- 步骤② 保存位置 -->
         <div v-else-if="step === 2">
-          <h3 class="panel-title">备份保存到哪里？</h3>
+          <h3 class="panel-title">
+            备份保存到哪里？
+          </h3>
           <DirPicker />
         </div>
 
         <!-- 步骤③ 确认并开始 -->
         <div v-else>
-          <h3 class="panel-title">确认并开始备份</h3>
+          <h3 class="panel-title">
+            确认并开始备份
+          </h3>
           <div class="confirm-list">
             <div class="confirm-row">
               <span class="c-key">备份内容</span>
@@ -189,7 +229,10 @@ onMounted(() => {
               <span class="c-key">备份方式</span>
               <span class="c-val">{{ isIncremental ? '只备份新增内容（上次之后）' : '全量备份' }}</span>
             </div>
-            <div v-if="lastTotal || lastSize" class="confirm-row">
+            <div
+              v-if="lastTotal || lastSize"
+              class="confirm-row"
+            >
               <span class="c-key">数据量参考</span>
               <span class="c-val">
                 {{ lastTotal ? lastTotal.toLocaleString() + ' 条内容' : '' }}
@@ -200,21 +243,49 @@ onMounted(() => {
             </div>
           </div>
           <!-- 未登录：内联引导去扫码（不再只写日志） -->
-          <div v-if="!auth.loggedIn" class="confirm-login">
-            <p class="confirm-login-txt">备份前需要先登录你的 QQ 空间。</p>
-            <button class="btn primary" @click="login">去扫码登录</button>
+          <div
+            v-if="!auth.loggedIn"
+            class="confirm-login"
+          >
+            <p class="confirm-login-txt">
+              备份前需要先登录你的 QQ 空间。
+            </p>
+            <button
+              class="btn primary"
+              @click="login"
+            >
+              去扫码登录
+            </button>
           </div>
         </div>
 
         <div class="bv-nav">
-          <button v-if="step > 1" class="btn" @click="step--">上一步</button>
+          <button
+            v-if="step > 1"
+            class="btn"
+            @click="step--"
+          >
+            上一步
+          </button>
           <template v-if="step < 3">
-            <span class="bv-spacer"></span>
-            <button class="btn primary" :disabled="!canNext()" @click="step++">下一步</button>
+            <span class="bv-spacer" />
+            <button
+              class="btn primary"
+              :disabled="!canNext()"
+              @click="step++"
+            >
+              下一步
+            </button>
           </template>
           <template v-else>
-            <span class="bv-spacer"></span>
-            <button class="btn primary" :disabled="starting || !auth.loggedIn" @click="doStart">开始备份</button>
+            <span class="bv-spacer" />
+            <button
+              class="btn primary"
+              :disabled="starting || !auth.loggedIn"
+              @click="doStart"
+            >
+              开始备份
+            </button>
           </template>
         </div>
       </section>

@@ -27,17 +27,17 @@ function fmtInt(n: number) {
       <b>{{ loading ? '…' : fmtInt(backups) }}</b>
       <span>备份次数</span>
     </div>
-    <span class="sep"></span>
+    <span class="sep" />
     <div class="stat-cell">
       <b>{{ loading ? '…' : fmtInt(total) }}</b>
       <span>最近条目</span>
     </div>
-    <span class="sep"></span>
+    <span class="sep" />
     <div class="stat-cell">
       <b>{{ loading ? '…' : fmtInt(files) }}</b>
       <span>保存文件</span>
     </div>
-    <span class="sep"></span>
+    <span class="sep" />
     <div class="stat-cell">
       <b>{{ loading ? '…' : fmtSize(size) }}</b>
       <span>总大小</span>

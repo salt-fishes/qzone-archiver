@@ -44,27 +44,57 @@ function folder(b: HistoryEntry) {
 
 <template>
   <section class="panel last-card">
-    <h3 class="panel-title">上次备份</h3>
+    <h3 class="panel-title">
+      上次备份
+    </h3>
 
     <template v-if="backup">
       <div class="last-main">
-        <div class="last-time">{{ fmtTime(backup.completedAt) }}</div>
+        <div class="last-time">
+          {{ fmtTime(backup.completedAt) }}
+        </div>
         <div class="last-meta">
           {{ backup.name }} · 全部 {{ moduleOk(backup) }} 项
-          <template v-if="backup.total"> · {{ backup.total.toLocaleString() }} 条</template>
-          <template v-if="backup.files"> · {{ backup.files.toLocaleString() }} 文件</template>
-          <template v-if="backup.size"> · {{ fmtSize(backup.size) }}</template>
+          <template v-if="backup.total">
+            · {{ backup.total.toLocaleString() }} 条
+          </template>
+          <template v-if="backup.files">
+            · {{ backup.files.toLocaleString() }} 文件
+          </template>
+          <template v-if="backup.size">
+            · {{ fmtSize(backup.size) }}
+          </template>
         </div>
       </div>
       <div class="last-actions">
-        <button class="btn primary sm" @click="browse(backup)">浏览备份</button>
-        <button class="btn sm" @click="folder(backup)">打开文件夹</button>
+        <button
+          class="btn primary sm"
+          @click="browse(backup)"
+        >
+          浏览备份
+        </button>
+        <button
+          class="btn sm"
+          @click="folder(backup)"
+        >
+          打开文件夹
+        </button>
       </div>
     </template>
 
-    <div v-else class="last-empty">
-      <p class="last-empty-txt">还没有历史备份，先开始你的第一次备份吧。</p>
-      <router-link to="/backup" class="btn primary sm">去备份</router-link>
+    <div
+      v-else
+      class="last-empty"
+    >
+      <p class="last-empty-txt">
+        还没有历史备份，先开始你的第一次备份吧。
+      </p>
+      <router-link
+        to="/backup"
+        class="btn primary sm"
+      >
+        去备份
+      </router-link>
     </div>
   </section>
 </template>

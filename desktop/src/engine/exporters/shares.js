@@ -255,4 +255,81 @@ QZoneExporters.Shares = {
     indicator.complete();
     return items;
   },
+
+  /**
+   * 获取单篇分享的Markdown内容（P2-4：迁自 modules/shares.js getMarkdown）
+   * @param {ShareInfo} share 分享
+   */
+  getMarkdown: (share) => {
+    const contents = [];
+    // 分享人
+    let share_user_name = API.Common.formatContent(share.nickname, 'MD', false, false, false, false, true);
+    share_user_name = API.Common.getUserLink(share.uin, share_user_name, 'MD', true);
+    // 分享描述
+    contents.push('{0}  分享：{1}  '.format(share_user_name, API.Common.formatContent(share.desc || '', 'MD', false, false, false, false, true)));
+
+    // 分享源
+    const shareSource = share.source || {};
+    // 分享源标题
+    contents.push('> [{0}]({1})  '.format(shareSource.title, shareSource.url));
+    // 分享源描述
+    if (shareSource.desc) {
+        contents.push('{0}  '.format(shareSource.desc));
+    }
+    // 分享源配图
+    shareSource.images = shareSource.images || [];
+    for (const images of shareSource.images) {
+        contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(images.custom_url, images.custom_filepath)) + '  ');
+    }
+    // 分享源来源
+    if (shareSource.from && shareSource.from.name) {
+        contents.push('来自： [{0}]({1}) 共分享 {2} 次'.format(shareSource.from.name, shareSource.from.url, shareSource.count));
+    } else {
+        contents.push('共分享 {0} 次'.format(shareSource.count));
+    }
+
+    // 分享时间
+    contents.push('\n> {0}  '.format(API.Utils.formatDate(share.shareTime)));
+
+    // 评论内容
+    const comments = share.comments || [];
+    contents.push("\n> 评论({0})".format(share.commentTotal));
+    for (const comment of comments) {
+
+        // 评论人
+        let comment_name = API.Common.formatContent(comment.poster.name, 'MD', false, false, false, false, true);
+        comment_name = API.Common.getUserLink(comment.poster.id, comment_name, 'MD', true);
+
+        contents.push("- {0}：{1}".format(comment_name, API.Common.formatContent(comment.content, 'MD', false, false, false, false, true)));
+
+        // 评论包含图片
+        const comment_images = comment.pic || [];
+        for (const image of comment_images) {
+            // 替换URL
+            contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(image.custom_url, image.custom_filepath)));
+        }
+
+        // 评论的回复
+        const replies = comment.replies || [];
+        for (const repItem of replies) {
+            // 回复人
+            let repName = API.Common.formatContent(repItem.poster.name, 'MD', false, false, false, false, true);
+            repName = API.Common.getUserLink(repItem.poster.id, repName, 'MD', true);
+
+            // 回复内容
+            let content = API.Common.formatContent(repItem.content, 'MD', false, false, false, false, true);
+
+            // 回复内容
+            contents.push("\t- {0}：{1}".format(repName, content));
+
+            // 回复包含图片，理论上回复现在不能回复图片，兼容一下
+            var repImgs = repItem.pic || [];
+            for (const repImg of repImgs) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(repImg.custom_url, repImg.custom_filepath)));
+            }
+        }
+    }
+    contents.push('---');
+    return contents.join('\n');
+},
 };

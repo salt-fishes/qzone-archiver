@@ -34,7 +34,7 @@ export function createMainWindow() {
     icon: APP_ICON,
     show: false,
     webPreferences: {
-      preload: path.join(PRELOAD_DIR, 'ui-bridge.cjs'),
+      preload: path.join(PRELOAD_DIR, 'ui-bridge.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
@@ -66,7 +66,7 @@ export function createEngineWindow() {
     show: false,
     backgroundColor: '#ffffff',
     webPreferences: {
-      preload: path.join(PRELOAD_DIR, 'engine-bridge.cjs'),
+      preload: path.join(PRELOAD_DIR, 'engine-bridge.mjs'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,

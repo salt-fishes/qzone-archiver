@@ -42,6 +42,11 @@ function openHelp(tab: 'guide' | 'faq' | 'privacy' = 'guide') {
   showHelp.value = true;
 }
 
+/** 顶栏「打开登录窗口」：模板作用域无法直接访问 window，收口为函数 */
+function openEngine() {
+  window.api.auth.showLogin();
+}
+
 async function finishWelcome() {
   showWelcome.value = false;
   try {
@@ -93,7 +98,7 @@ onBeforeUnmount(() => {
       @login="login"
       @logout="showLogoutConfirm = true"
       @retry="retryEngine"
-      @open-engine="window.api.auth.showLogin()"
+      @open-engine="openEngine"
     />
 
     <div class="shell">
@@ -115,13 +120,20 @@ onBeforeUnmount(() => {
     />
 
     <!-- 首次启动欢迎页 -->
-    <div v-if="showWelcome" class="overlay">
+    <div
+      v-if="showWelcome"
+      class="overlay"
+    >
       <div class="welcome">
         <div class="welcome-brand">
           <span class="seal big">檔</span>
           <div>
-            <h2 class="welcome-title">欢迎使用 QQ空间档案备份</h2>
-            <p class="welcome-sub">将你的 QQ 空间数据完整保存在本地，随时浏览、永不丢失</p>
+            <h2 class="welcome-title">
+              欢迎使用 QQ空间档案备份
+            </h2>
+            <p class="welcome-sub">
+              将你的 QQ 空间数据完整保存在本地，随时浏览、永不丢失
+            </p>
           </div>
         </div>
         <div class="welcome-steps">
@@ -156,27 +168,76 @@ onBeforeUnmount(() => {
         </div>
         <div class="welcome-foot">
           <div class="welcome-links">
-            <button class="link-btn" @click="openHelp('guide'); showWelcome = false">新手教程</button>
-            <button class="link-btn" @click="openHelp('faq'); showWelcome = false">常见问题</button>
-            <button class="link-btn" @click="openHelp('privacy'); showWelcome = false">隐私政策</button>
+            <button
+              class="link-btn"
+              @click="openHelp('guide'); showWelcome = false"
+            >
+              新手教程
+            </button>
+            <button
+              class="link-btn"
+              @click="openHelp('faq'); showWelcome = false"
+            >
+              常见问题
+            </button>
+            <button
+              class="link-btn"
+              @click="openHelp('privacy'); showWelcome = false"
+            >
+              隐私政策
+            </button>
           </div>
-          <button class="btn primary" @click="finishWelcome">开始使用</button>
+          <button
+            class="btn primary"
+            @click="finishWelcome"
+          >
+            开始使用
+          </button>
         </div>
       </div>
     </div>
 
     <!-- 帮助：新手教程 / 常见问题 / 隐私政策 -->
-    <div v-if="showHelp" class="overlay" @click.self="showHelp = false">
+    <div
+      v-if="showHelp"
+      class="overlay"
+      @click.self="showHelp = false"
+    >
       <div class="help">
         <div class="settings-head">
-          <h3 class="settings-title">帮助中心</h3>
-          <button class="btn ghost sm" @click="showHelp = false">关闭</button>
+          <h3 class="settings-title">
+            帮助中心
+          </h3>
+          <button
+            class="btn ghost sm"
+            @click="showHelp = false"
+          >
+            关闭
+          </button>
         </div>
         <div class="settings-body">
           <nav class="settings-tabs">
-            <button class="tab-btn" :class="{ active: helpTab === 'guide' }" @click="helpTab = 'guide'">新手教程</button>
-            <button class="tab-btn" :class="{ active: helpTab === 'faq' }" @click="helpTab = 'faq'">常见问题</button>
-            <button class="tab-btn" :class="{ active: helpTab === 'privacy' }" @click="helpTab = 'privacy'">隐私政策</button>
+            <button
+              class="tab-btn"
+              :class="{ active: helpTab === 'guide' }"
+              @click="helpTab = 'guide'"
+            >
+              新手教程
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: helpTab === 'faq' }"
+              @click="helpTab = 'faq'"
+            >
+              常见问题
+            </button>
+            <button
+              class="tab-btn"
+              :class="{ active: helpTab === 'privacy' }"
+              @click="helpTab = 'privacy'"
+            >
+              隐私政策
+            </button>
           </nav>
           <div class="settings-content help-content">
             <template v-if="helpTab === 'guide'">

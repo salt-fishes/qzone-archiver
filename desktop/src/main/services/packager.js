@@ -7,9 +7,10 @@ import { ZipArchive } from 'archiver';
 import fs from 'node:fs';
 import path from 'node:path';
 import { sendToUi } from './engine-bridge.js';
+import { PushChannels } from '../../shared/ipc-contract.mjs';
 
 function sendProgress(percent, current) {
-  sendToUi('zip:progress', { percent, current });
+  sendToUi(PushChannels.zipProgress, { percent, current });
 }
 
 export const packager = {

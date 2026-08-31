@@ -199,4 +199,59 @@ QZoneExporters.Diaries = {
     indicator.complete();
     return items;
   },
+
+  /**
+   * 获取单篇日记的MD内容（迁移自 modules/diaries.js getMarkdown）
+   * @param {object} item 日记信息
+   */
+  getMarkdown: async(item) => {
+    const contents = [];
+    // 拼接标题，日期，内容
+    contents.push("# " + item.title);
+    contents.push("> " + API.Utils.formatDate(item.pubtime));
+    contents.push("\r\n");
+
+    // 根据HTML获取MD内容
+    let markdown = QZone.Common.MD.turndown(API.Utils.base64ToUtf8(item.custom_html));
+    markdown = markdown.replace(/\n/g, "\r\n");
+    contents.push(markdown);
+    contents.push("\r\n");
+
+    // 拼接评论
+    contents.push("> 评论({0})".format(item.replynum));
+
+    let comments = item.comments || [];
+    for (const comment of comments) {
+        // 评论人
+        let poster = comment.poster.name || QZone.Common.Target.nickname || '';
+        poster = API.Common.formatContent(poster, 'MD', false, false, false, false, true);
+        poster = API.Common.getUserLink(comment.poster.id, poster, 'MD', true);
+
+        // 评论内容
+        let content = API.Common.formatContent(comment.content, 'MD', false, false, false, false, true);
+        // 替换换行符
+        content = content.replace(/\n/g, "");
+
+        // 添加评论内容
+        contents.push('* {0}：{1}'.format(poster, content));
+
+        // 评论的回复
+        const replies = comment.replies || [];
+        for (const rep of replies) {
+            // 回复人
+            let repPoster = rep.poster.name || QZone.Common.Target.nickname || '';
+            repPoster = API.Common.formatContent(repPoster, 'MD', false, false, false, false, true);
+            repPoster = API.Common.getUserLink(rep.poster.id, repPoster, 'MD', true);
+
+            // 回复内容
+            let repContent = API.Common.formatContent(rep.content, 'MD', false, false, false, false, true);
+            // 替换换行符
+            repContent = repContent.replace(/\n/g, "");
+
+            // 添加评论内容
+            contents.push('\t* {0}：{1}'.format(repPoster, repContent));
+        }
+    }
+    return contents.join('\r\n');
+  },
 };

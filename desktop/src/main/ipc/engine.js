@@ -2,34 +2,81 @@
  * 引擎窗口 IPC（engine-bridge preload → 主进程）
  * 契约见设计文档 §3.2「引擎窗口桥」：
  *   invoke 类：engine:storage-* / engine:fs-* / engine:cookie-get / engine:download-enqueue / engine:network-*
- *   post 类：engine:ready / engine:notify（progress|log|state）
+ *   post 类：engine:notify（progress|log|state）
+ * 全部通道经 guardInvoke/guardPost 统一来源校验（P0-2，见 assertEngineSender）。
  */
 import { ipcMain, net } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { resolveEnginePath, sendToUi, getActiveBackup } from '../services/engine-bridge.js';
 import { engineStorage } from '../services/config-store.js';
+import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
+import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
+import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
 const REFERER = 'https://user.qzone.qq.com/';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const QZONE_ORIGIN_PREFIX = 'https://user.qzone.qq.com';
+
+/**
+ * 引擎通道统一来源守卫（P0-2 纵深防御第二层）：
+ * 仅允许「引擎窗口 + 主框架 + qzone 页面 URL」的调用。
+ * 引擎脚本注入于隔离世界（与主框架同层级），正常运行天然满足；主世界 engineBridge
+ * 已移除（engine-bridge preload），此守卫兜底任何残余/伪造入口。
+ */
+function assertEngineSender(event) {
+  try {
+    const engineWc =
+      windows.engine && !windows.engine.isDestroyed() ? windows.engine.webContents : null;
+    if (!engineWc || event.sender !== engineWc) return false;
+    const frame = event.senderFrame;
+    // 必须存在且为主框架（子框架 parent 非空）
+    if (!frame || frame.parent) return false;
+    // 与 index.js did-navigate 判定一致：仅允许 qzone 页面
+    return String(frame.url || '').startsWith(QZONE_ORIGIN_PREFIX);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * invoke 类通道包装：来源非法 → 返回 FORBIDDEN + 告警
+ * @param {string} channel
+ * @param {(event: Electron.IpcMainInvokeEvent, payload: any) => any} handler
+ */
+function guardInvoke(channel, handler) {
+  ipcMain.handle(channel, async (event, payload) => {
+    if (!assertEngineSender(event)) {
+      console.warn(`[engine:ipc] 已拒绝非法来源的 ${channel} 调用`);
+      return { ok: false, error: 'FORBIDDEN' };
+    }
+    return handler(event, payload);
+  });
+}
+
+/** post 类通道包装：来源非法 → 丢弃 + 告警（post 无返回值语义） */
+function guardPost(channel, handler) {
+  ipcMain.on(channel, (event, payload) => {
+    if (!assertEngineSender(event)) {
+      console.warn(`[engine:ipc] 已拒绝非法来源的 ${channel} 推送`);
+      return;
+    }
+    handler(event, payload);
+  });
+}
 
 export function registerEngineIpc() {
-  // ---------- 引擎就绪 ----------
-  ipcMain.on('engine:ready', () => {
-    // runner 注入完成后由 preload post 上来（engineBridge.inject 已置 ready）
-  });
-
   // ---------- storage（等价 chrome.storage） ----------
-  ipcMain.handle('engine:storage-get', (e, { keys } = {}) => engineStorage.get(keys ?? null));
-  ipcMain.handle('engine:storage-set', (e, { items } = {}) => engineStorage.set(items || {}));
-  ipcMain.handle('engine:storage-remove', (e, { keys } = {}) => engineStorage.remove(keys || []));
+  guardInvoke(Channels.engine.storageGet, (e, { keys } = {}) => engineStorage.get(keys ?? null));
+  guardInvoke(Channels.engine.storageSet, (e, { items } = {}) => engineStorage.set(items || {}));
+  guardInvoke(Channels.engine.storageRemove, (e, { keys } = {}) => engineStorage.remove(keys || []));
 
   // ---------- fs（Filer 虚拟路径 → 目标目录） ----------
-  ipcMain.handle('engine:fs-write', async (e, { path: p, data, encoding } = {}) => {
+  guardInvoke(Channels.engine.fsWrite, async (e, { path: p, data, encoding } = {}) => {
     const full = resolveEnginePath(p);
     fs.mkdirSync(path.dirname(full), { recursive: true });
     if (encoding === 'binary') {
@@ -40,7 +87,7 @@ export function registerEngineIpc() {
     return { ok: true, path: full };
   });
 
-  ipcMain.handle('engine:fs-read', async (e, { path: p, encoding = 'utf8' } = {}) => {
+  guardInvoke(Channels.engine.fsRead, async (e, { path: p, encoding = 'utf8' } = {}) => {
     const full = resolveEnginePath(p);
     if (!fs.existsSync(full)) return { ok: false, error: 'ENOENT' };
     if (encoding === 'binary') {
@@ -49,7 +96,7 @@ export function registerEngineIpc() {
     return { ok: true, encoding: 'utf8', data: fs.readFileSync(full, 'utf8') };
   });
 
-  ipcMain.handle('engine:fs-exists', async (e, { path: p } = {}) => {
+  guardInvoke(Channels.engine.fsExists, async (e, { path: p } = {}) => {
     try {
       return fs.existsSync(resolveEnginePath(p));
     } catch {
@@ -57,18 +104,18 @@ export function registerEngineIpc() {
     }
   });
 
-  ipcMain.handle('engine:fs-mkdir', async (e, { path: p } = {}) => {
+  guardInvoke(Channels.engine.fsMkdir, async (e, { path: p } = {}) => {
     fs.mkdirSync(resolveEnginePath(p), { recursive: true });
     return { ok: true };
   });
 
-  ipcMain.handle('engine:fs-remove', async (e, { path: p } = {}) => {
+  guardInvoke(Channels.engine.fsRemove, async (e, { path: p } = {}) => {
     const full = resolveEnginePath(p);
     fs.rmSync(full, { recursive: true, force: true });
     return { ok: true };
   });
 
-  ipcMain.handle('engine:fs-list', async (e, { path: p } = {}) => {
+  guardInvoke(Channels.engine.fsList, async (e, { path: p } = {}) => {
     const full = resolveEnginePath(p);
     if (!fs.existsSync(full)) return { ok: false, error: 'ENOENT' };
     const entries = fs.readdirSync(full, { withFileTypes: true }).map((d) => ({
@@ -80,7 +127,7 @@ export function registerEngineIpc() {
   });
 
   // ---------- 引擎本地资源读取（等价扩展 chrome.runtime.getURL + fetch） ----------
-  ipcMain.handle('engine:resource-read', async (e, { path: rel, encoding = 'utf8' } = {}) => {
+  guardInvoke(Channels.engine.resourceRead, async (e, { path: rel, encoding = 'utf8' } = {}) => {
     const safeRel = String(rel || '').replace(/^\/+/, '').replace(/\\/g, '/');
     if (!safeRel || safeRel.includes('..')) {
       return { ok: false, error: 'INVALID_PATH' };
@@ -99,7 +146,7 @@ export function registerEngineIpc() {
   });
 
   // ---------- cookie（httpOnly） ----------
-  ipcMain.handle('engine:cookie-get', async (e, { name } = {}) => {
+  guardInvoke(Channels.engine.cookieGet, async (e, { name } = {}) => {
     const cookies = await e.sender.session.cookies.get({
       url: 'https://user.qzone.qq.com',
       name,
@@ -108,12 +155,12 @@ export function registerEngineIpc() {
   });
 
   // ---------- download（转主进程 DownloadManager） ----------
-  ipcMain.handle('engine:download-enqueue', async (e, { task } = {}) => {
+  guardInvoke(Channels.engine.downloadEnqueue, async (e, { task } = {}) => {
     return downloadManager.enqueue(task || {});
   });
 
   // ---------- network（主进程带 Referer 请求，等价 background 侧） ----------
-  ipcMain.handle('engine:network-mimetype', async (e, { url, timeout = 15000 } = {}) => {
+  guardInvoke(Channels.engine.networkMimetype, async (e, { url, timeout = 15000 } = {}) => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
@@ -125,40 +172,54 @@ export function registerEngineIpc() {
     }
   });
 
-  ipcMain.handle('engine:network-json', async (e, { url } = {}) => {
+  guardInvoke(Channels.engine.networkJson, async (e, { url } = {}) => {
     const res = await net.fetch(url, { headers: { Referer: REFERER, 'User-Agent': UA } });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   });
 
   // ---------- notify（引擎 → 主 UI） ----------
-  ipcMain.on('engine:notify', (e, payload = {}) => {
+  guardPost(Channels.engine.notify, (e, payload = {}) => {
     const { type, data } = payload;
     if (!type) return;
     switch (type) {
       case 'progress':
-        sendToUi('backup:progress', data);
+        sendToUi(PushChannels.backupProgress, data);
         break;
       case 'log':
-        sendToUi('backup:log', { level: data?.level || 'info', time: Date.now(), message: data?.message || '' });
+        sendToUi(PushChannels.backupLog, { level: data?.level || 'info', time: Date.now(), message: data?.message || '' });
         break;
-      case 'state':
-        sendToUi('backup:state-changed', data);
+      case 'state': {
+        // P3-1：引擎状态事件 → 状态机裁决（非法转移拒绝、同态幂等、统一推送 backup:state-changed）
+        const ev = {
+          running: 'engineRunning',
+          paused: 'pause',
+          completed: 'complete',
+          cancelled: 'cancel',
+        }[data?.state];
+        if (ev) taskMachine.dispatch(ev, data);
         if (data?.state === 'completed') {
-          // 备份完成 → 自动记录历史统计（供概览累计/上次备份展示，不依赖目录扫描）
+          // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
+          // P3-4：目录统计已异步化，fire-and-forget 不阻塞 completed 推送
           const active = getActiveBackup();
-          const rec = backupStats.recordBackup({
-            taskId: data.taskId || active.taskId,
-            targetDir: active.targetDir,
-            modules: active.modules,
-            results: data.results,
-          });
-          if (rec) sendToUi('backup:history-changed', backupStats.getHistory());
-          sendToUi('backup:completed', data);
+          backupStats
+            .recordBackup({
+              taskId: data.taskId || active.taskId,
+              targetDir: active.targetDir,
+              modules: active.modules,
+              results: data.results,
+              errors: data.errors,
+            })
+            .then((rec) => {
+              if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
+            })
+            .catch((e) => console.error('[backup-stats] 记录历史失败', e));
+          sendToUi(PushChannels.backupCompleted, data);
         }
         break;
+      }
       case 'module-done':
-        sendToUi('backup:module-done', data);
+        sendToUi(PushChannels.backupModuleDone, data);
         break;
       default:
         break;

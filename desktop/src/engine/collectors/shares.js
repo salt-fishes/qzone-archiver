@@ -328,4 +328,83 @@ QZoneCollectors.Shares = {
 
       return items;
   },
+
+  /**
+   * 添加多媒体下载任务（P2-4：迁自 modules/shares.js addMediaToTasks）
+   * @param {Array} dataList
+   */
+  addMediaToTasks: async(dataList) => {
+    // 下载相对目录
+    const module_dir = 'Shares/images';
+
+    for (const item of dataList) {
+        if (!API.Common.isNewItem(item)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        // 来源配图（网页、音乐等）
+        const images = item.source && item.source.images || [];
+        for (const image of images) {
+            await API.Utils.addDownloadTasks('Shares', image, image.url, module_dir, item, QZone.Shares.FILE_URLS);
+        }
+
+        // 评论配图
+        const comments = item.comments;
+        for (const comment of comments) {
+            comment.pic = comment.pic || [];
+            for (let pic of comment.pic) {
+                pic.custom_url = pic.o_url || pic.hd_url || pic.b_url || pic.s_url;
+                await API.Utils.addDownloadTasks('Shares', pic, pic.custom_url, module_dir, item, QZone.Shares.FILE_URLS);
+            }
+            // 回复的图片
+            comment.replies = comment.replies || [];
+            for (const repItem of comment.replies) {
+                repItem.pic = repItem.pic || [];
+                for (let pic of repItem.pic) {
+                    pic.custom_url = pic.o_url || pic.hd_url || pic.b_url || pic.s_url;
+                    await API.Utils.addDownloadTasks('Shares', pic, pic.custom_url, module_dir, item, QZone.Shares.FILE_URLS);
+                }
+            }
+        }
+
+        // 下载视频 TODO 分享是否存在视频，分享存在视频，但是无法分享视频
+    }
+    return dataList;
+},
+
+  /**
+   * 添加下载表情任务（P2-4：迁自 modules/shares.js addDownloadEmoticonTasks）
+   * @param {Shares} item
+   */
+  addDownloadEmoticonTasks: (items) => {
+    if (API.Common.isQzoneUrl()) {
+        return;
+    }
+
+    for (const item of items) {
+        if (!API.Common.isNewItem(item)) {
+            // QQ空间外链或已备份项，跳过
+            continue;
+        }
+
+        // 分享描述
+        if (item && item.desc) {
+            API.Common.formatContent(item.desc, "HTML", false, false, false, true, false);
+        }
+
+        // 分享来源标题
+        if (item.source && item.source.title) {
+            API.Common.formatContent(item.source.title, "HTML", false, false, false, true, false);
+        }
+        // 分享源描述
+        if (item.source && item.source.desc) {
+            API.Common.formatContent(item.source.desc, "HTML", false, false, false, true, false);
+        }
+
+        // 添加评论的表情下载任务
+        API.Common.addCommentEmoticonDownloadTasks(item);
+    }
+
+},
 };

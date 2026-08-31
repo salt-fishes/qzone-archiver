@@ -7,10 +7,18 @@
 import { ref, computed, watch } from 'vue';
 import { selectedModules, targetDir, buildEngineConfig, MODULE_META } from './config';
 
-/* ============ 运行状态 ============ */
+/* ============ 运行状态 ============
+ * P3-1：主进程任务状态机为唯一事实源（backup:state-changed 派生），
+ * 渲染层删除乐观置位——busy/paused 均为只读 computed，任何组件不得直接赋值。
+ */
 
-export const busy = ref(false);
-export const paused = ref(false);
+export type TaskState =
+  | 'idle' | 'preparing' | 'running' | 'paused'
+  | 'completed' | 'cancelled' | 'failed';
+
+export const taskState = ref<TaskState>('idle');
+export const busy = computed(() => ['preparing', 'running', 'paused'].includes(taskState.value));
+export const paused = computed(() => taskState.value === 'paused');
 export const engineReady = ref(false);
 /** 引擎加载超时/失败标记（顶栏提示「连接失败」并可重试） */
 export const engineFailed = ref(false);
@@ -129,6 +137,9 @@ let ignoreAfterCancel = false;
 
 /* ============ 备份结果（成功页数据） ============ */
 
+/** 模块级失败信息（P0-3：部分模块备份失败时在成功页显著提示） */
+export type BackupModuleError = { module: string; message?: string };
+
 export type BackupResult = {
   completedAt?: number;
   targetDir?: string;
@@ -137,6 +148,7 @@ export type BackupResult = {
   size?: number;
   files?: number;
   moduleCounts?: Record<string, number>;
+  errors?: BackupModuleError[];
 };
 
 /** 最近一次备份完成记录（备份完成后置位，成功页展示；再次备份/返回时清空） */
@@ -224,8 +236,7 @@ export async function startBackup() {
     pushLog('warn', '请先选择备份目标目录');
     return false;
   }
-  busy.value = true;
-  paused.value = false;
+  // P3-1：不再乐观置位 busy——状态由主进程 backup:state-changed 派生
   progress.value = { module: modules[0] || '', phase: '启动', percent: 0 };
   // 生成本次备份任务 ID：主进程检查点/状态推送均以 taskId 关联，缺失会导致日志显示 undefined 且无法精确追踪
   const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -234,45 +245,45 @@ export async function startBackup() {
     const r = await window.api.backup.start({ taskId, modules, targetDir: targetDir.value, config: buildEngineConfig() });
     if (!r.ok) {
       pushLog('error', `启动失败：${r.error}`);
-      busy.value = false;
       return false;
     }
     return true;
   } catch (e: any) {
     console.error('startBackup 异常', e);
     pushLog('error', `备份启动异常：${e?.message || e}`);
-    busy.value = false;
     return false;
   }
 }
 
 export async function pause() {
-  // 乐观更新：立即置「暂停中」，不等引擎挂起确认（引擎挂起可能延迟到当前下载批次完成后）
-  paused.value = true;
+  // P3-1：状态机 guard 在主进程侧，非法转移直接返回拒绝；不再乐观置位
   try {
-    await window.api.backup.pause();
-    pushLog('info', '已暂停');
+    const r = await window.api.backup.pause();
+    if (r?.ok) pushLog('info', '已暂停');
+    else pushLog('warn', `暂停被拒绝：${r?.error || '未知原因'}`);
   } catch (e: any) {
     console.error('暂停请求失败', e);
-    paused.value = false;
     pushLog('error', `暂停失败：${e?.message || e}`);
   }
 }
 export async function resume() {
-  paused.value = false;
   try {
-    await window.api.backup.resume();
-    pushLog('info', '已恢复');
+    const r = await window.api.backup.resume();
+    if (r?.ok) pushLog('info', '已恢复');
+    else pushLog('warn', `恢复被拒绝：${r?.error || '未知原因'}`);
   } catch (e: any) {
     console.error('恢复请求失败', e);
-    paused.value = true;
     pushLog('error', `恢复失败：${e?.message || e}`);
   }
 }
 export async function cancel() {
-  await window.api.backup.cancel();
-  busy.value = false;
-  pushLog('info', '已取消');
+  try {
+    const r = await window.api.backup.cancel();
+    if (r?.ok) pushLog('info', '已取消');
+    else pushLog('warn', `取消被拒绝：${r?.error || '未知原因'}`);
+  } catch (e: any) {
+    pushLog('error', `取消失败：${e?.message || e}`);
+  }
 }
 
 /* ============ 事件订阅（App.vue onMounted 调 init，onBeforeUnmount 调 dispose） ============ */
@@ -286,21 +297,16 @@ export function initBackup() {
       if (p.state === 'engine-ready') {
         engineReady.value = true;
         pushLog('success', '引擎注入完成，五层采集链路就绪');
+        return;
       }
+      // P3-1：状态机快照是唯一事实源，渲染层只派生（idle 之外全量采纳）
+      if (p.state) taskState.value = p.state;
       if (p.state === 'running') {
-        busy.value = true;
-        paused.value = false;
         ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
         pushLog('info', '开始备份');
       }
       if (p.state === 'paused') {
-        paused.value = true;
         pushLog('warn', '已暂停，可点击「恢复」继续');
-      }
-      if (p.state === 'completed') busy.value = false;
-      if (p.state === 'cancelled') {
-        busy.value = false;
-        paused.value = false;
       }
     }),
     window.api.on('backup:progress', (p) => {
@@ -312,20 +318,26 @@ export function initBackup() {
     window.api.on('backup:module-done', (p) => {
       pushLog('success', `模块完成：${MODULE_META[p.module]?.label || p.module}`);
     }),
-    window.api.on('backup:completed', async () => {
-      busy.value = false;
-      paused.value = false;
-      pushLog('success', '备份完成');
+    window.api.on('backup:completed', async (p) => {
+      // P3-1：busy/paused 复位已由 state-changed(completed) 派生，此处只处理结果数据
+      // P0-3：模块失败不再静默——日志面板与成功页均显著可见
+      const errs: BackupModuleError[] = Array.isArray(p?.errors) ? p.errors : [];
+      if (errs.length) {
+        const names = errs.map((e) => MODULE_META[e.module]?.label || e.module).join('、');
+        pushLog('warn', `部分模块备份失败：${names}（详见成功页提示）`);
+      } else {
+        pushLog('success', '备份完成');
+      }
       if (targetDir.value) {
         pushLog('info', `入口文件：${targetDir.value}\\index.html（双击浏览备份）`);
       }
       // 拉取最新一条备份记录作为成功页数据（主进程已落盘 backup-history.json）
       try {
         const r = await window.api.backup.getHistory();
-        lastResult.value = (r?.history && r.history[0]) || { targetDir: targetDir.value };
+        lastResult.value = { ...((r?.history && r.history[0]) || { targetDir: targetDir.value }), errors: errs };
       } catch (e) {
         console.warn('读取备份结果失败', e);
-        lastResult.value = { targetDir: targetDir.value };
+        lastResult.value = { targetDir: targetDir.value, errors: errs };
       }
     }),
     window.api.on('download:state-changed', (p) => {
@@ -383,7 +395,7 @@ export function disposeBackup() {
 
 export function useBackupStore() {
   return {
-    busy, paused, engineReady, engineFailed, retryEngine, progress, logs, elapsedSec, downloads,
+    taskState, busy, paused, engineReady, engineFailed, retryEngine, progress, logs, elapsedSec, downloads,
     lastResult, resetResult,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES,

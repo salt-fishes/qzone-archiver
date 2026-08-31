@@ -5,6 +5,7 @@
 import { ipcMain } from 'electron';
 import { engineBridge, sendToUi } from '../services/engine-bridge.js';
 import { showEngineWindow, windows } from '../windows.js';
+import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
 /** 检测当前登录状态（p_skey 为登录凭证，httpOnly 只能从 session 读） */
 export async function getAuthStatus() {
@@ -43,7 +44,7 @@ export function watchAuthStatus(intervalMs = 5000) {
       const loggedIn = !!status.loggedIn;
       if (loggedIn !== lastLoggedIn) {
         lastLoggedIn = loggedIn;
-        sendToUi('auth:status-changed', status);
+        sendToUi(PushChannels.authStatusChanged, status);
         if (loggedIn) {
           // 登录成功：等 qzone 页面跳转完成后自动最小化引擎窗口（扫码后无需手动收起）
           setTimeout(() => {
@@ -61,19 +62,19 @@ export function watchAuthStatus(intervalMs = 5000) {
 }
 
 export function registerAuthIpc() {
-  ipcMain.handle('auth:get-status', () => getAuthStatus());
+  ipcMain.handle(Channels.auth.getStatus, () => getAuthStatus());
 
-  ipcMain.handle('auth:show-login', () => {
+  ipcMain.handle(Channels.auth.showLogin, () => {
     showEngineWindow();
     return null;
   });
 
-  ipcMain.handle('auth:get-overview', async () => {
+  ipcMain.handle(Channels.auth.getOverview, async () => {
     const detail = await engineBridge.getLoginStatus().catch(() => null);
     return detail || { loggedIn: false };
   });
 
-  ipcMain.handle('auth:logout', async () => {
+  ipcMain.handle(Channels.auth.logout, async () => {
     const wc = windows.engine?.webContents;
     if (wc) {
       await wc.session.clearStorageData();
@@ -90,7 +91,7 @@ export function registerAuthIpc() {
     }
     // 同步自动监听基准，避免下轮检测 p_skey 残留而重新推回登录态
     lastLoggedIn = false;
-    sendToUi('auth:status-changed', { loggedIn: false });
+    sendToUi(PushChannels.authStatusChanged, { loggedIn: false });
     return null;
   });
 }

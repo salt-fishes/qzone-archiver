@@ -20,13 +20,35 @@ const open = ref(false);
 <template>
   <section class="panel">
     <div class="panel-title-row dl-head">
-      <button class="dl-toggle" @click="open = !open" :aria-expanded="open">
-        <h3 class="panel-title">下载明细</h3>
-        <svg class="chev" :class="{ up: open }" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <button
+        class="dl-toggle"
+        :aria-expanded="open"
+        @click="open = !open"
+      >
+        <h3 class="panel-title">
+          下载明细
+        </h3>
+        <svg
+          class="chev"
+          :class="{ up: open }"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M3 6l5 5 5-5" />
         </svg>
       </button>
-      <button v-if="dlCount && open" class="link-btn" @click="clearDoneDownloads">清除完成/失败</button>
+      <button
+        v-if="dlCount && open"
+        class="link-btn"
+        @click="clearDoneDownloads"
+      >
+        清除完成/失败
+      </button>
     </div>
 
     <template v-if="open">
@@ -43,22 +65,56 @@ const open = ref(false);
           </button>
         </div>
       </div>
-      <div v-if="filteredDownloads.length" class="dl-list">
-        <div v-for="d in filteredDownloads" :key="d.id" class="dl-row">
-          <span v-if="d.module" class="dl-mod">{{ MODULE_META[d.module]?.label ?? d.module }}</span>
+      <div
+        v-if="filteredDownloads.length"
+        class="dl-list"
+      >
+        <div
+          v-for="d in filteredDownloads"
+          :key="d.id"
+          class="dl-row"
+        >
+          <span
+            v-if="d.module"
+            class="dl-mod"
+          >{{ MODULE_META[d.module]?.label ?? d.module }}</span>
           <div class="dl-main">
-            <span class="dl-name" :title="d.url">{{ d.name || downloadName(d.url) }}</span>
-            <div v-if="d.state === 'running' && d.total" class="dl-bar">
-              <div class="dl-bar-fill" :style="{ width: (d.percent ?? 0) + '%' }"></div>
+            <span
+              class="dl-name"
+              :title="d.url"
+            >{{ d.name || downloadName(d.url) }}</span>
+            <div
+              v-if="d.state === 'running' && d.total"
+              class="dl-bar"
+            >
+              <div
+                class="dl-bar-fill"
+                :style="{ width: (d.percent ?? 0) + '%' }"
+              />
             </div>
           </div>
           <span class="dl-size">{{ formatBytes(d.received) }}{{ d.total ? ' / ' + formatBytes(d.total) : '' }}</span>
-          <span class="dl-pct" v-if="d.total && d.state === 'running'">{{ d.percent ?? 0 }}%</span>
-          <span class="dl-state" :class="d.state">{{ stateLabel(d.state) }}</span>
-          <span v-if="d.error" class="dl-error" :title="d.error">{{ d.error }}</span>
+          <span
+            v-if="d.total && d.state === 'running'"
+            class="dl-pct"
+          >{{ d.percent ?? 0 }}%</span>
+          <span
+            class="dl-state"
+            :class="d.state"
+          >{{ stateLabel(d.state) }}</span>
+          <span
+            v-if="d.error"
+            class="dl-error"
+            :title="d.error"
+          >{{ d.error }}</span>
         </div>
       </div>
-      <p v-else class="dl-empty">{{ dlCount ? '无匹配的下载任务' : '暂无下载任务' }}</p>
+      <p
+        v-else
+        class="dl-empty"
+      >
+        {{ dlCount ? '无匹配的下载任务' : '暂无下载任务' }}
+      </p>
     </template>
   </section>
 </template>

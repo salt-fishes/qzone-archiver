@@ -47,9 +47,9 @@ declare global {
           }[];
         }>;
         listAlbums(): Promise<{ ok: boolean; albums?: { id: string | number; name: string; classid?: string | number; className?: string; total?: number; desc?: string }[]; error?: string }>;
+        engineInject(): Promise<{ ok: boolean; error?: string }>;
       };
       download: {
-        start(task: any, targetDir?: string): Promise<any>;
         pause(): Promise<any>;
         resume(): Promise<any>;
         cancel(): Promise<any>;

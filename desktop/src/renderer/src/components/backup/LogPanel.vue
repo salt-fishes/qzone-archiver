@@ -25,21 +25,56 @@ watch(
 <template>
   <section class="panel">
     <div class="panel-title-row dl-head">
-      <button class="dl-toggle" @click="open = !open" :aria-expanded="open">
-        <h3 class="panel-title">运行日志</h3>
-        <svg class="chev" :class="{ up: open }" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <button
+        class="dl-toggle"
+        :aria-expanded="open"
+        @click="open = !open"
+      >
+        <h3 class="panel-title">
+          运行日志
+        </h3>
+        <svg
+          class="chev"
+          :class="{ up: open }"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
           <path d="M3 6l5 5 5-5" />
         </svg>
       </button>
-      <button v-if="logs.length && open" class="link-btn" @click="exportLogs">导出日志</button>
+      <button
+        v-if="logs.length && open"
+        class="link-btn"
+        @click="exportLogs"
+      >
+        导出日志
+      </button>
     </div>
 
-    <div v-if="open" ref="logBox" class="log">
-      <div v-for="(l, i) in logs" :key="i" :class="['line', l.level]">
+    <div
+      v-if="open"
+      ref="logBox"
+      class="log"
+    >
+      <div
+        v-for="(l, i) in logs"
+        :key="i"
+        :class="['line', l.level]"
+      >
         <span class="t">{{ l.time }}</span>
         <span class="msg">{{ l.message }}</span>
       </div>
-      <div v-if="logs.length === 0" class="empty">暂无日志</div>
+      <div
+        v-if="logs.length === 0"
+        class="empty"
+      >
+        暂无日志
+      </div>
     </div>
   </section>
 </template>

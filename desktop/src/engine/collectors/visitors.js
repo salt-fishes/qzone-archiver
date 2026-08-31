@@ -99,4 +99,126 @@ QZoneCollectors.Visitors = {
 
       return QZone.Visitors.Data;
   },
+
+  /**
+   * 添加多媒体下载任务（P2-4：迁自 modules/visitors.js addMediaToTasks）
+   * @param {Array} item
+   */
+  addMediaToTasks: async(visitorInfo) => {
+
+    const items = visitorInfo.items || [];
+
+    for (const item of items) {
+
+        if (!API.Common.isNewItem(item)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        // 下载配图
+        await API.Visitors.addDownloadImagesTasks(item);
+
+        // 下载表情
+        API.Visitors.addDownloadEmoticonTasks(item);
+    }
+    return visitorInfo;
+},
+
+  /**
+   * 添加下载配图任务（P2-4：迁自 modules/visitors.js addDownloadImagesTasks）
+   * @param {Message} item 访客
+   */
+  addDownloadImagesTasks: async(item) => {
+    if (!API.Common.isNewItem(item)) {
+        // QQ空间外链，跳过
+        return item;
+    }
+
+    // 下载相对目录
+    const module_dir = 'Visitors/images';
+
+    // 说说配图
+    item.shuoshuoes = item.shuoshuoes || []
+    for (const message of item.shuoshuoes) {
+        if (!message.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', message, message.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    // 日志配图 暂无
+    item.blogs = item.blogs || [];
+
+    // 相册配图
+    item.photoes = item.photoes || [];
+    for (const photo of item.photoes) {
+        if (!photo.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', photo, photo.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    // 分享配图
+    item.shares = item.shares || [];
+    for (const share of item.shares) {
+        if (!share.imgsrc) {
+            continue;
+        }
+        await API.Utils.addDownloadTasks('Visitors', share, share.imgsrc, module_dir, item, QZone.Visitors.FILE_URLS);
+    }
+
+    return item;
+
+},
+
+  /**
+   * 添加下载表情任务（P2-4：迁自 modules/visitors.js addDownloadEmoticonTasks）
+   * @param {Message} item 访客
+   */
+  addDownloadEmoticonTasks: (item) => {
+    if (API.Common.isQzoneUrl() || !API.Common.isNewItem(item)) {
+        // QQ空间外链，跳过
+        return item;
+    }
+
+    // 访客名称
+    API.Common.formatContent(item.name, 'HTML', false, false, false, true, false);
+
+    // 说说访问记录
+    if (item.shuoshuoes && item.shuoshuoes.length > 0) {
+        for (const shuoshuo of item.shuoshuoes) {
+            API.Common.formatContent(shuoshuo.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 日志访问记录
+    if (item.blogs && item.blogs.length > 0) {
+        for (const blog of item.blogs) {
+            API.Common.formatContent(blog.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 相片访问记录
+    if (item.photoes && item.photoes.length > 0) {
+        for (const photo of item.photoes) {
+            API.Common.formatContent(photo.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 分享访问记录
+    if (item.shares && item.shares.length > 0) {
+        for (const share of item.shares) {
+            API.Common.formatContent(share.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    // 其它相同访客
+    if (item.uins && item.uins.length > 0) {
+        for (const uniItem of item.uins) {
+            API.Common.formatContent(uniItem.name, 'HTML', false, false, false, true, false);
+        }
+    }
+
+    return item;
+},
 };

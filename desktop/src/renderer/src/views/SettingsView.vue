@@ -101,11 +101,18 @@ watch(
 <template>
   <section class="settings-view">
     <div class="sv-head">
-      <h2 class="view-title">设置</h2>
-      <p class="view-desc">调整备份类型与采集选项，修改后点击「保存」生效。</p>
+      <h2 class="view-title">
+        设置
+      </h2>
+      <p class="view-desc">
+        调整备份类型与采集选项，修改后点击「保存」生效。
+      </p>
     </div>
 
-    <nav class="sv-tabs" role="tablist">
+    <nav
+      class="sv-tabs"
+      role="tablist"
+    >
       <button
         v-for="t in TABS"
         :key="t.key"
@@ -121,8 +128,14 @@ watch(
       <!-- 公共 -->
       <template v-if="tab === 'Common'">
         <div class="sv-group">
-          <h4 class="sv-group-title">通用</h4>
-          <div class="setrow" v-for="item in COMMON_SCHEMA" :key="item.key">
+          <h4 class="sv-group-title">
+            通用
+          </h4>
+          <div
+            v-for="item in COMMON_SCHEMA"
+            :key="item.key"
+            class="setrow"
+          >
             <label class="set-label">{{ item.label }}</label>
             <CSelect
               v-if="item.type === 'select'"
@@ -136,26 +149,31 @@ watch(
               type="checkbox"
               :checked="getPath(settings.Common, item.key)"
               @change="setPath(settings.Common, item.key, ($event.target as HTMLInputElement).checked)"
-            />
+            >
             <input
               v-else-if="item.type === 'number'"
               type="number"
               :value="getPath(settings.Common, item.key)"
-              :min="item.min" :max="item.max" :step="item.step ?? 1"
+              :min="item.min"
+              :max="item.max"
+              :step="item.step ?? 1"
               @input="setPath(settings.Common, item.key, Number(($event.target as HTMLInputElement).value))"
-            />
+            >
             <textarea
               v-else-if="item.type === 'textarea'"
               :value="(getPath(settings.Common, item.key) || []).join('\n')"
               @input="setPath(settings.Common, item.key, ($event.target as HTMLTextAreaElement).value.split('\n').map((s) => s.trim()).filter(Boolean))"
-            ></textarea>
+            />
             <input
               v-else
               type="text"
               :value="getPath(settings.Common, item.key)"
               @input="setPath(settings.Common, item.key, ($event.target as HTMLInputElement).value)"
-            />
-            <span v-if="item.help" class="set-help">{{ item.help }}</span>
+            >
+            <span
+              v-if="item.help"
+              class="set-help"
+            >{{ item.help }}</span>
           </div>
         </div>
       </template>
@@ -163,46 +181,101 @@ watch(
       <!-- 模块 -->
       <template v-else-if="tab !== 'Dev' && MODULE_SCHEMA[tab]">
         <!-- 相册选择（仅相册模块） -->
-        <div v-if="tab === 'Photos'" class="sv-group">
-          <h4 class="sv-group-title">相册选择</h4>
-          <p class="sv-group-desc">默认全选；取消勾选则不备份该相册。</p>
+        <div
+          v-if="tab === 'Photos'"
+          class="sv-group"
+        >
+          <h4 class="sv-group-title">
+            相册选择
+          </h4>
+          <p class="sv-group-desc">
+            默认全选；取消勾选则不备份该相册。
+          </p>
           <div class="album-sel">
             <div class="album-sel-actions">
-              <button class="btn sm" :disabled="albumsLoading || !auth.loggedIn" @click="loadAlbums">
+              <button
+                class="btn sm"
+                :disabled="albumsLoading || !auth.loggedIn"
+                @click="loadAlbums"
+              >
                 {{ albumsLoading ? '加载中…' : albums.length ? '重新加载' : '加载相册列表' }}
               </button>
               <template v-if="albums.length">
-                <button class="btn sm" @click="albumSelAll">全选</button>
-                <button class="btn sm" @click="albumSelNone">清空</button>
+                <button
+                  class="btn sm"
+                  @click="albumSelAll"
+                >
+                  全选
+                </button>
+                <button
+                  class="btn sm"
+                  @click="albumSelNone"
+                >
+                  清空
+                </button>
               </template>
             </div>
-            <div v-if="albumError" class="album-error">{{ albumError }}</div>
-            <div v-else-if="!albums.length && !albumsLoading" class="album-empty">
+            <div
+              v-if="albumError"
+              class="album-error"
+            >
+              {{ albumError }}
+            </div>
+            <div
+              v-else-if="!albums.length && !albumsLoading"
+              class="album-empty"
+            >
               {{ auth.loggedIn ? '点击「加载相册列表」获取你的相册' : '请先登录 QQ 空间再加载相册列表' }}
             </div>
-            <div v-else-if="albums.length" class="album-list">
-              <div v-for="g in albumClassNames" :key="g.cls" class="album-group">
-                <div class="album-group-name">{{ g.cls }}</div>
-                <label v-for="a in g.items" :key="a.id" class="album-item">
-                  <input type="checkbox" :value="String(a.id)" v-model="albumSel" class="album-check" />
-                  <span class="album-name" :title="a.desc || a.name">{{ a.name }}</span>
+            <div
+              v-else-if="albums.length"
+              class="album-list"
+            >
+              <div
+                v-for="g in albumClassNames"
+                :key="g.cls"
+                class="album-group"
+              >
+                <div class="album-group-name">
+                  {{ g.cls }}
+                </div>
+                <label
+                  v-for="a in g.items"
+                  :key="a.id"
+                  class="album-item"
+                >
+                  <input
+                    v-model="albumSel"
+                    type="checkbox"
+                    :value="String(a.id)"
+                    class="album-check"
+                  >
+                  <span
+                    class="album-name"
+                    :title="a.desc || a.name"
+                  >{{ a.name }}</span>
                   <span class="album-cnt">{{ a.total ?? 0 }} 张</span>
                 </label>
               </div>
             </div>
-            <div class="album-foot" v-if="albums.length">
+            <div
+              v-if="albums.length"
+              class="album-foot"
+            >
               已选 <b>{{ albumSel.length }}</b> 个相册{{ albumSel.length ? '' : '（将不备份相册）' }}
             </div>
           </div>
         </div>
 
         <div class="sv-group">
-          <h4 class="sv-group-title">{{ MODULE_META[tab].label }}设置</h4>
+          <h4 class="sv-group-title">
+            {{ MODULE_META[tab].label }}设置
+          </h4>
           <div
-            class="setrow"
             v-for="item in MODULE_SCHEMA[tab]"
-            :key="item.key"
             v-show="item.key !== 'IncrementTime' || getPath(settings[tab], 'IncrementType') === 'Custom'"
+            :key="item.key"
+            class="setrow"
           >
             <label class="set-label">{{ item.label }}</label>
             <CSelect
@@ -217,24 +290,24 @@ watch(
               type="checkbox"
               :checked="getPath(settings[tab], item.key)"
               @change="setPath(settings[tab], item.key, ($event.target as HTMLInputElement).checked)"
-            />
+            >
             <template v-else-if="item.type === 'range'">
               <div class="range-row">
                 <input
                   type="number"
                   :value="getPath(settings[tab], item.key)?.min"
                   :min="item.min ?? 1"
-                  @input="setPath(settings[tab], `${item.key}.min`, Number(($event.target as HTMLInputElement).value))"
                   title="最小间隔（秒）"
-                />
+                  @input="setPath(settings[tab], `${item.key}.min`, Number(($event.target as HTMLInputElement).value))"
+                >
                 <span class="range-sep">~</span>
                 <input
                   type="number"
                   :value="getPath(settings[tab], item.key)?.max"
                   :min="item.min ?? 1"
-                  @input="setPath(settings[tab], `${item.key}.max`, Number(($event.target as HTMLInputElement).value))"
                   title="最大间隔（秒）"
-                />
+                  @input="setPath(settings[tab], `${item.key}.max`, Number(($event.target as HTMLInputElement).value))"
+                >
               </div>
             </template>
             <input
@@ -243,15 +316,19 @@ watch(
               class="set-datetime"
               :value="toLocalTime(getPath(settings[tab], item.key))"
               @input="setPath(settings[tab], item.key, toDbTime(($event.target as HTMLInputElement).value))"
-            />
+            >
             <input
               v-else
               type="number"
               :value="getPath(settings[tab], item.key)"
-              :min="item.min" :max="item.max"
+              :min="item.min"
+              :max="item.max"
               @input="setPath(settings[tab], item.key, Number(($event.target as HTMLInputElement).value))"
-            />
-            <span v-if="item.help" class="set-help">{{ item.help }}</span>
+            >
+            <span
+              v-if="item.help"
+              class="set-help"
+            >{{ item.help }}</span>
           </div>
         </div>
       </template>
@@ -259,16 +336,27 @@ watch(
       <!-- 开发者 -->
       <template v-else-if="tab === 'Dev'">
         <div class="sv-group">
-          <h4 class="sv-group-title">开发者</h4>
-          <p class="sv-group-desc">高级配置，一般用户无需修改。</p>
-          <div class="setrow" v-for="item in DEV_SCHEMA" :key="item.key">
+          <h4 class="sv-group-title">
+            开发者
+          </h4>
+          <p class="sv-group-desc">
+            高级配置，一般用户无需修改。
+          </p>
+          <div
+            v-for="item in DEV_SCHEMA"
+            :key="item.key"
+            class="setrow"
+          >
             <label class="set-label">{{ item.label }}</label>
             <input
               type="text"
               :value="getPath(settings.Dev, item.key)"
               @input="setPath(settings.Dev, item.key, ($event.target as HTMLInputElement).value)"
-            />
-            <span v-if="item.help" class="set-help">{{ item.help }}</span>
+            >
+            <span
+              v-if="item.help"
+              class="set-help"
+            >{{ item.help }}</span>
           </div>
         </div>
       </template>
@@ -276,11 +364,24 @@ watch(
 
     <div class="sv-actions">
       <div class="sv-actions-left">
-        <button class="btn primary" @click="save">保存设置</button>
-        <span v-if="!saved" class="sv-unsaved">有未保存的修改</span>
+        <button
+          class="btn primary"
+          @click="save"
+        >
+          保存设置
+        </button>
+        <span
+          v-if="!saved"
+          class="sv-unsaved"
+        >有未保存的修改</span>
       </div>
       <div class="sv-actions-right">
-        <button class="btn danger ghost-sm" @click="showResetConfirm = true">恢复默认</button>
+        <button
+          class="btn danger ghost-sm"
+          @click="showResetConfirm = true"
+        >
+          恢复默认
+        </button>
       </div>
     </div>
 

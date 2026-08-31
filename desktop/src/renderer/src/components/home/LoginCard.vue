@@ -9,12 +9,21 @@ const { login } = useAuth();
   <section class="panel login-card">
     <span class="seal big">檔</span>
     <div class="lc-body">
-      <h3 class="lc-title">欢迎使用 QQ空间档案备份</h3>
+      <h3 class="lc-title">
+        欢迎使用 QQ空间档案备份
+      </h3>
       <p class="lc-sub">
         把十几年的 QQ 空间记忆——说说、日志、相册、视频——完整搬回你的电脑，随时回看，永不丢失。
       </p>
-      <button class="btn primary lc-btn" @click="login">扫码登录</button>
-      <p class="lc-hint">登录后用手机 QQ 扫码授权，即可开始备份你的空间</p>
+      <button
+        class="btn primary lc-btn"
+        @click="login"
+      >
+        扫码登录
+      </button>
+      <p class="lc-hint">
+        登录后用手机 QQ 扫码授权，即可开始备份你的空间
+      </p>
     </div>
   </section>
 </template>

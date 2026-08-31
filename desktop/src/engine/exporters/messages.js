@@ -272,4 +272,94 @@ QZoneExporters.Messages = {
     indicator.complete();
     return messages;
   },
+
+  /**
+   * 获取说说的MD内容（迁移自 modules/messages.js getMarkdown）
+   */
+  getMarkdown: (item) => {
+    let contents = [];
+
+    // 发布信息
+    let message_info = "> " + item.custom_create_time;
+    // 发布地址
+    if (item.lbs && item.lbs.idname && item.lbs.idname !== '') {
+        const ibs_url = API.Messages.getMapUrl(item.lbs);
+        message_info += "【" + API.Utils.getLink(ibs_url, item.lbs.idname, 'MD') + "】";
+    }
+    // 转发标识
+    let isRt = item.rt_tid;
+    if (isRt) {
+        message_info += "【转发】";
+    }
+    contents.push(message_info);
+    contents.push("\r\n");
+
+    // 语音说说 语音说说暂不支持转发，直接将语音说说放置到原创说说前面
+    if (item.voicetotal > 0) {
+        contents.push(API.Messages.getVoiceHTML(item));
+    }
+
+    // 说说内容
+    contents.push(API.Common.formatContent(item, "MD", false, false, false, false, true));
+
+    // 转发内容
+    if (isRt) {
+
+        // 原文标识
+        contents.push("> 原文:");
+        contents.push("\r\n");
+
+        // 原作者
+        let rt_name = API.Common.formatContent(item.rt_uinname, 'MD', false, false, false, false, true);
+        rt_name = API.Common.getUserLink(item.rt_uin, rt_name, 'MD', true);
+
+        // 原内容
+        contents.push('{0}：{1}'.format(rt_name, API.Common.formatContent(item, 'MD', true, false, false, false, true)));
+    }
+
+    // 说说为转发说说时，对应的图片，视频，歌曲信息属于源说说的
+    contents.push(API.Messages.formatMediaMarkdown(item));
+
+    // 评论内容
+    const comments = item.custom_comments || [];
+    contents.push("> 评论({0})".format(item.commenttotal));
+    contents.push('\r\n');
+    for (const comment of comments) {
+
+        // 评论人
+        let comment_name = API.Common.formatContent(comment.name, 'MD', false, false, false, false, true);
+        comment_name = API.Common.getUserLink(comment.uin, comment_name, 'MD', true);
+
+        contents.push("*  {0}：{1}".format(comment_name, API.Common.formatContent(comment.content, 'MD', false, false, false, false, true)));
+
+        // 评论包含图片
+        const comment_images = comment.pic || [];
+        for (const image of comment_images) {
+            // 替换URL
+            contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(image.custom_url, image.custom_filepath, true)));
+        }
+
+        // 评论的回复
+        const replies = comment.list_3 || [];
+        for (const repItem of replies) {
+            // 回复人
+            let repName = API.Common.formatContent(repItem.name, 'MD', false, false, false, false, true);
+            repName = API.Common.getUserLink(repItem.uin, repName, 'MD', true);
+
+            // 回复内容
+            let content = API.Common.formatContent(repItem.content, 'MD', false, false, false, false, true);
+
+            // 回复内容
+            contents.push("\t* {0}：{1}".format(repName, content));
+
+            // 回复包含图片，理论上回复现在不能回复图片，兼容一下
+            const repImgs = repItem.pic || [];
+            for (const repImg of repImgs) {
+                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(repImg.custom_url, repImg.custom_filepath, true)));
+            }
+        }
+    }
+    contents.push('\r\n');
+    return contents.join('\r\n');
+  },
 };

@@ -26,13 +26,19 @@ const MANIFEST_PATH = path.join(ENGINE_DIR, 'baseline-manifest.json');
 const BASELINE_VERSION = '3.3.0';
 
 // 单文件映射：源（相对仓库根） → 目标（相对 engine/）
+// 注意（P1-4）：
+//   - content.js/background.js 已归档至 docs/legacy-extension/，不再进入基线；
+//   - config.js 桌面版已改造（模块清单改由 shared/modules.json 注入 window.QZONE_MODULES 派生），
+//     若 --force 重跑会回退为扩展端原版，需人工比对恢复改造。
+// 注意（P2-1）：
+//   - api.js 桌面版已机械拆分为 api/rest-urls.js + api/network.js + api/fs-utils.js +
+//     api/utils.js + api/common.js + api/modules/*.js（11 个）+ api.js 装配器，
+//     若 --force 重跑会回退为扩展端单文件原版，需重跑 scripts/split-api.mjs 恢复拆分。
 const FILE_MAP = [
   ['src/js/api.js', 'api.js'],
   ['src/js/config.js', 'config.js'],
   ['src/js/utils.js', 'utils.js'],
   ['src/js/templates-compiled.js', 'templates-compiled.js'],
-  ['src/js/background.js', 'background.js'],
-  ['src/js/content.js', 'content.js'],
 ];
 
 // 目录映射：源 → 目标（递归复制）
@@ -50,9 +56,6 @@ const DIR_MAP = [
 
 // M1 五层目标目录（P0 起在 engine/ 内落地，骨架先建空目录）
 const LAYER_DIRS = ['collectors', 'tasks', 'repos', 'exporters', 'packagers'];
-
-// 扩展端页面脚本（引擎不需要，不进入基线）
-const EXCLUDED_PAGE_SCRIPTS = ['options.js', 'popup.js', 'tools.js'];
 
 async function sha256File(filePath) {
   const data = await fs.readFile(filePath);

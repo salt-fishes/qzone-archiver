@@ -31,20 +31,41 @@ const emit = defineEmits<{
         title="点击重新连接"
         @click="emit('retry')"
       >
-        <i class="dot"></i>连接失败 · 点击重试
+        <i class="dot" />连接失败 · 点击重试
       </button>
-      <span v-else class="engine" :class="engineReady ? 'on' : 'off'" :title="engineReady ? '已连接 QQ 空间' : '正在准备备份引擎，请稍候…'">
-        <i class="dot"></i>{{ engineReady ? '连接正常' : '连接中…' }}
+      <span
+        v-else
+        class="engine"
+        :class="engineReady ? 'on' : 'off'"
+        :title="engineReady ? '已连接 QQ 空间' : '正在准备备份引擎，请稍候…'"
+      >
+        <i class="dot" />{{ engineReady ? '连接正常' : '连接中…' }}
       </span>
-      <span class="vline"></span>
+      <span class="vline" />
       <template v-if="auth.loggedIn">
         <span class="who">{{ auth.nickname || auth.qqNumber }}</span>
-        <button class="btn ghost sm" title="打开 QQ 空间页面（登录后如需访问他人空间）" @click="emit('openEngine')">QQ 空间</button>
-        <button class="btn ghost sm" @click="emit('logout')">退出登录</button>
+        <button
+          class="btn ghost sm"
+          title="打开 QQ 空间页面（登录后如需访问他人空间）"
+          @click="emit('openEngine')"
+        >
+          QQ 空间
+        </button>
+        <button
+          class="btn ghost sm"
+          @click="emit('logout')"
+        >
+          退出登录
+        </button>
       </template>
       <template v-else>
         <span class="who off">未登录</span>
-        <button class="btn primary sm" @click="emit('login')">扫码登录</button>
+        <button
+          class="btn primary sm"
+          @click="emit('login')"
+        >
+          扫码登录
+        </button>
       </template>
     </div>
   </header>

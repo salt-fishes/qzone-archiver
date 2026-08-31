@@ -22,6 +22,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getActiveBackup, sendToUi } from './engine-bridge.js';
+import { PushChannels } from '../../shared/ipc-contract.mjs';
 import { stateStore } from './state-store.js';
 
 const DEFAULT_THREAD = 10;
@@ -37,7 +38,16 @@ const UA =
 let queue = [];
 let running = 0; // 常规任务运行数
 let bigRunning = 0; // 大文件任务运行数
-let paused = false; // 全局暂停（停止调度新任务）
+// P3-2（§5.2）：任务级暂停位（P0-1 根因的模块级 paused 全局已删除）。
+// 暂停位绑定发起 pause 时的活跃 taskId；pump 时若活跃任务已切换（新备份启动），
+// 旧暂停位自动失效——杜绝"取消/换任务后 pump 永久短路，媒体下载静默排队"。
+const STANDALONE_PAUSE = '__standalone__'; // 无活跃备份时的独立暂停（下载页手动暂停）
+let pausedTaskId = null;
+
+/** 当前暂停位应绑定的任务标识：活跃备份 taskId，无则独立暂停哨兵 */
+function pauseKey() {
+  return getActiveBackup().taskId || STANDALONE_PAUSE;
+}
 
 function persist() {
   stateStore.saveDownloads(queue);
@@ -73,7 +83,11 @@ export const downloadManager = {
 
   /** 简单并发调度：保持运行数不超并发上限；暂停时不调度新任务 */
   pump() {
-    if (paused) return;
+    // P3-2：暂停位只对发起暂停时的活跃任务有效；任务已切换则自动失效并恢复调度
+    if (pausedTaskId) {
+      if (pausedTaskId === pauseKey()) return;
+      pausedTaskId = null;
+    }
     while (true) {
       const big = bigRunning < BIG_CONCURRENCY;
       const reg = running < DEFAULT_THREAD;
@@ -86,7 +100,7 @@ export const downloadManager = {
       if (isBig(candidate)) bigRunning += 1;
       else running += 1;
       persist();
-      sendToUi('download:state-changed', { taskId: candidate.id, state: 'running', module: candidate.module, media: candidate.media });
+      sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'running', module: candidate.module, media: candidate.media });
       this._run(candidate)
         .catch((e) => {
           if (candidate.pauseInterrupted) {
@@ -94,11 +108,11 @@ export const downloadManager = {
             candidate.pauseInterrupted = false;
             candidate.cancelRequested = false;
             candidate.state = 'pending';
-            sendToUi('download:state-changed', { taskId: candidate.id, state: 'pending', module: candidate.module, media: candidate.media });
+            sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'pending', module: candidate.module, media: candidate.media });
           } else {
             candidate.state = 'failed';
             candidate.error = e.message;
-            sendToUi('download:item-failed', { taskId: candidate.id, url: candidate.url, error: e.message, module: candidate.module, media: candidate.media });
+            sendToUi(PushChannels.downloadItemFailed, { taskId: candidate.id, url: candidate.url, error: e.message, module: candidate.module, media: candidate.media });
           }
           persist();
         })
@@ -128,9 +142,14 @@ export const downloadManager = {
     if (!record.targetDir) {
       throw new Error('备份目标目录未设置');
     }
+    // 最小状态断言（P0-1）：当前任务处于暂停态时入队，新任务将排队直至恢复；
+    // 若并非用户主动暂停（backup:pause），说明存在暂停位残留，需排查状态机
+    if (pausedTaskId && pausedTaskId === pauseKey()) {
+      console.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
+    }
     queue.push(record);
     persist();
-    sendToUi('download:state-changed', { taskId: record.id, state: 'pending', module: record.module, media: record.media });
+    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'pending', module: record.module, media: record.media });
     this.pump();
     return record.id;
   },
@@ -151,7 +170,7 @@ export const downloadManager = {
       record.doneAt = Date.now();
       record.skipped = true;
       persist();
-      sendToUi('download:state-changed', { taskId: record.id, state: 'done', module: record.module, media: record.media, skipped: true });
+      sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'done', module: record.module, media: record.media, skipped: true });
       return;
     }
 
@@ -182,7 +201,7 @@ export const downloadManager = {
     }
 
     const ws = fs.createWriteStream(partFile, { flags: offset > 0 ? 'a' : 'w' });
-    const nodeStream = Readable.fromWeb(response.body);
+    const nodeStream = Readable.fromWeb(/** @type {any} */ (response.body));
 
     let received = offset;
     let lastReport = 0;
@@ -208,7 +227,7 @@ export const downloadManager = {
         lastReport = now;
         lastPercent = percent;
         record.receivedBytes = received;
-        sendToUi('download:progress', { taskId: record.id, done: received, total, currentUrl: record.url, media: record.media });
+        sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: received, total, currentUrl: record.url, media: record.media });
       }
     });
 
@@ -227,8 +246,8 @@ export const downloadManager = {
     record.doneAt = Date.now();
     record.receivedBytes = received;
     persist();
-    sendToUi('download:progress', { taskId: record.id, done: total, total, currentUrl: record.url, media: record.media });
-    sendToUi('download:state-changed', { taskId: record.id, state: 'done', module: record.module, media: record.media });
+    sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: total, total, currentUrl: record.url, media: record.media });
+    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'done', module: record.module, media: record.media });
   },
 
   getState() {
@@ -238,9 +257,10 @@ export const downloadManager = {
     return { queue, done, failed, inProgress };
   },
 
-  /** 暂停：停止调度 + 中断运行中任务（.part 保留断点，恢复后续传）——用户暂停期望立刻停止工作 */
+  /** 暂停：停止调度 + 中断运行中任务（.part 保留断点，恢复后续传）——用户暂停期望立刻停止工作。
+   * P3-2：暂停位绑定当前活跃任务（§5.2），新任务启动后自动失效 */
   async pause() {
-    paused = true;
+    pausedTaskId = pauseKey();
     for (const q of queue) {
       if (q.state === 'running') {
         q.pauseInterrupted = true;
@@ -249,15 +269,16 @@ export const downloadManager = {
     }
   },
 
-  /** 恢复：继续调度 */
+  /** 恢复：清任务暂停位，继续调度 */
   async resume() {
-    paused = false;
+    pausedTaskId = null;
     this.pump();
   },
 
-  /** 取消：清空待处理任务；运行中任务中断（.part 保留，下次续传） */
+  /** 取消：清空待处理任务；运行中任务中断（.part 保留，下次续传）。
+   * P3-2：暂停位已绑定任务（§5.2），取消后即使不手动 resume，
+   * 下一次备份启动（taskId 切换）也会令旧暂停位自动失效，P0-1 根因消除 */
   async cancel() {
-    paused = true;
     const pending = queue.filter((q) => q.state === 'pending');
     for (const q of pending) {
       q.state = 'failed';
@@ -268,7 +289,7 @@ export const downloadManager = {
     for (const q of queue) {
       if (q.state === 'running') q.cancelRequested = true;
     }
-    sendToUi('download:state-changed', { state: 'cancelled' });
+    sendToUi(PushChannels.downloadStateChanged, { state: 'cancelled' });
   },
 
   /** 清除已完成/失败任务（同步持久化，避免重启后残留） */
@@ -276,6 +297,6 @@ export const downloadManager = {
     const before = queue.length;
     queue = queue.filter((q) => q.state === 'pending' || q.state === 'running');
     if (queue.length !== before) persist();
-    sendToUi('download:state-changed', { state: 'cleared' });
+    sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
   },
 };

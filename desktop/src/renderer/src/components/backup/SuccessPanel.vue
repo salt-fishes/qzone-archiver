@@ -40,6 +40,7 @@ const modules = computed(() =>
     .map(([k, v]) => ({ key: k, label: MODULE_META[k]?.label || k, count: v }))
     .sort((a, b) => (b.count || 0) - (a.count || 0))
 );
+const hasErrors = computed(() => (props.result.errors?.length || 0) > 0);
 
 function openDir() {
   if (props.result.targetDir) window.api.fs.openPath(props.result.targetDir);
@@ -54,16 +55,63 @@ function goHome() {
 
 <template>
   <section class="success-panel">
+    <!-- P0-3：失败模块警示区（置顶，存在即显示） -->
+    <div
+      v-if="hasErrors"
+      class="sc-errors"
+      role="alert"
+    >
+      <div class="sc-errors-title">
+        部分模块备份失败
+      </div>
+      <ul class="sc-errors-list">
+        <li
+          v-for="e in result.errors"
+          :key="e.module"
+        >
+          <b>{{ MODULE_META[e.module]?.label || e.module }}</b>
+          <span class="msg">{{ e.message || '未知错误' }}</span>
+        </li>
+      </ul>
+      <p class="sc-errors-hint">
+        失败模块的数据未写入备份；可点击「再次备份」重试，或在「运行日志」中查看详情并导出。
+      </p>
+    </div>
+
     <div class="sc-hero">
       <div class="sc-check">
-        <svg viewBox="0 0 52 52" aria-hidden="true">
-          <circle class="sc-circle" cx="26" cy="26" r="24" fill="none" />
-          <path class="sc-tick" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M14 27l8 8 16-16" />
+        <svg
+          viewBox="0 0 52 52"
+          aria-hidden="true"
+        >
+          <circle
+            class="sc-circle"
+            cx="26"
+            cy="26"
+            r="24"
+            fill="none"
+          />
+          <path
+            class="sc-tick"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M14 27l8 8 16-16"
+          />
         </svg>
       </div>
-      <h2 class="sc-title">备份完成</h2>
-      <p class="sc-sub">{{ result.name || 'QQ 空间档案' }} · 内容已全部保存到本地</p>
-      <p v-if="result.completedAt" class="sc-time">完成于 {{ fmtTime(result.completedAt) }}</p>
+      <h2 class="sc-title">
+        {{ hasErrors ? '备份完成（部分失败）' : '备份完成' }}
+      </h2>
+      <p class="sc-sub">
+        {{ result.name || 'QQ 空间档案' }} · {{ hasErrors ? '部分内容未能完成备份' : '内容已全部保存到本地' }}
+      </p>
+      <p
+        v-if="result.completedAt"
+        class="sc-time"
+      >
+        完成于 {{ fmtTime(result.completedAt) }}
+      </p>
     </div>
 
     <div class="sc-stats">
@@ -85,23 +133,53 @@ function goHome() {
       </div>
     </div>
 
-    <div v-if="modules.length" class="sc-modules">
-      <span v-for="m in modules" :key="m.key" class="sc-mod">
+    <div
+      v-if="modules.length"
+      class="sc-modules"
+    >
+      <span
+        v-for="m in modules"
+        :key="m.key"
+        class="sc-mod"
+      >
         {{ m.label }} <b>{{ (m.count || 0).toLocaleString() }}</b>
       </span>
     </div>
 
     <div class="sc-path">
       <span class="lbl">保存位置</span>
-      <span class="path mono" :title="result.targetDir">{{ result.targetDir }}</span>
+      <span
+        class="path mono"
+        :title="result.targetDir"
+      >{{ result.targetDir }}</span>
     </div>
 
     <div class="sc-actions">
-      <button class="btn primary sc-btn-main" @click="openDir">打开备份文件夹</button>
-      <button class="btn sc-btn" @click="openHome">浏览备份首页</button>
-      <span class="sc-spacer"></span>
-      <button class="link-btn" @click="emit('again')">再次备份</button>
-      <button class="link-btn" @click="goHome">返回概览</button>
+      <button
+        class="btn primary sc-btn-main"
+        @click="openDir"
+      >
+        打开备份文件夹
+      </button>
+      <button
+        class="btn sc-btn"
+        @click="openHome"
+      >
+        浏览备份首页
+      </button>
+      <span class="sc-spacer" />
+      <button
+        class="link-btn"
+        @click="emit('again')"
+      >
+        再次备份
+      </button>
+      <button
+        class="link-btn"
+        @click="goHome"
+      >
+        返回概览
+      </button>
     </div>
   </section>
 </template>
@@ -119,6 +197,48 @@ function goHome() {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* —— 失败模块警示区（P0-3，置顶） —— */
+.sc-errors {
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  background: rgba(229, 72, 77, 0.08);
+  border: 1px solid rgba(229, 72, 77, 0.35);
+  border-radius: 12px;
+  text-align: left;
+}
+.sc-errors-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #c53032;
+}
+.sc-errors-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.sc-errors-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+}
+.sc-errors-list b {
+  color: #c53032;
+}
+.sc-errors-list .msg {
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+.sc-errors-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 /* —— 顶部：对勾 + 标题 —— */

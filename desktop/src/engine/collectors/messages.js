@@ -492,4 +492,571 @@ QZoneCollectors.Messages = {
 
     return items;
   },
+
+  /**
+   * 获取单页的说说列表（迁移自 modules/messages.js getList）
+   * @param {integer} pageIndex 指定页的索引
+   * @param {StatusIndicator} indicator 状态更新器
+   */
+  async getList(pageIndex, indicator) {
+    // 状态更新器当前页
+    indicator.index = pageIndex + 1;
+    // 网络获取委托采集层（P2），模块保留 indicator/convert 编排
+    const data = await QZoneCollectors.Messages.getListRaw(pageIndex);
+
+    // 更新状态-下载中的数量
+    indicator.addDownload(QZone_Config.Messages.pageSize);
+
+    // 返回的总数包括无权限的说说的条目数，这里返回为空时表示无权限获取其他的数据
+    if (data.msglist == null || data.msglist.length == 0) {
+        return [];
+    }
+
+    // 更新状态-总数
+    QZone.Messages.total = data.total || QZone.Messages.total || 0;
+    indicator.setTotal(QZone.Messages.total);
+
+    let items = data.msglist || [];
+
+    // 转换数据
+    items = API.Messages.convert(items);
+
+    // 更新状态-下载成功数
+    indicator.addSuccess(items);
+
+    return items;
+  },
+
+  /**
+   * [实验性] 恢复已删除说说（迁移自 modules/messages.js getDeletedMessages）
+   * 策略：
+   *   1. 从好友互动消息列表（feeds2_html_pav_all）拉取所有通知
+   *   2. 解析每条通知 HTML，提取被操作说说的 tid
+   *   3. 与现有说说列表按 tid 对比，差集即为已删除说说候选
+   *   4. 对每个候选 tid：
+   *      - 尝试调用 getFullContent 获取完整说说（可能服务端也删了）
+   *      - 尝试调用 getComments 获取评论
+   *      - 尝试获取点赞列表
+   *      - 上述任一失败时，回退到从通知 HTML 提取的摘要 + 零散评论/点赞
+   *   5. 标记 isDeleted: true，格式化时间字段
+   * @param {Array} existingItems 现有说说列表（用于去重）
+   * @returns {Promise<Array>} 已删除说说列表
+   */
+  async getDeletedMessages(existingItems) {
+    existingItems = existingItems || [];
+    const feedsConfig = QZone_Config.Messages.Feeds || {};
+    const pageSize = feedsConfig.pageSize || 30;
+    const minSec = (feedsConfig.randomSeconds && feedsConfig.randomSeconds.min) || 1;
+    const maxSec = (feedsConfig.randomSeconds && feedsConfig.randomSeconds.max) || 2;
+
+    // 进度更新器
+    const indicator = new StatusIndicator('Messages_Deleted');
+    indicator.setNextTip('恢复已删除说说：拉取互动消息列表...');
+
+    // 1. 现有 tid 集合（用于去重）
+    const existingTids = new Set(existingItems.map(m => m.tid));
+
+    // 2. 二分查找获取互动消息总数（进度回调显示到终端面板）
+    indicator.setNextTip('探测互动消息总数...');
+    const totalCount = await API.Messages.getFeedsCount((msg) => {
+        indicator.setNextTip('探测互动消息总数：' + msg);
+    });
+    console.info('互动消息总数', totalCount);
+    if (totalCount === 0) {
+        // complete 会把 {nextTip} 替换为 nextTip 内容，并把"正在"→"已"
+        indicator.setNextTip('探测结果：0 条（互动消息为空或接口异常）');
+        indicator.complete();
+        return [];
+    }
+    indicator.setNextTip(`探测完成：约 ${totalCount} 条互动消息，开始分页拉取...`);
+    indicator.setTotal(totalCount);
+
+    // 3. 分页拉取所有 feeds，按 origtid（或文本内容）聚合
+    //    聚合结果：Map<key, { tid, abstime, content, imageUrl, comments: [], likes: [] }>
+    const aggregated = new Map();
+    const totalPages = Math.ceil(totalCount / pageSize);
+    let firstFeedLogged = false;
+    let wafBlocked = false;
+    let consecutiveFailures = 0;
+    for (let page = 0; page < totalPages && !wafBlocked; page++) {
+        // 暂停/取消检查点：暂停时挂起等待恢复；取消时抛错中止（让上层取消生效）
+        await window.checkExportState();
+        const offset = page * pageSize;
+        try {
+            const response = await API.Messages.getFeeds(offset, pageSize);
+            // WAF 拦截检测
+            if (typeof response === 'string' && response.indexOf('waf.tencent.com') > -1) {
+                console.error('[getDeletedMessages] 分页拉取被 WAF 拦截，停止拉取', { page, offset });
+                indicator.setNextTip(`第 ${page + 1}/${totalPages} 页被 WAF 拦截，已停止`);
+                wafBlocked = true;
+                break;
+            }
+            const data = API.Utils.toJson(response, /^_Callback\(/);
+            if (!data || data.code !== 0 || !data.data) {
+                // 接口异常：连续失败达阈值后停止，避免逐页重复请求（如 501 服务端异常）
+                consecutiveFailures++;
+                console.warn('[getDeletedMessages] 拉取互动消息分页异常', { page, data });
+                if (consecutiveFailures >= 3) {
+                    console.warn(`[getDeletedMessages] 连续 ${consecutiveFailures} 页拉取失败，接口异常，停止恢复已删除说说`);
+                    indicator.setNextTip(`第 ${page + 1}/${totalPages} 页异常，已停止恢复已删除说说`);
+                    break;
+                }
+                await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
+                continue;
+            }
+            consecutiveFailures = 0;
+            // 兼容 data.data.data 和 data.data.feeds 两种结构
+            const feeds = data.data.data || data.data.feeds || [];
+            if (!feeds.length) continue;
+            // 首次成功拉取时记录样本，便于后续调试
+            if (!firstFeedLogged) {
+                console.info('[getDeletedMessages] 首条 feed 样本', JSON.stringify(feeds[0]).substring(0, 500));
+                firstFeedLogged = true;
+            }
+            for (const feed of feeds) {
+                const parsed = API.Messages.parseFeedHtml(feed.html, feed);
+                if (!parsed) continue;
+                // 聚合 key：优先用 origtid，为空时用文本内容前 80 字符回退
+                const aggKey = parsed.origtid || (parsed.content ? parsed.content.substring(0, 80) : '');
+                if (!aggKey) continue;
+                if (!aggregated.has(aggKey)) {
+                    aggregated.set(aggKey, {
+                        tid: parsed.origtid || '',
+                        abstime: parsed.abstime || 0,
+                        content: parsed.content || '',
+                        imageUrl: parsed.imageUrl || '',
+                        comments: [],
+                        likes: []
+                    });
+                }
+                const entry = aggregated.get(aggKey);
+                // 聚合评论/点赞信息（来自通知）
+                if (parsed.feedType === 'comment' && parsed.commentContent) {
+                    entry.comments.push({
+                        content: parsed.commentContent,
+                        uin: parsed.operator.uin,
+                        name: parsed.operator.nickname,
+                        time: parsed.operator.time
+                    });
+                } else if (parsed.feedType === 'like') {
+                    entry.likes.push({
+                        fuin: parsed.operator.uin,
+                        name: parsed.operator.nickname,
+                        time: parsed.operator.time
+                    });
+                }
+                // 取最早的 abstime 作为说说发布时间
+                if (parsed.abstime && (entry.abstime === 0 || parsed.abstime < entry.abstime)) {
+                    entry.abstime = parsed.abstime;
+                }
+            }
+            await indicator.setIndex(offset + feeds.length);
+        } catch (e) {
+            // 取消：向上传播，让上层中止整个恢复流程
+            if (e && e.__exportCancelled) throw e;
+            consecutiveFailures++;
+            console.error('[getDeletedMessages] 拉取互动消息分页异常', { page, error: e });
+            if (consecutiveFailures >= 3) {
+                console.warn(`[getDeletedMessages] 连续 ${consecutiveFailures} 页拉取失败，接口异常，停止恢复已删除说说`);
+                indicator.setNextTip(`第 ${page + 1}/${totalPages} 页异常，已停止恢复已删除说说`);
+                break;
+            }
+        }
+        // 请求间隔
+        await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
+    }
+
+    // 4. 与现有说说列表对比，差集 = 已删除候选
+    //    对比策略：origtid 存在时按 tid 对比；origtid 为空时按文本内容对比
+    const existingContents = new Set(
+        existingItems.map(m => (m.content || m.custom_content || '').replace(/\s+/g, ' ').trim().substring(0, 80))
+            .filter(s => s.length > 0)
+    );
+    const deletedCandidates = [];
+    for (const [key, entry] of aggregated) {
+        if (entry.tid && existingTids.has(entry.tid)) continue;
+        // tid 为空时用文本内容对比
+        if (!entry.tid && entry.content) {
+            const normalized = entry.content.replace(/\s+/g, ' ').trim().substring(0, 80);
+            if (existingContents.has(normalized)) continue;
+        }
+        deletedCandidates.push(entry);
+    }
+    console.info('[getDeletedMessages] 已删除说说候选数', deletedCandidates.length, '聚合总数', aggregated.size);
+    if (deletedCandidates.length === 0) {
+        indicator.complete();
+        return [];
+    }
+
+    // 5. 对每个候选尝试获取完整详情、评论、点赞
+    indicator.setNextTip('尝试获取已删除说说详情...');
+    indicator.setTotal(deletedCandidates.length);
+    await indicator.setIndex(0);
+    const result = [];
+    for (let i = 0; i < deletedCandidates.length; i++) {
+        const entry = deletedCandidates[i];
+        await indicator.setIndex(i);
+        // tid 为空时生成唯一标识（基于时间+内容），用于 SPA 端 key
+        const contentSig = (entry.content || '').replace(/\s+/g, '').substring(0, 20);
+        const finalTid = entry.tid || `deleted_${entry.abstime || 0}_${contentSig}`;
+        const message = {
+            tid: finalTid,
+            isDeleted: true,
+            created_time: entry.abstime,
+            custom_create_time: API.Utils.formatDate(entry.abstime),
+            content: entry.content,
+            custom_content: entry.content,
+            commentlist: [],
+            custom_comments: [],
+            commenttotal: 0,
+            likes: [],
+            pic_list: [],
+            custom_images: [],
+            uniKey: API.Messages.getUniKey(finalTid)
+        };
+
+        // 尝试获取完整说说详情（tid 为空时跳过）
+        try {
+            if (!entry.tid) throw new Error('无 tid，跳过详情获取');
+            const detailResp = await API.Messages.getFullContent(entry.tid);
+            const detailData = API.Utils.toJson(detailResp, /^_Callback\(/);
+            if (detailData && (!detailData.code || detailData.code === 0) && detailData.content) {
+                // 详情接口成功，覆盖摘要
+                message.content = detailData.content;
+                message.custom_content = detailData.content;
+                message.conlist = detailData.conlist || [];
+                if (detailData.created_time) {
+                    message.created_time = detailData.created_time;
+                    message.custom_create_time = API.Utils.formatDate(detailData.created_time);
+                }
+                if (detailData.pic_list) {
+                    message.pic_list = detailData.pic_list;
+                    message.custom_images = detailData.pic_list;
+                }
+            }
+        } catch (e) {
+            // 详情接口失败，保留摘要
+            console.debug('获取已删除说说详情失败（已用摘要回退）', entry.tid);
+        }
+
+        // 尝试获取评论列表（tid 为空时跳过）
+        try {
+            if (!entry.tid) throw new Error('无 tid，跳过评论获取');
+            const comments = await API.Messages.getItemCommentList({ tid: entry.tid }, 0);
+            if (comments && comments.length > 0) {
+                message.commentlist = comments;
+                message.custom_comments = comments;
+                message.commenttotal = comments.length;
+            } else if (entry.comments.length > 0) {
+                // 回退到通知里的零散评论
+                message.commentlist = entry.comments.map(c => ({
+                    content: c.content,
+                    uin: c.uin,
+                    name: c.name,
+                    create_time: c.time,
+                    custom_create_time: API.Utils.formatDate(c.time)
+                }));
+                message.custom_comments = message.commentlist;
+                message.commenttotal = message.commentlist.length;
+            }
+        } catch (e) {
+            // 评论接口失败，回退到通知里的零散评论
+            if (entry.comments.length > 0) {
+                message.commentlist = entry.comments.map(c => ({
+                    content: c.content,
+                    uin: c.uin,
+                    name: c.name,
+                    create_time: c.time,
+                    custom_create_time: API.Utils.formatDate(c.time)
+                }));
+                message.custom_comments = message.commentlist;
+                message.commenttotal = message.commentlist.length;
+            }
+        }
+
+        // 尝试获取点赞列表（复用通用逻辑）
+        if (API.Common.isGetLike(QZone_Config.Messages)) {
+            try {
+                const likeItem = { uniKey: message.uniKey, likes: [] };
+                await API.Common.getModulesLikeList(likeItem, QZone_Config.Messages);
+                if (likeItem.likes && likeItem.likes.length > 0) {
+                    message.likes = likeItem.likes;
+                } else if (entry.likes.length > 0) {
+                    message.likes = entry.likes;
+                }
+            } catch (e) {
+                if (entry.likes.length > 0) {
+                    message.likes = entry.likes;
+                }
+            }
+        } else if (entry.likes.length > 0) {
+            message.likes = entry.likes;
+        }
+        // 统一点赞结构：只保留 likes 数组（likeTotal 为数值，供 HTML 模板显示）
+        message.likeTotal = message.likes.length;
+
+        // 通知中的图片URL（可能已失效）
+        if (entry.imageUrl && message.pic_list.length === 0) {
+            message.custom_images = [{ custom_url: entry.imageUrl, url1: entry.imageUrl, is_video: false }];
+        }
+
+        result.push(message);
+        indicator.addSuccess(message);
+        // 请求间隔
+        await API.Utils.sleep(API.Utils.randomSeconds(minSec, maxSec) * 1000);
+    }
+
+    console.info('已删除说说恢复完成', { count: result.length });
+    indicator.nextTip = '';
+    indicator.complete();
+    return result;
+  },
+
+  /**
+   * 添加说说的多媒体下载任务（迁移自 modules/messages.js addMediaToTasks）
+   * @param {Array} dataList
+   */
+  async addMediaToTasks(dataList) {
+    if (!dataList) {
+        return dataList;
+    }
+    // 进度更新器
+    const indicator = new StatusIndicator('Messages_Images_Mime');
+
+    // 下载相对目录
+    let module_dir = 'Messages/images';
+
+    for (const item of dataList) {
+
+        if (!API.Common.isNewItem(item)) {
+            // 已备份数据跳过不处理
+            continue;
+        }
+
+        // 下载说说配图
+        for (const image of item.custom_images) {
+            // 说说同时包含图片与视频，需要单独处理视频
+            if (image.is_video && image.video_info) {
+                // 视频
+                const video = image.video_info;
+                if (API.Videos.isExternalVideo(video)) {
+                    // 外部视频（腾讯视频、第三方视频）不做处理
+                    continue;
+                }
+                // 添加视频下载任务
+                API.Videos.addDownloadTasks('Messages', [video], module_dir, item);
+            } else {
+                // 普通图片
+                let url = image.url2 || image.url1;
+                await API.Utils.addDownloadTasks('Messages', image, url, module_dir, item, QZone.Messages.FILE_URLS);
+            }
+            indicator.addSuccess(image);
+        }
+
+        // 下载视频预览图及视频
+        API.Videos.addDownloadTasks('Messages', item.custom_videos, module_dir, item);
+        indicator.addSuccess(item.custom_videos);
+
+        // 下载音乐预览图
+        for (const audio of item.custom_audios) {
+            // 音乐预览图不识别后缀，直接使用JEPG
+            await API.Utils.addDownloadTasks('Messages', audio, audio.image, module_dir, item, QZone.Messages.FILE_URLS, '.jpeg');
+            indicator.addSuccess(1);
+        }
+
+        // 下载表情
+        API.Messages.addDownloadEmoticonTasks(item);
+
+        // 下载趣味表情
+        for (const magic of item.custom_magics) {
+            await API.Utils.addDownloadTasks('Messages', magic, magic.custom_url, module_dir, item, QZone.Messages.FILE_URLS, '.jpeg');
+            indicator.addSuccess(1);
+        }
+
+        // 添加评论的配图下载任务
+        await API.Common.addCommentImageDownloadTasks(item, 'Messages', indicator)
+
+        // 检查点：每条说说处理完（含视频/表情等同步任务）检查暂停/取消
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消')
+            err.__exportCancelled = true
+            throw err
+        }
+    }
+
+    // 完成
+    indicator.complete();
+    return dataList;
+  },
+
+  /**
+   * 说说内容是否包含指定屏蔽词（迁移自 modules/messages.js isMatchFilterKey）
+   * @param {string} content 说说内容
+   */
+  isMatchFilterKey(content) {
+    let isMatch = false;
+    for (const keyWord of QZone_Config.Messages.FilterKeyWords) {
+        const keyWords = keyWord.split('&&');
+        let matchCount = 0;
+        for (const key of keyWords) {
+            const regex = new RegExp(key, 'ig');
+            if (content.match(regex)) {
+                matchCount++;
+            }
+        }
+        if (matchCount === keyWords.length) {
+            isMatch = true;
+            break;
+        }
+    }
+    return isMatch;
+  },
+
+  /**
+   * 过滤含屏蔽词的说说（迁移自 modules/messages.js filterKeyWords）
+   * @param {Array} items 说说列表
+   */
+  filterKeyWords(items) {
+    if (!QZone_Config.Messages.isFilterKeyword || QZone_Config.Messages.FilterKeyWords.length === 0) {
+        return items;
+    }
+
+    // 状态更新器
+    const indicator = new StatusIndicator('Messages_Filter');
+    indicator.setTotal(items.length);
+
+    for (let i = items.length - 1; i >= 0; i--) {
+        let item = items[i];
+        const isMatch = API.Messages.isMatchFilterKey(item.custom_content);
+        if (isMatch) {
+            // 包含屏蔽词，移除
+            items.splice(i, 1);
+            indicator.addSuccess(item);
+            continue;
+        }
+        indicator.addSkip(item);
+    }
+    // 完成
+    indicator.complete();
+    return items;
+  },
+
+  /**
+   * 处理特殊坐标（迁移自 modules/messages.js dealLbs）
+   * @param {Array} items 说说列表
+   */
+  dealLbs(items) {
+    for (const item of items) {
+        const lbs = item.lbs;
+        if (!lbs || !lbs.pos_x || !lbs.pos_y) {
+            continue;
+        }
+        // 特殊坐标处理
+        if (Number.parseInt(lbs.pos_x) > 1000000) {
+            lbs.pos_x = lbs.pos_x / 1000000
+        }
+        if (Number.parseInt(lbs.pos_y) > 1000000) {
+            lbs.pos_y = lbs.pos_y / 1000000
+        }
+        // 科学计算法处理
+        lbs.pos_x = Number.parseFloat(lbs.pos_x).toString() * 1;
+        lbs.pos_y = Number.parseFloat(lbs.pos_y).toString() * 1;
+    }
+  },
+
+  /**
+   * 刷新微信同步说说的坐标信息（迁移自 modules/messages.js refreshWeChatLbsInfo）
+   * @param {Array} items 说说
+   */
+  async refreshWeChatLbsInfo(items) {
+    if (!QZone_Config.Messages.refreshWeChatLbs) {
+        return;
+    }
+    // 状态更新器
+    const indicator = new StatusIndicator('Messages_Lbs_Info');
+
+    // 更新总数
+    indicator.setTotal(items.length);
+
+    for (let idx = 0; idx < items.length; idx++) {
+        const item = items[idx];
+        await indicator.setIndex(idx + 1);
+
+        if (!API.Common.isNewItem(item)) {
+            // 已备份的，跳过
+            indicator.addSkip(item);
+        }
+
+        if (item.custom_lbsInfo) {
+            // 已有坐标信息的，跳过
+            indicator.addSkip(item);
+            continue;
+        }
+        if (!API.Messages.isWeChat(item)) {
+            // 不是微信的，跳过
+            indicator.addSkip(item);
+            continue;
+        }
+        if (!item.lbs || !item.lbs.idname) {
+            // 没有坐标信息的，跳过
+            indicator.addSkip(item);
+            continue;
+        }
+        if (!QZone_Config.Dev.Maps.TxKey) {
+            // 没有API Key的，跳过
+            indicator.addSkip(item);
+            continue;
+        }
+        await API.Common.toTxLbs(item.lbs.pos_y, item.lbs.pos_x).then(lbsInfo => {
+            if (lbsInfo.status === 0) {
+                item.lbs.pos_y = lbsInfo.locations[0].lat;
+                item.lbs.pos_x = lbsInfo.locations[0].lng;
+            }
+        }).catch(e => {
+            console.error('转换微信GPS坐标到腾讯火星系坐标异常', item, e);
+        });
+
+        await API.Common.getLbsInfo(item.lbs.pos_y, item.lbs.pos_x).then(lbsInfo => {
+            if (lbsInfo.status === 0) {
+                item.custom_lbsInfo = lbsInfo.result;
+                item.lbs.idname = item.custom_lbsInfo.formatted_addresses.recommend;
+                item.lbs.name = item.custom_lbsInfo.address;
+            }
+            indicator.addSuccess(item);
+        }).catch(e => {
+            console.error('请求坐标信息异常', item, e);
+            indicator.addFailed(item);
+        });
+
+        await API.Utils.sleep(500);
+    }
+
+    // 完成
+    indicator.complete();
+  },
+
+  /**
+   * 添加下载表情任务（迁移自 modules/messages.js addDownloadEmoticonTasks）
+   * @param {Message} item
+   */
+  addDownloadEmoticonTasks(item) {
+    if (API.Common.isQzoneUrl() || !API.Common.isNewItem(item)) {
+        // QQ空间外链或已备份项，跳过
+        return;
+    }
+
+    // 说说作者
+    API.Common.formatContent(item.name, "HTML", false, false, false, true, false);
+    // 说说原文
+    API.Common.formatContent(item, "HTML", false, false, false, true, false);
+
+    // 转发说说原文
+    item.rt_tid && API.Common.formatContent(item, "HTML", true, false, false, true, false);
+    // 转发说说原文作者
+    item.rt_tid && API.Common.formatContent(item.rt_uinname, "HTML", true, false, false, true, false);
+
+    // 添加评论的表情下载任务
+    API.Common.addCommentEmoticonDownloadTasks(item);
+
+  },
 };

@@ -1,0 +1,13 @@
+[
+  { "key": "Messages", "zh": "说说", "exportable": true },
+  { "key": "Blogs", "zh": "日志", "exportable": true },
+  { "key": "Diaries", "zh": "日记", "exportable": true },
+  { "key": "Photos", "zh": "相册", "exportable": true },
+  { "key": "Videos", "zh": "视频", "exportable": true },
+  { "key": "Boards", "zh": "留言", "exportable": true },
+  { "key": "Friends", "zh": "好友", "exportable": true },
+  { "key": "Favorites", "zh": "收藏", "exportable": true },
+  { "key": "Shares", "zh": "分享", "exportable": true },
+  { "key": "Visitors", "zh": "访客", "exportable": true },
+  { "key": "Statistics", "zh": "统计", "exportable": false }
+]

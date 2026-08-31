@@ -209,4 +209,129 @@ QZoneExporters.Videos = {
     indicator.complete();
     return videos;
   },
+
+  /**
+   * 导出视频（迁移自 modules/videos.js exportAllToFiles）
+   * @param {Array} videos 视频列表
+   */
+  exportAllToFiles: async(videos) => {
+    // 获取用户配置
+    let exportType = QZone_Config.Videos.exportType;
+    switch (exportType) {
+        case 'HTML':
+            await API.Videos.exportToHtml(videos);
+            break;
+        case 'JSON':
+            await API.Videos.exportToJson(videos);
+            break;
+        case 'MarkDown':
+            await API.Videos.exportToMarkdown(videos);
+            break;
+        case 'Link':
+            await API.Videos.exportToLink(videos);
+            break;
+        case 'SPA':
+            await API.Videos.exportToSpa(videos);
+            break;
+        default:
+            console.warn('未支持的导出类型', exportType);
+            break;
+    }
+  },
+
+  /**
+   * 获取视频的Markdown内容（迁移自 modules/videos.js getMarkdowns）
+   */
+  getMarkdowns: (videos) => {
+    const contents = [];
+    for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+
+        video.desc = video.desc || video.name || API.Utils.formatDate(video.uploadTime);
+
+        // 视频描述
+        contents.push('> ' + API.Common.formatContent(video.desc, 'MD', false, false, false, false, true));
+        contents.push('\r\n');
+
+        // 视频
+        contents.push('<video height="400" src="{0}" controls="controls" ></video>'.format(video.custom_filepath || video.custom_url || video.url));
+        contents.push('\r\n');
+
+        // 视频评论 TODO 私密评论处理
+        video.comments = video.comments || [];
+        contents.push('> 评论({0})'.format(video.cmtTotal || video.comments.length));
+        contents.push('\r\n');
+
+        for (const comment of video.comments) {
+            // 评论人
+            const poster_name = API.Common.formatContent(comment.poster.name, 'MD', false, false, false, false, true);
+            const poster_display = API.Common.getUserLink(comment.poster.id, poster_name, "MD");
+
+            // 评论内容
+            let content = API.Common.formatContent(comment.content, 'MD', false, false, false, false, true);
+            contents.push("* {0}：{1}".format(poster_display, content));
+
+            // 评论包含图片
+            if (comment.pictotal > 0) {
+                let comment_images = comment.pic || [];
+                for (const image of comment_images) {
+                    let custom_url = image.o_url || image.hd_url || image.b_url || image.s_url || image.url;
+                    custom_url = API.Common.isQzoneUrl() ? (image.custom_url || custom_url) : '../' + image.custom_filepath;
+                    // 添加评论图片
+                    contents.push(API.Utils.getImagesMarkdown(custom_url));
+                }
+            }
+            // 评论的回复
+            let replies = comment.replies || [];
+            for (const repItem of replies) {
+
+                // 回复人
+                let repName = API.Common.formatContent(repItem.poster.name, 'MD', false, false, false, false, true);
+                const rep_poster_display = API.Common.getUserLink(comment.poster.id, repName, "MD");
+
+                // 回复内容
+                let content = API.Common.formatContent(repItem.content, 'MD', false, false, false, false, true);
+                contents.push("\t* {0}：{1}".format(rep_poster_display, content));
+
+                const repImgs = repItem.pic || [];
+                for (const repImg of repImgs) {
+                    // 回复包含图片
+                    let custom_url = repImg.o_url || repImg.hd_url || repImg.b_url || repImg.s_url || repImg.url;
+                    custom_url = API.Common.isQzoneUrl() ? (repImg.custom_url || custom_url) : '../' + repImg.custom_filepath;
+                    // 添加回复评论图片
+                    contents.push(API.Utils.getImagesMarkdown(custom_url));
+                }
+            }
+        }
+
+        // 分割线
+        contents.push('---');
+    }
+    return contents.join('\r\n');
+  },
+
+  /**
+   * 导出视频下载链接到下载链接（迁移自 modules/videos.js exportToLink）
+   * @param {Array} items 视频列表
+   */
+  exportToLink: async(videos) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Videos_Export');
+    await indicator.setIndex('下载链接');
+
+    let videoUrls = [];
+    for (const video of videos) {
+        videoUrls.push(API.Utils.makeDownloadUrl(video.url, true));
+    }
+    let filepath = API.Common.getModuleRoot('Videos') + '/videos.downlist';
+    await API.Utils.writeText(videoUrls.join('\r\n'), filepath).then((file) => {
+        console.info('导出视频下载链接成功', file);
+    }).catch((e) => {
+        console.error('导出视频下载链接异常', e);
+    });
+
+    // 完成
+    indicator.complete();
+    return videos;
+  },
 };

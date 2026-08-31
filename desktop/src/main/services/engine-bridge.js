@@ -10,15 +10,21 @@ import { fileURLToPath } from 'node:url';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { stateStore } from './state-store.js';
+import { PushChannels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** 模块清单契约（P1-4 单一来源：config.js 注入前先置 window.QZONE_MODULES） */
+const MODULES_JSON_PATH = path.resolve(__dirname, '../../shared/modules.json');
 
 /** 引擎隔离世界 ID（与 preload engine-bridge.cjs 保持一致） */
 export const ENGINE_WORLD_ID = 100;
 
 /**
  * 在引擎窗口隔离世界执行 JS（引擎命名空间 QZonePlatform/API/__engineCommands 均在该世界）
- * @param {boolean} [opts.returnValue] true 时不追加 ;void 0;，保留末值（Promise 会被等待并返回），用于需要取回结果的命令
+ * @param {Electron.WebContents} wc
+ * @param {string} code
+ * @param {{ returnValue?: boolean }} [opts] returnValue=true 时不追加 ;void 0;，保留末值（Promise 会被等待并返回），用于需要取回结果的命令
  */
 function execInEngine(wc, code, opts = {}) {
   const src = opts.returnValue ? code : code + '\n;void 0;';
@@ -40,8 +46,26 @@ export const ENGINE_SCRIPTS = [
   'vendor/sheetjs/xlsx.full.min.js',
   'utils.js',
   'config.js',
+  'module-error.js', // P2-5：模块级错误协议，须先于 modules/* 注入
   'emoticons.js',
   'templates-compiled.js',
+  // P2-1：api.js 拆分为基础层 + 模块接口层 + 装配器（逐字搬迁，注入顺序见架构改造计划 §4.1）
+  'api/rest-urls.js',
+  'api/network.js',
+  'api/fs-utils.js',
+  'api/utils.js',
+  'api/common.js',
+  'api/modules/blogs.js',
+  'api/modules/diaries.js',
+  'api/modules/friends.js',
+  'api/modules/messages.js',
+  'api/modules/boards.js',
+  'api/modules/photos.js',
+  'api/modules/videos.js',
+  'api/modules/favorites.js',
+  'api/modules/shares.js',
+  'api/modules/visitors.js',
+  'api/modules/statistics.js',
   'api.js',
   'collectors/index.js',
   'collectors/base.js',
@@ -55,12 +79,15 @@ export const ENGINE_SCRIPTS = [
   'collectors/visitors.js',
   'collectors/friends.js',
   'collectors/shares.js',
+  'collectors/common.js',
   'repos/index.js',
   'repos/writer.js',
   'repos/incremental.js',
   'repos/modules/messages.js',
   'repos/modules/favorites.js',
   'repos/modules/shares.js',
+  'repos/modules/friends.js', // P2-3：好友仓库（initGroupName/getFriendsTime/isNewItem）
+  'repos/modules/photos.js', // P2-3：相册仓库（getAlbumById/getPhotosByAlbumId/isNewAlbum/isNewItem）
   'exporters/index.js',
   'exporters/common.js',
   'exporters/messages.js',
@@ -149,6 +176,11 @@ export const engineBridge = {
       throw new Error('引擎窗口不存在');
     }
     for (const rel of ENGINE_SCRIPTS) {
+      // P1-4：config.js 消费的模块清单由 main 从 shared/modules.json 注入（先于 config.js 执行）
+      if (rel === 'config.js') {
+        const modulesJson = JSON.stringify(JSON.parse(fs.readFileSync(MODULES_JSON_PATH, 'utf8')));
+        await execInEngine(wc, `window.QZONE_MODULES = ${modulesJson};`);
+      }
       const file = path.join(ENGINE_DIR, rel);
       const code = fs.readFileSync(file, 'utf8');
       try {
@@ -159,7 +191,7 @@ export const engineBridge = {
       }
     }
     this.ready = true;
-    sendToUi('backup:state-changed', { state: 'engine-ready', message: '引擎已就绪' });
+    sendToUi(PushChannels.backupStateChanged, { state: 'engine-ready', message: '引擎已就绪' });
   },
 
   /** 执行一段引擎侧 JS（隔离世界；returnValue=true 时返回末值/Promise 结果） */

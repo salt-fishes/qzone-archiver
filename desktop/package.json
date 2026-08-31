@@ -7,6 +7,9 @@
   "main": "src/main/index.js",
   "scripts": {
     "sync:baseline": "node scripts/sync-baseline.mjs",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
+    "lint": "eslint .",
+    "test": "vitest run",
     "dev": "vite",
     "build:renderer": "vite build",
     "start": "electron .",
@@ -21,12 +24,18 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@types/node": "^26.4.0",
     "@vitejs/plugin-vue": "^5.0.4",
     "electron": "^43.3.0",
     "electron-builder": "^26.15.3",
+    "eslint": "^10.9.1",
+    "eslint-plugin-vue": "^10.10.0",
+    "globals": "^17.11.0",
     "sass": "^1.72.0",
     "typescript": "^5.4.3",
+    "typescript-eslint": "^8.68.0",
     "vite": "^5.2.6",
+    "vitest": "^4.1.11",
     "vue-tsc": "^2.0.7"
   }
 }

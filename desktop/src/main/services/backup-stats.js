@@ -29,15 +29,15 @@ function writeJson(file, data) {
   fs.renameSync(tmp, file);
 }
 
-/** 统计目录字节数（限制遍历量，避免大目录卡 UI） */
-export function dirBytes(dir, budget = 5000) {
+/** 统计目录字节数（限制遍历量，避免大目录卡 UI；P3-4：fs.promises 逐目录 await 让出主线程） */
+export async function dirBytes(dir, budget = 5000) {
   let total = 0;
   let visited = 0;
-  const walk = (d) => {
+  const walk = async (d) => {
     if (visited > budget) return;
     let list = [];
     try {
-      list = fs.readdirSync(d, { withFileTypes: true });
+      list = await fs.promises.readdir(d, { withFileTypes: true });
     } catch (e) {
       return;
     }
@@ -46,28 +46,28 @@ export function dirBytes(dir, budget = 5000) {
       visited += 1;
       const p = path.join(d, e.name);
       try {
-        if (e.isDirectory()) walk(p);
-        else if (e.isFile()) total += fs.statSync(p).size;
+        if (e.isDirectory()) await walk(p);
+        else if (e.isFile()) total += (await fs.promises.stat(p)).size;
       } catch (err) {
         /* ignore */
       }
     }
   };
-  walk(dir);
+  await walk(dir);
   return total;
 }
 
-/** 统计文件数（截断到上限，防止慢） */
-export function countFiles(dir, count = 0, limit = 20000) {
+/** 统计文件数（截断到上限，防止慢；P3-4：异步遍历不再阻塞主线程） */
+export async function countFiles(dir, count = 0, limit = 20000) {
   let list = [];
   try {
-    list = fs.readdirSync(dir, { withFileTypes: true });
+    list = await fs.promises.readdir(dir, { withFileTypes: true });
   } catch (e) {
     return count;
   }
   for (const e of list) {
     if (count >= limit) break;
-    if (e.isDirectory()) count = countFiles(path.join(dir, e.name), count, limit);
+    if (e.isDirectory()) count = await countFiles(path.join(dir, e.name), count, limit);
     else if (e.isFile()) count += 1;
   }
   return count;
@@ -87,8 +87,10 @@ export const backupStats = {
   /**
    * 备份完成时自动记录（引擎此时已生成 manifest.json / report.json）
    * 幂等：同 taskId 不重复追加
+   * P3-4：目录统计异步化，本函数为 async，调用方 fire-and-forget 即可
+   * @param {object} p.errors 模块级失败明细（P3-1：P0-3 遗留项落库，重启后历史不再显示假成功）
    */
-  recordBackup({ taskId, targetDir, modules, results }) {
+  async recordBackup({ taskId, targetDir, modules, results, errors }) {
     const dir = String(targetDir || '');
     if (!dir) return null;
 
@@ -99,6 +101,8 @@ export const backupStats = {
       name: path.basename(dir),
       modules: Array.isArray(modules) ? modules : [],
       results: results || {},
+      // 部分模块失败时记录明细（module/phase/code/message），全成功不落字段
+      errors: Array.isArray(errors) && errors.length ? errors : undefined,
       total: 0,
       moduleCounts: {},
       size: 0,
@@ -117,10 +121,10 @@ export const backupStats = {
       if (manifest.createdAt) entry.createdAt = manifest.createdAt;
     }
 
-    // 目录大小 / 文件数（与 scanBackups 同一统计口径，截断避免卡顿）
+    // 目录大小 / 文件数（与 scanBackups 同一统计口径，截断避免卡顿；P3-4：异步遍历）
     try {
-      entry.size = dirBytes(dir);
-      entry.files = countFiles(dir, 0, 20000);
+      entry.size = await dirBytes(dir);
+      entry.files = await countFiles(dir, 0, 20000);
     } catch (e) {
       console.warn('[backup-stats] 统计目录失败', e);
     }

@@ -253,4 +253,73 @@ QZoneExporters.Boards = {
     indicator.complete();
     return boardInfo;
   },
+
+  /**
+   * 导出留言（P2-4：迁自 modules/boards.js exportAllToFiles）
+   * @param {Array} boardInfo 留言信息
+   */
+  exportAllToFiles: async(boardInfo) => {
+    // 获取用户配置
+    let exportType = QZone_Config.Boards.exportType;
+    switch (exportType) {
+        case 'HTML':
+            await API.Boards.exportToHtml(boardInfo);
+            break;
+        case 'MarkDown':
+            await API.Boards.exportToMarkdown(boardInfo);
+            break;
+        case 'JSON':
+            await API.Boards.exportToJson(boardInfo);
+            break;
+        case 'SPA':
+            await API.Boards.exportToSpa(boardInfo);
+            break;
+        default:
+            console.warn('未支持的导出类型', exportType);
+            break;
+    }
+},
+
+  /**
+   * 生成单个留言的Markdown内容（P2-4：迁自 modules/boards.js getMarkdown）
+   * @param {Object} boards 留言列表
+   */
+  getMarkdown: (board) => {
+    const year_contents = [];
+
+    let nickname = API.Common.formatContent(API.Boards.getOwner(board), "MD", false, false, false, false, true);
+    nickname = API.Common.getUserLink(board.uin, nickname, 'MD', true);
+
+    year_contents.push('> {0} *{1}*'.format(nickname, API.Utils.formatDate(board.pubtime)));
+    year_contents.push("\r\n");
+    year_contents.push('> 正文：');
+    year_contents.push("\r\n");
+
+    // 留言内容
+    const html_content = board.htmlContent.replace(/\n/g, "\r\n");
+    let markdown_content = QZone.Common.MD.turndown(html_content);
+    markdown_content = API.Common.formatContent(markdown_content, "MD", false, false, false, false, true);
+
+    // 添加留言内容
+    year_contents.push('- {0}：{1}'.format(nickname, markdown_content));
+    year_contents.push("\r\n");
+
+    // 处理留言回复
+    year_contents.push('> 回复：');
+    year_contents.push("\r\n");
+    let replyList = board.replyList || [];
+    for (const reply of replyList) {
+        // 回复人
+        let replyName = API.Common.formatContent(API.Boards.getOwner(reply), "MD", false, false, false, false, true);
+        replyName = API.Common.getUserLink(reply.uin, replyName, 'MD', true);
+
+        // 回复内容
+        const replyContent = API.Common.formatContent(reply.content, "MD", false, false, false, false, true);
+        const replyTime = API.Utils.formatDate(reply.time);
+
+        const replyMd = '- {0}：{1} *{2}*'.format(replyName, replyContent, replyTime);
+        year_contents.push(replyMd);
+    }
+    return year_contents.join('\r\n');
+},
 };

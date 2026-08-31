@@ -616,25 +616,20 @@ var QZone_Config = Object.assign({}, Default_Config);
 const FOLDER_ROOT = '/QQ空间备份';
 
 /**
- * 支持备份的模块名称 
+ * 支持备份的模块清单（P1-4 单一来源：由主进程注入 shared/modules.json → window.QZONE_MODULES，
+ * 结构 [{ key, zh, exportable }]；Statistics 为收尾统计模块 exportable:false）
  */
-const MODULE_NAME_LIST = ['Messages', 'Blogs', 'Diaries', 'Photos', 'Videos', 'Boards', 'Friends', 'Favorites', 'Shares', 'Visitors'];
+const MODULE_NAME_LIST = (window.QZONE_MODULES || [])
+    .filter(function (m) { return m.exportable !== false; })
+    .map(function (m) { return m.key; });
 
 /**
- * 支持备份的模块名称 
+ * 模块中文名映射（P1-4：与 MODULE_NAME_LIST 同源派生）
  */
-const MODULE_NAME_MAPS = {
-    Messages: '说说',
-    Blogs: '日志',
-    Diaries: '日记',
-    Photos: '相册',
-    Videos: '视频',
-    Boards: '留言',
-    Friends: '好友',
-    Favorites: '收藏',
-    Shares: '分享',
-    Visitors: '访客'
-};
+const MODULE_NAME_MAPS = (window.QZONE_MODULES || []).reduce(function (acc, m) {
+    acc[m.key] = m.zh;
+    return acc;
+}, {});
 
 /**
  * HTML备份导出文件

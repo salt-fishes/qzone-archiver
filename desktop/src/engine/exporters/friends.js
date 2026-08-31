@@ -194,4 +194,91 @@ QZoneExporters.Friends = {
     indicator.complete();
     return friends;
   },
+
+  /**
+   * 导出好友（P2-4：迁自 modules/friends.js exportAllToFiles）
+   * @param {Array} friends 好友列表
+   */
+  exportAllToFiles: async(friends) => {
+    // 获取用户配置
+    let exportType = QZone_Config.Friends.exportType;
+    switch (exportType) {
+        case 'Excel':
+            await API.Friends.exportToExcel(friends);
+            break;
+        case 'HTML':
+            await API.Friends.exportToHtml(friends);
+            break;
+        case 'MarkDown':
+            await API.Friends.exportToMarkDown(friends);
+            break;
+        case 'JSON':
+            await API.Friends.exportToJson(friends);
+            break;
+        case 'SPA':
+            await API.Friends.exportToSpa(friends);
+            break;
+        default:
+            console.warn('未支持的导出类型', exportType);
+            break;
+    }
+},
+
+  /**
+   * 导出QQ好友到Excel（P2-4：迁自 modules/friends.js exportToExcel）
+   * @param {Array} friends 好友列表
+   */
+  exportToExcel: async(friends) => {
+    // 进度更新器
+    const indicator = new StatusIndicator('Friends_Export');
+    await indicator.setIndex('Excel');
+
+    // Excel数据
+    let ws_data = [
+        ["QQ", "QQ昵称", "QQ备注", "QQ分组", "特别关心", "相识时间", "空间权限", "好友关系", "亲密度", "共同好友", "共同群组", "QQ空间", "QQ通讯"]
+    ];
+
+    for (const friend of friends) {
+        // QQ空间超链接
+        const user_qzone_url = { t: 's', v: "QQ空间", l: { Target: API.Common.getUserUrl(friend.uin), Tooltip: "QQ空间" } };
+        // QQ聊天超链接
+        const user_message_url = { t: 's', v: "QQ聊天", l: { Target: API.Common.getMessageUrl(friend.uin), Tooltip: "QQ聊天" } };
+
+        // 行信息
+        const rowData = [
+            friend.uin,
+            friend.name,
+            friend.remark,
+            friend.groupName,
+            API.Friends.getShowCare(friend),
+            API.Friends.getShowFriendTime(friend, 0),
+            API.Friends.getShowAccessType(friend),
+            API.Friends.getShowFriendType(friend),
+            API.Friends.getShowIntimacyScore(friend),
+            API.Friends.getShowCommonFriend(friend),
+            API.Friends.getShowCommonGroup(friend, '\n'),
+            user_qzone_url,
+            user_message_url
+        ];
+        ws_data.push(rowData);
+    }
+
+    // 创建WorkBook
+    let workbook = XLSX.utils.book_new();
+
+    let worksheet = XLSX.utils.aoa_to_sheet(ws_data);
+
+    XLSX.utils.book_append_sheet(workbook, worksheet, "QQ好友");
+
+    // 写入XLSX到HTML5的FileSystem
+    let xlsxArrayBuffer = API.Utils.toArrayBuffer(XLSX.write(workbook, { bookType: 'xlsx', bookSST: false, type: 'binary' }));
+    await API.Utils.writeFile(xlsxArrayBuffer, API.Common.getModuleRoot('Friends') + "/QQ好友.xlsx").then(fileEntry => {
+        console.info('导出QQ好友到Excel成功', friends, fileEntry);
+    }).catch(error => {
+        console.error('导出QQ好友到Excel失败', friends, error);
+    });
+    // 完成
+    indicator.complete();
+    return friends;
+},
 };

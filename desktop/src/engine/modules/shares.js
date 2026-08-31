@@ -34,7 +34,9 @@ API.Shares.export = async() => {
         await API.Shares.exportAllListToFiles(items);
 
     } catch (error) {
-        console.error('分享导出异常：', error);
+        // P2-5 错误处理协议：进度复位后包装上抛，orchestrator 统一捕获记录
+        indicator.complete();
+        throw new ModuleError({ module: 'Shares', phase: 'run', cause: error });
     }
 
     // 完成
@@ -84,48 +86,10 @@ API.Shares.getItemAllVisitorsList = QZoneCollectors.Shares.getItemAllVisitorsLis
 API.Shares.getAllVisitorList = QZoneCollectors.Shares.getAllVisitorList;
 
 /**
- * 添加多媒体下载任务
+ * 添加多媒体下载任务（P2-4：委托 collectors/shares）
  * @param {Array} dataList
  */
-API.Shares.addMediaToTasks = async(dataList) => {
-    // 下载相对目录
-    const module_dir = 'Shares/images';
-
-    for (const item of dataList) {
-        if (!API.Common.isNewItem(item)) {
-            // 已备份数据跳过不处理
-            continue;
-        }
-
-        // 来源配图（网页、音乐等）
-        const images = item.source && item.source.images || [];
-        for (const image of images) {
-            await API.Utils.addDownloadTasks('Shares', image, image.url, module_dir, item, QZone.Shares.FILE_URLS);
-        }
-
-        // 评论配图
-        const comments = item.comments;
-        for (const comment of comments) {
-            comment.pic = comment.pic || [];
-            for (let pic of comment.pic) {
-                pic.custom_url = pic.o_url || pic.hd_url || pic.b_url || pic.s_url;
-                await API.Utils.addDownloadTasks('Shares', pic, pic.custom_url, module_dir, item, QZone.Shares.FILE_URLS);
-            }
-            // 回复的图片
-            comment.replies = comment.replies || [];
-            for (const repItem of comment.replies) {
-                repItem.pic = repItem.pic || [];
-                for (let pic of repItem.pic) {
-                    pic.custom_url = pic.o_url || pic.hd_url || pic.b_url || pic.s_url;
-                    await API.Utils.addDownloadTasks('Shares', pic, pic.custom_url, module_dir, item, QZone.Shares.FILE_URLS);
-                }
-            }
-        }
-
-        // 下载视频 TODO 分享是否存在视频，分享存在视频，但是无法分享视频
-    }
-    return dataList;
-}
+API.Shares.addMediaToTasks = QZoneCollectors.Shares.addMediaToTasks;
 
 /**
  * 所有分享转换成导出文件
@@ -154,81 +118,10 @@ API.Shares.exportToSpa = QZoneExporters.Shares.exportToSpa;
 API.Shares.exportToHtml = QZoneExporters.Shares.exportToHtml;
 
 /**
- * 获取单篇分享的Markdown内容
+ * 获取单篇分享的Markdown内容（P2-4：委托 exporters/shares）
  * @param {ShareInfo} share 分享
  */
-API.Shares.getMarkdown = (share) => {
-    const contents = [];
-    // 分享人
-    let share_user_name = API.Common.formatContent(share.nickname, 'MD', false, false, false, false, true);
-    share_user_name = API.Common.getUserLink(share.uin, share_user_name, 'MD', true);
-    // 分享描述
-    contents.push('{0}  分享：{1}  '.format(share_user_name, API.Common.formatContent(share.desc || '', 'MD', false, false, false, false, true)));
-
-    // 分享源
-    const shareSource = share.source || {};
-    // 分享源标题
-    contents.push('> [{0}]({1})  '.format(shareSource.title, shareSource.url));
-    // 分享源描述
-    if (shareSource.desc) {
-        contents.push('{0}  '.format(shareSource.desc));
-    }
-    // 分享源配图
-    shareSource.images = shareSource.images || [];
-    for (const images of shareSource.images) {
-        contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(images.custom_url, images.custom_filepath)) + '  ');
-    }
-    // 分享源来源
-    if (shareSource.from && shareSource.from.name) {
-        contents.push('来自： [{0}]({1}) 共分享 {2} 次'.format(shareSource.from.name, shareSource.from.url, shareSource.count));
-    } else {
-        contents.push('共分享 {0} 次'.format(shareSource.count));
-    }
-
-    // 分享时间
-    contents.push('\n> {0}  '.format(API.Utils.formatDate(share.shareTime)));
-
-    // 评论内容
-    const comments = share.comments || [];
-    contents.push("\n> 评论({0})".format(share.commentTotal));
-    for (const comment of comments) {
-
-        // 评论人
-        let comment_name = API.Common.formatContent(comment.poster.name, 'MD', false, false, false, false, true);
-        comment_name = API.Common.getUserLink(comment.poster.id, comment_name, 'MD', true);
-
-        contents.push("- {0}：{1}".format(comment_name, API.Common.formatContent(comment.content, 'MD', false, false, false, false, true)));
-
-        // 评论包含图片
-        const comment_images = comment.pic || [];
-        for (const image of comment_images) {
-            // 替换URL
-            contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(image.custom_url, image.custom_filepath)));
-        }
-
-        // 评论的回复
-        const replies = comment.replies || [];
-        for (const repItem of replies) {
-            // 回复人
-            let repName = API.Common.formatContent(repItem.poster.name, 'MD', false, false, false, false, true);
-            repName = API.Common.getUserLink(repItem.poster.id, repName, 'MD', true);
-
-            // 回复内容
-            let content = API.Common.formatContent(repItem.content, 'MD', false, false, false, false, true);
-
-            // 回复内容
-            contents.push("\t- {0}：{1}".format(repName, content));
-
-            // 回复包含图片，理论上回复现在不能回复图片，兼容一下
-            var repImgs = repItem.pic || [];
-            for (const repImg of repImgs) {
-                contents.push(API.Utils.getImagesMarkdown(API.Common.getMediaPath(repImg.custom_url, repImg.custom_filepath)));
-            }
-        }
-    }
-    contents.push('---');
-    return contents.join('\n');
-}
+API.Shares.getMarkdown = QZoneExporters.Shares.getMarkdown;
 
 /**
  * 导出分享到Markdown文件
@@ -243,36 +136,7 @@ API.Shares.exportToMarkdown = QZoneExporters.Shares.exportToMarkdown;
 API.Shares.exportToJson = QZoneExporters.Shares.exportToJson;
 
 /**
- * 添加下载表情任务
- * @param {Shares} item 
+ * 添加下载表情任务（P2-4：委托 collectors/shares）
+ * @param {Shares} item
  */
-API.Shares.addDownloadEmoticonTasks = (items) => {
-    if (API.Common.isQzoneUrl()) {
-        return;
-    }
-
-    for (const item of items) {
-        if (!API.Common.isNewItem(item)) {
-            // QQ空间外链或已备份项，跳过
-            continue;
-        }
-
-        // 分享描述
-        if (item && item.desc) {
-            API.Common.formatContent(item.desc, "HTML", false, false, false, true, false);
-        }
-
-        // 分享来源标题
-        if (item.source && item.source.title) {
-            API.Common.formatContent(item.source.title, "HTML", false, false, false, true, false);
-        }
-        // 分享源描述
-        if (item.source && item.source.desc) {
-            API.Common.formatContent(item.source.desc, "HTML", false, false, false, true, false);
-        }
-
-        // 添加评论的表情下载任务
-        API.Common.addCommentEmoticonDownloadTasks(item);
-    }
-
-}
+API.Shares.addDownloadEmoticonTasks = QZoneCollectors.Shares.addDownloadEmoticonTasks;

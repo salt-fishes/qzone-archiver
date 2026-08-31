@@ -72,6 +72,18 @@ QZonePackagers.Manifest = {
     await API.Utils.writeText(JSON.stringify(report, null, 2), root + '/report.json');
     console.info('生成备份统计 report.json 完成');
 
+    // P3-3（§5.3）：收尾同步增量基线 backup-meta.json——manifest.json 是"这次"，backup-meta 是"截至这次"。
+    // saveBackupItems 已写过一次，此处兜底重写保证两文件同批一致；失败仅告警不阻断清单收尾
+    try {
+      if (window.Backedup) {
+        const metaPath = root + '/Common/backup-meta.json';
+        await window.QZonePlatform.fs.writeFile(metaPath, JSON.stringify({ Backedup: window.Backedup }));
+        console.info('增量基线 backup-meta.json 已同步更新');
+      }
+    } catch (e) {
+      console.error('增量基线 backup-meta.json 更新失败', e);
+    }
+
     return manifest;
   },
 
