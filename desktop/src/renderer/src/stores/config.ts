@@ -1,11 +1,13 @@
 /**
- * 配置 store（S3 备份向导：从 App.vue 拆出）
+ * 配置 store（P4.1 真 Pinia 化：defineStore setup 写法）
  * 职责：备份模块勾选（selected）/ 保存位置（targetDir）/ 引擎设置（settings）
- *       + 设置模型 schema + buildEngineConfig + 配置持久化 watch
+ *       + 相册选择状态 + 配置持久化 watch + buildEngineConfig
+ * 模块元数据常量与 schema、纯工具函数保留为模块级导出（与 store 实例无关）；
  * 被备份向导、设置模态与旧工作区共用；IPC 契约不变。
  */
-import { ref, computed, watch } from 'vue';
-import { auth } from './auth';
+import { ref, computed, watch, reactive } from 'vue';
+import { defineStore } from 'pinia';
+import { useAuthStore } from './auth';
 import modulesData from '../../../shared/modules.json';
 
 /* ============ 模块元数据（P1-4 单一来源：src/shared/modules.json 派生） ============ */
@@ -201,7 +203,7 @@ export function defaultSettings() {
   };
 }
 
-/* ============ 工具 ============ */
+/* ============ 纯工具 ============ */
 
 /** 深度合并（默认结构 + 已保存覆盖），普通对象 */
 export function deepMerge(base: any, over: any): any {
@@ -249,22 +251,9 @@ export function toDbTime(s: string) {
   return clean.length === 16 ? `${clean}:00` : clean;
 }
 
-/* ============ 状态 ============ */
+/* ============ Store ============ */
 
-/** 模块勾选（备份向导步骤①） */
-export const selected = ref<Record<string, boolean>>({ Messages: true });
-/** 备份保存位置（向导步骤②） */
-export const targetDir = ref('');
-/** 引擎设置（完整 QZone_Config 形状；宽松索引签名便于按模块/字段访问） */
-export const settings = ref<Record<string, any>>(defaultSettings());
-
-/** 已勾选模块数量 */
-export const selectedCount = computed(() => MODULES.filter((m) => selected.value[m]).length);
-/** 已选模块 */
-export const selectedModules = computed(() => MODULES.filter((m) => selected.value[m]));
-
-/* ============ 相册选择（设置模态 / 备份向导步骤① 共享） ============ */
-
+/** 相册条目（设置模态 / 备份向导步骤① 共享） */
 export type AlbumItem = {
   id: string | number;
   name: string;
@@ -275,182 +264,199 @@ export type AlbumItem = {
   desc?: string;
 };
 
-export const albums = ref<AlbumItem[]>([]);
-export const albumsLoading = ref(false);
-export const albumError = ref('');
-/** 勾选的相册 ID（字符串），联动 settings.Photos.albumSelect */
-export const albumSel = ref<string[]>([]);
+export const useConfigStore = defineStore('config', () => {
+  const authStore = useAuthStore();
 
-export const albumClassNames = computed(() => {
-  const map = new Map<string, AlbumItem[]>();
-  for (const a of albums.value) {
-    const key = a.className || '其他';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(a);
-  }
-  // 返回 {cls, items} 数组而非 Map：Vue 3.5 的 v-for 迭代 Map 时解构出的是 [key,value] 条目对和索引，
-  // 与文档 (value, key) 不符，会导致分组名显示索引、行数据全为 undefined
-  return Array.from(map, ([cls, items]) => ({ cls, items }));
-});
+  /** 模块勾选（备份向导步骤①） */
+  const selected = reactive<Record<string, boolean>>({ Messages: true });
+  /** 备份保存位置（向导步骤②） */
+  const targetDir = ref('');
+  /** 引擎设置（完整 QZone_Config 形状；宽松索引签名便于按模块/字段访问） */
+  const settings = ref<Record<string, any>>(defaultSettings());
 
-export async function loadAlbums() {
-  if (albumsLoading.value) return;
-  albumsLoading.value = true;
-  albumError.value = '';
-  try {
-    const r = await window.api.backup.listAlbums();
-    if (!r?.ok) {
-      albumError.value = r?.error || '获取相册列表失败';
-      return;
+  /** 已勾选模块数量 */
+  const selectedCount = computed(() => MODULES.filter((m) => selected[m]).length);
+  /** 已选模块 */
+  const selectedModules = computed(() => MODULES.filter((m) => selected[m]));
+
+  /* -------- 相册选择（设置模态 / 备份向导步骤① 共享） -------- */
+
+  const albums = ref<AlbumItem[]>([]);
+  const albumsLoading = ref(false);
+  const albumError = ref('');
+  /** 勾选的相册 ID（字符串），联动 settings.Photos.albumSelect */
+  const albumSel = ref<string[]>([]);
+
+  const albumClassNames = computed(() => {
+    const map = new Map<string, AlbumItem[]>();
+    for (const a of albums.value) {
+      const key = a.className || '其他';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(a);
     }
-    albums.value = r.albums || [];
-    // 保留仍然存在的已选相册
-    const ids = new Set((albums.value || []).map((a) => String(a.id)));
-    albumSel.value = albumSel.value.filter((id) => ids.has(id));
-    // 默认全选：从未配置过相册选择（albumSelect 非数组）时，首次加载自动全选并写入设置
-    if (!Array.isArray(getPath(settings.value.Photos, 'albumSelect'))) {
-      albumSel.value = [...ids];
-    }
-  } catch (e: any) {
-    albumError.value = e?.message || String(e);
-  } finally {
-    albumsLoading.value = false;
-  }
-}
+    // 返回 {cls, items} 数组而非 Map：Vue 3.5 的 v-for 迭代 Map 时解构出的是 [key,value] 条目对和索引，
+    // 与文档 (value, key) 不符，会导致分组名显示索引、行数据全为 undefined
+    return Array.from(map, ([cls, items]) => ({ cls, items }));
+  });
 
-export function albumSelAll() {
-  albumSel.value = albums.value.map((a) => String(a.id));
-}
-export function albumSelNone() {
-  albumSel.value = [];
-}
-
-/** 相册勾选 → 写入设置（自动保存 + 备份时经 buildEngineConfig 传递） */
-watch(
-  albumSel,
-  (v) => {
-    setPath(settings.value.Photos, 'albumSelect', [...v]);
-  },
-  { deep: true }
-);
-
-/** 勾选「相册」模块时自动加载相册列表（设置模态与备份向导共用） */
-watch(
-  () => selected.value.Photos,
-  (on) => {
-    if (on && auth.loggedIn && !albums.value.length && !albumsLoading.value) {
-      loadAlbums();
+  async function loadAlbums() {
+    if (albumsLoading.value) return;
+    albumsLoading.value = true;
+    albumError.value = '';
+    try {
+      const r = await window.api.backup.listAlbums();
+      if (!r?.ok) {
+        albumError.value = r?.error || '获取相册列表失败';
+        return;
+      }
+      albums.value = r.albums || [];
+      // 保留仍然存在的已选相册
+      const ids = new Set((albums.value || []).map((a) => String(a.id)));
+      albumSel.value = albumSel.value.filter((id) => ids.has(id));
+      // 默认全选：从未配置过相册选择（albumSelect 非数组）时，首次加载自动全选并写入设置
+      if (!Array.isArray(getPath(settings.value.Photos, 'albumSelect'))) {
+        albumSel.value = [...ids];
+      }
+    } catch (e: any) {
+      albumError.value = e?.message || String(e);
+    } finally {
+      albumsLoading.value = false;
     }
   }
-);
 
-/** 模块设置摘要（联动：展示勾选模块的关键配置） */
-export function moduleSummary(mod: string): string {
-  const cfg = settings.value[mod];
-  if (!cfg) return '';
-  const bits: string[] = [cfg.exportType || 'SPA'];
-  if (getPath(cfg, 'Comments.isFull')) bits.push('全评论');
-  if (getPath(cfg, 'Comments.isGet')) bits.push('评论');
-  if (getPath(cfg, 'Like.isGet')) bits.push('赞');
-  if (getPath(cfg, 'Visitor.isGet')) bits.push('访客');
-  return bits.join(' · ');
-}
+  function albumSelAll() {
+    albumSel.value = albums.value.map((a) => String(a.id));
+  }
+  function albumSelNone() {
+    albumSel.value = [];
+  }
 
-/**
- * 按 schema 提取设置 → 构造传给引擎的 QZone_Config（仅含 UI 暴露字段，避免覆盖引擎其它配置）
- * 注意：settings 为 Vue reactive proxy，提取值跨 IPC 会 DataCloneError，必须 toPlain 深拷贝
- */
-export function buildEngineConfig() {
-  const cfg: Record<string, any> = {};
-  const groups: [string, SettingItem[]][] = [
-    ['Common', COMMON_SCHEMA], ['Dev', DEV_SCHEMA],
-    ...MODULE_KEYS.map((m) => [m, MODULE_SCHEMA[m]] as [string, SettingItem[]]),
-  ];
-  for (const [mod, items] of groups) {
-    const modCfg: Record<string, any> = {};
-    for (const item of items) {
-      const val = getPath(settings.value[mod], item.key);
-      if (item.type === 'range') {
-        const r = getPath(settings.value[mod], item.key);
-        setPath(modCfg, `${item.key}.min`, r?.min);
-        setPath(modCfg, `${item.key}.max`, r?.max);
-      } else if (item.key === 'IncrementTime' && getPath(settings.value[mod], 'IncrementType') !== 'Custom') {
-        // 仅「自定义」模式透传增量时间；否则会覆盖引擎为 Last 自动刷新的增量点
-        continue;
-      } else {
-        setPath(modCfg, item.key, val);
+  /** 相册勾选 → 写入设置（自动保存 + 备份时经 buildEngineConfig 传递） */
+  watch(
+    albumSel,
+    (v) => {
+      setPath(settings.value.Photos, 'albumSelect', [...v]);
+    },
+    { deep: true }
+  );
+
+  /** 勾选「相册」模块时自动加载相册列表（设置模态与备份向导共用） */
+  watch(
+    () => selected.Photos,
+    (on) => {
+      if (on && authStore.auth.loggedIn && !albums.value.length && !albumsLoading.value) {
+        loadAlbums();
       }
     }
-    if (mod === 'Photos') {
-      // 相册多选：albumSelect 不在 schema 中，单独透传
-      // undefined = 未配置（引擎默认全部相册）；[] = 明确不备份相册；非空 = 按选择备份
-      const albumSel = getPath(settings.value.Photos, 'albumSelect');
-      if (Array.isArray(albumSel)) modCfg.albumSelect = albumSel;
+  );
+
+  /** 模块设置摘要（联动：展示勾选模块的关键配置） */
+  function moduleSummary(mod: string): string {
+    const cfg = settings.value[mod];
+    if (!cfg) return '';
+    const bits: string[] = [cfg.exportType || 'SPA'];
+    if (getPath(cfg, 'Comments.isFull')) bits.push('全评论');
+    if (getPath(cfg, 'Comments.isGet')) bits.push('评论');
+    if (getPath(cfg, 'Like.isGet')) bits.push('赞');
+    if (getPath(cfg, 'Visitor.isGet')) bits.push('访客');
+    return bits.join(' · ');
+  }
+
+  /**
+   * 按 schema 提取设置 → 构造传给引擎的 QZone_Config（仅含 UI 暴露字段，避免覆盖引擎其它配置）
+   * 注意：settings 为 Vue reactive proxy，提取值跨 IPC 会 DataCloneError，必须 toPlain 深拷贝
+   */
+  function buildEngineConfig() {
+    const cfg: Record<string, any> = {};
+    const groups: [string, SettingItem[]][] = [
+      ['Common', COMMON_SCHEMA], ['Dev', DEV_SCHEMA],
+      ...MODULE_KEYS.map((m) => [m, MODULE_SCHEMA[m]] as [string, SettingItem[]]),
+    ];
+    for (const [mod, items] of groups) {
+      const modCfg: Record<string, any> = {};
+      for (const item of items) {
+        const val = getPath(settings.value[mod], item.key);
+        if (item.type === 'range') {
+          const r = getPath(settings.value[mod], item.key);
+          setPath(modCfg, `${item.key}.min`, r?.min);
+          setPath(modCfg, `${item.key}.max`, r?.max);
+        } else if (item.key === 'IncrementTime' && getPath(settings.value[mod], 'IncrementType') !== 'Custom') {
+          // 仅「自定义」模式透传增量时间；否则会覆盖引擎为 Last 自动刷新的增量点
+          continue;
+        } else {
+          setPath(modCfg, item.key, val);
+        }
+      }
+      if (mod === 'Photos') {
+        // 相册多选：albumSelect 不在 schema 中，单独透传
+        // undefined = 未配置（引擎默认全部相册）；[] = 明确不备份相册；非空 = 按选择备份
+        const albumSelVal = getPath(settings.value.Photos, 'albumSelect');
+        if (Array.isArray(albumSelVal)) modCfg.albumSelect = albumSelVal;
+      }
+      cfg[mod] = modCfg;
     }
-    cfg[mod] = modCfg;
+    return toPlain(cfg);
   }
-  return toPlain(cfg);
-}
 
-async function pickDir() {
-  const r = await window.api.fs.selectDirectory('选择备份目标文件夹');
-  if (!r.canceled && r.path) {
-    targetDir.value = r.path;
-    window.api.config.set({ targetDir: r.path });
+  function pickDir() {
+    return window.api.fs.selectDirectory('选择备份目标文件夹').then((r) => {
+      if (!r.canceled && r.path) {
+        targetDir.value = r.path;
+        window.api.config.set({ targetDir: r.path });
+      }
+    });
   }
-}
 
-function openFolder() {
-  if (targetDir.value) window.api.fs.showInFolder(targetDir.value);
-}
+  function openFolder() {
+    if (targetDir.value) window.api.fs.showInFolder(targetDir.value);
+  }
 
-/* ============ 持久化（init 时恢复 + watch 自动保存） ============ */
+  /* -------- 持久化（init 时恢复 + watch 自动保存） -------- */
 
-let configLoaded = false;
-let settingsTimer: number | undefined;
+  let configLoaded = false;
+  let settingsTimer: number | undefined;
 
-watch(
-  selected,
-  (v) => {
-    if (!configLoaded) return;
-    window.api.config.set({ selectedModules: { ...v } });
-  },
-  { deep: true }
-);
+  watch(
+    selected,
+    (v) => {
+      if (!configLoaded) return;
+      window.api.config.set({ selectedModules: { ...v } });
+    },
+    { deep: true }
+  );
 
-watch(
-  settings,
-  (v) => {
-    if (!configLoaded) return;
-    window.clearTimeout(settingsTimer);
-    settingsTimer = window.setTimeout(() => {
-      window.api.config.set({ engineSettings: toPlain(v) }).catch((e) => {
-        console.warn('设置自动保存失败', e);
-      });
-    }, 300);
-  },
-  { deep: true }
-);
+  watch(
+    settings,
+    (v) => {
+      if (!configLoaded) return;
+      window.clearTimeout(settingsTimer);
+      settingsTimer = window.setTimeout(() => {
+        window.api.config.set({ engineSettings: toPlain(v) }).catch((e) => {
+          console.warn('设置自动保存失败', e);
+        });
+      }, 300);
+    },
+    { deep: true }
+  );
 
-/** 恢复上次记忆的配置（幂等，App.vue onMounted 调用） */
-export async function initConfig() {
-  if (configLoaded) return;
-  try {
-    const c = await window.api.config.get();
-    if (c?.targetDir) targetDir.value = c.targetDir;
-    if (c?.selectedModules && typeof c.selectedModules === 'object') {
-      for (const m of MODULES) selected.value[m] = !!c.selectedModules[m];
+  /** 恢复上次记忆的配置（幂等，App.vue onMounted 调用） */
+  async function initConfig() {
+    if (configLoaded) return;
+    try {
+      const c = await window.api.config.get();
+      if (c?.targetDir) targetDir.value = c.targetDir;
+      if (c?.selectedModules && typeof c.selectedModules === 'object') {
+        for (const m of MODULES) selected[m] = !!c.selectedModules[m];
+      }
+      if (c?.engineSettings) settings.value = deepMerge(defaultSettings(), c.engineSettings);
+      // 恢复已保存的相册选择
+      albumSel.value = [...((settings.value.Photos as any)?.albumSelect || [])];
+    } catch (e) {
+      console.warn('读取配置失败', e);
     }
-    if (c?.engineSettings) settings.value = deepMerge(defaultSettings(), c.engineSettings);
-    // 恢复已保存的相册选择
-    albumSel.value = [...((settings.value.Photos as any)?.albumSelect || [])];
-  } catch (e) {
-    console.warn('读取配置失败', e);
+    configLoaded = true;
   }
-  configLoaded = true;
-}
 
-export function useConfigStore() {
   return {
     // 状态
     selected, targetDir, settings, selectedCount, selectedModules,
@@ -459,11 +465,5 @@ export function useConfigStore() {
     loadAlbums, albumSelAll, albumSelNone,
     // 函数
     moduleSummary, buildEngineConfig, pickDir, openFolder, initConfig,
-    // 常量/工具（App.vue 设置模态等引用）
-    MODULES, MODULE_ICONS, MODULE_META, MODULE_KEYS,
-    EXPORT_OPTS, INCREMENT_OPTS, INCREMENT_MAP, DOWNLOAD_MAP,
-    COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA,
-    deepMerge, getPath, setPath, toPlain,
-    toLocalTime, toDbTime,
   };
-}
+});

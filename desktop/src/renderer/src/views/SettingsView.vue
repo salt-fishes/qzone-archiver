@@ -5,22 +5,23 @@
  */
 import { ref, watch, onMounted } from 'vue';
 import { onBeforeRouteLeave } from 'vue-router';
+import { storeToRefs } from 'pinia';
 import {
   useConfigStore, COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA,
   MODULES, MODULE_META, defaultSettings,
+  getPath, setPath, toPlain, toLocalTime, toDbTime,
 } from '../stores/config';
-import { useAuth } from '../stores/auth';
+import { useAuthStore } from '../stores/auth';
 import { useBackupStore } from '../stores/backup';
 import { CSelect } from '../components/ui/CSelect';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 
 const cfg = useConfigStore();
 const {
-  settings, getPath, setPath, toPlain, toLocalTime, toDbTime,
-  albums, albumsLoading, albumError, albumSel, albumClassNames,
-  loadAlbums, albumSelAll, albumSelNone,
-} = cfg;
-const { auth } = useAuth();
+  settings, albums, albumsLoading, albumError, albumSel, albumClassNames,
+} = storeToRefs(cfg);
+const { loadAlbums, albumSelAll, albumSelNone } = cfg;
+const { auth } = useAuthStore();
 const { pushLog } = useBackupStore();
 
 const TABS = [

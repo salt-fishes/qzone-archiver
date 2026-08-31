@@ -3,14 +3,14 @@
  *  统计来自主进程备份完成时自动记录的历史（backup:get-history），不依赖目录扫描 */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuth } from '../stores/auth';
+import { useAuthStore } from '../stores/auth';
 import LoginCard from '../components/home/LoginCard.vue';
 import StatSummary from '../components/home/StatSummary.vue';
 import LastBackupCard from '../components/home/LastBackupCard.vue';
 import PrivacyNote from '../components/home/PrivacyNote.vue';
 
 const router = useRouter();
-const { auth, refresh: refreshAuth, login, initAuth } = useAuth();
+const { auth, refresh: refreshAuth, login, initAuth } = useAuthStore();
 
 type HistoryEntry = {
   taskId?: string | null;

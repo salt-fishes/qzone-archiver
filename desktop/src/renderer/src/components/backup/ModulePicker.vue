@@ -5,17 +5,21 @@
  *  直接读写 stores/config.ts 的 settings（与设置模态实时联动）
  */
 import { computed } from 'vue';
-import { useAuth } from '../../stores/auth';
-import { useConfigStore, MODULE_KEYS, EXPORT_OPTS } from '../../stores/config';
+import { storeToRefs } from 'pinia';
+import { useAuthStore } from '../../stores/auth';
+import {
+  useConfigStore, MODULE_KEYS, EXPORT_OPTS,
+  MODULES, MODULE_ICONS, MODULE_META, getPath, setPath,
+} from '../../stores/config';
 import { CSelect } from '../ui/CSelect';
 
-const { auth } = useAuth();
+const { auth } = useAuthStore();
+const cfg = useConfigStore();
 const {
-  selected, selectedCount, selectedModules, MODULES, MODULE_ICONS, MODULE_META,
-  settings, getPath, setPath,
+  selected, selectedCount, selectedModules, settings,
   albums, albumsLoading, albumError, albumSel, albumClassNames,
-  loadAlbums, albumSelAll, albumSelNone,
-} = useConfigStore();
+} = storeToRefs(cfg);
+const { loadAlbums, albumSelAll, albumSelNone } = cfg;
 
 defineProps<{ estimates: Record<string, number> }>();
 

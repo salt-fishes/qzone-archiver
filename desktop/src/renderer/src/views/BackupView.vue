@@ -4,8 +4,9 @@
  *  开始后切换为进行中面板（进度/下载明细/运行日志；S4 将重做表达）
  */
 import { ref, computed, onMounted } from 'vue';
-import { useAuth } from '../stores/auth';
-import { useConfigStore, MODULE_META, MODULE_KEYS } from '../stores/config';
+import { storeToRefs } from 'pinia';
+import { useAuthStore } from '../stores/auth';
+import { useConfigStore, MODULE_META, MODULE_KEYS, getPath } from '../stores/config';
 import { useBackupStore } from '../stores/backup';
 import StepIndicator from '../components/backup/StepIndicator.vue';
 import ModulePicker from '../components/backup/ModulePicker.vue';
@@ -15,12 +16,14 @@ import LogPanel from '../components/backup/LogPanel.vue';
 import SuccessPanel from '../components/backup/SuccessPanel.vue';
 import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
 
-const { auth, login } = useAuth();
+const { auth, login } = useAuthStore();
 const cfg = useConfigStore();
-const { selectedCount, selectedModules, targetDir, settings, getPath } = cfg;
+const { selectedCount, selectedModules, targetDir, settings } = storeToRefs(cfg);
 const bk = useBackupStore();
 const {
   busy, paused, progress, elapsedSec, lastResult,
+} = storeToRefs(bk);
+const {
   pushLog, startBackup, pause, resume, cancel, resetResult,
 } = bk;
 

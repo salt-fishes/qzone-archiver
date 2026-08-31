@@ -5,14 +5,13 @@
  *  层级：默认折叠，点击标题展开——备份时进度区为唯一视觉焦点
  */
 import { ref } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useBackupStore } from '../../stores/backup';
 import { MODULE_META } from '../../stores/config';
 
 const bk = useBackupStore();
-const {
-  dlCount, DL_STATES, downloadFilter, filteredDownloads,
-  clearDoneDownloads, downloadName, formatBytes, stateLabel,
-} = bk;
+const { dlCount, downloadFilter, filteredDownloads } = storeToRefs(bk);
+const { DL_STATES, clearDoneDownloads, downloadName, formatBytes, stateLabel } = bk;
 
 const open = ref(false);
 </script>

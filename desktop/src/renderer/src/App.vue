@@ -1,18 +1,22 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
+import { storeToRefs } from 'pinia';
 import TopBar from './components/layout/TopBar.vue';
 import SideNav from './components/layout/SideNav.vue';
 import ConfirmDialog from './components/ui/ConfirmDialog.vue';
-import { useAuth } from './stores/auth';
+import { useAuthStore } from './stores/auth';
 import { useBackupStore } from './stores/backup';
-import { initConfig } from './stores/config';
+import { useConfigStore } from './stores/config';
 
 /** 应用壳：顶栏（品牌/连接/登录态）+ 侧边导航 + 四视图路由；欢迎页与帮助中心为全局模态 */
-const { auth, refresh: refreshAuth, login, logout, initAuth } = useAuth();
+const { auth, refresh: refreshAuth, login, logout, initAuth } = useAuthStore();
 
 /** 备份 store（引擎就绪标记 + 启动日志 + 事件订阅（应用级）） */
 const bk = useBackupStore();
-const { engineReady, engineFailed, retryEngine, pushLog, initBackup } = bk;
+const { engineReady, engineFailed } = storeToRefs(bk);
+const { retryEngine, pushLog, initBackup } = bk;
+
+const cfgStore = useConfigStore();
 
 const appInfo = ref<{ version: string; platform: string }>({ version: '', platform: '' });
 const showWelcome = ref(false);
@@ -60,7 +64,7 @@ onMounted(async () => {
   window.api.app.getInfo().then((i) => (appInfo.value = i));
 
   // 恢复配置（targetDir/模块勾选/引擎设置/相册选择，收口在 stores/config.ts）
-  await initConfig();
+  await cfgStore.initConfig();
   // 首次启动：展示欢迎引导
   try {
     const c = await window.api.config.get();

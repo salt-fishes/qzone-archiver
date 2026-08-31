@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /** 登录卡片（S2 概览）：未登录时的唯一焦点，引导扫码登录 */
-import { useAuth } from '../../stores/auth';
+import { useAuthStore } from '../../stores/auth';
 
-const { login } = useAuth();
+const { login } = useAuthStore();
 </script>
 
 <template>

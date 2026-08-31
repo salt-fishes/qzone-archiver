@@ -4,10 +4,12 @@
  *  层级：默认折叠，点击标题展开
  */
 import { ref, watch, nextTick } from 'vue';
+import { storeToRefs } from 'pinia';
 import { useBackupStore } from '../../stores/backup';
 
 const bk = useBackupStore();
-const { logs, exportLogs } = bk;
+const { logs } = storeToRefs(bk);
+const { exportLogs } = bk;
 const logBox = ref<HTMLDivElement | null>(null);
 const open = ref(false);
 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /** 保存位置选择（S3 步骤②）：选择备份目标文件夹，持久化到 config.targetDir */
+import { storeToRefs } from 'pinia';
 import { useConfigStore } from '../../stores/config';
 
-const { targetDir, pickDir, openFolder } = useConfigStore();
+const { targetDir } = storeToRefs(useConfigStore());
+const { pickDir, openFolder } = useConfigStore();
 </script>
 
 <template>
