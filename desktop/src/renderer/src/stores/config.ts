@@ -9,6 +9,14 @@ import { ref, computed, watch, reactive } from 'vue';
 import { defineStore } from 'pinia';
 import { useAuthStore } from './auth';
 import modulesData from '../../../shared/modules.json';
+// P4.2 单一来源：表单模型与默认值由 config-spec.json 生成（scripts/gen-ui-schema.mjs）
+import {
+  COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA, defaultSettings,
+  type SettingItem,
+} from './schema';
+
+// 表单模型 / 默认值 / 选项映射表统一从 schema.ts 转出口（消费端 import 路径不变）
+export * from './schema';
 
 /* ============ 模块元数据（P1-4 单一来源：src/shared/modules.json 派生） ============ */
 
@@ -38,170 +46,6 @@ export const MODULE_META: Record<string, { label: string }> = Object.fromEntries
 
 /** 有导出类型设置的模块（设置模型键；Statistics 为收尾统计，exportable:false） */
 export const MODULE_KEYS: string[] = MODULE_DEFS.filter((m) => m.exportable).map((m) => m.key);
-
-/* ============ 设置模型（完整 QZone_Config 形状，与引擎 config.js 默认对齐） ============ */
-
-export type SettingItem = {
-  key: string;
-  label: string;
-  type: 'select' | 'checkbox' | 'number' | 'text' | 'textarea' | 'range' | 'datetime';
-  options?: string[];
-  /** 下拉选项中文显示（未覆盖的选项显示原值） */
-  labelMap?: Record<string, string>;
-  help?: string;
-  min?: number;
-  max?: number;
-  step?: number;
-};
-
-export const EXPORT_OPTS = ['SPA', 'HTML', 'MarkDown', 'JSON'];
-/** 备份类型中文名（设置页下拉显示） */
-export const EXPORT_MAP: Record<string, string> = {
-  SPA: '网页版', HTML: '单文件网页', MarkDown: '文本', JSON: '原始数据',
-};
-/** 增量档位（LastTime 已并入 Last：只备份新增内容；LastTime 仅兼容旧配置显示） */
-export const INCREMENT_OPTS = ['Full', 'Last', 'Custom'];
-export const INCREMENT_MAP: Record<string, string> = {
-  Full: '全量',
-  Last: '上次（只备份新增）',
-  LastTime: '上次备份（累积）',
-  Custom: '自定义（指定时间）',
-};
-export const DOWNLOAD_MAP: Record<string, string> = {
-  Browser: '应用内下载',
-  Thunder_Link: '迅雷（链接文件）',
-  Thunder_Clipboard: '迅雷（剪贴板）',
-  Aria2: 'Aria2 / Motrix',
-};
-
-/** 模块通用设置（Messages 单独扩展） */
-function moduleSchema(extra: SettingItem[] = []): SettingItem[] {
-  return [
-    { key: 'exportType', label: '备份类型', type: 'select', options: EXPORT_OPTS, labelMap: EXPORT_MAP },
-    {
-      key: 'IncrementType',
-      label: '增量备份',
-      type: 'select',
-      options: INCREMENT_OPTS,
-      labelMap: INCREMENT_MAP,
-      help: '「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份',
-    },
-    { key: 'IncrementTime', label: '自定义备份时间', type: 'datetime', help: '仅「自定义」模式生效' },
-    ...extra,
-  ];
-}
-
-export const COMMON_SCHEMA: SettingItem[] = [
-  { key: 'downloadType', label: '文件下载方式', type: 'select', options: ['Browser', 'Thunder_Link', 'Thunder_Clipboard', 'Aria2'], labelMap: DOWNLOAD_MAP },
-  { key: 'downloadThread', label: '下载并发数', type: 'number', min: 1 },
-  { key: 'downloadSleep', label: '下载间隔（秒）', type: 'number', min: 0, step: 0.5 },
-  { key: 'isAutoFileSuffix', label: '自动识别文件后缀', type: 'checkbox' },
-  { key: 'autoFileSuffixTimeOut', label: '后缀识别超时（秒）', type: 'number', min: 10 },
-  { key: 'AvatarHost', label: '头像服务器（0 自动）', type: 'number', min: 0, max: 4 },
-  { key: 'listRetryCount', label: '列表重试次数', type: 'number', min: 0 },
-  { key: 'listRetrySleep', label: '列表重试间隔（秒）', type: 'number', min: 0 },
-  { key: 'waitCount', label: '稍候重试次数', type: 'number', min: 0 },
-  { key: 'waitTime', label: '稍候重试间隔（秒）', type: 'number', min: 1 },
-  { key: 'thunderTaskNum', label: '迅雷任务数', type: 'number', min: 50 },
-  { key: 'thunderTaskSleep', label: '迅雷唤起间隔（秒）', type: 'number', min: 1 },
-  { key: 'disabledShelf', label: '隐藏浏览器下载栏', type: 'checkbox' },
-  { key: 'useImageProxyGateway', label: 'Aria2 图片走代理网关', type: 'checkbox', help: '实验性：仅 Aria2 图片任务生效' },
-  { key: 'hasUserLink', label: '生成用户空间链接', type: 'checkbox' },
-  { key: 'Aria2.rpc', label: 'Aria2 RPC 地址', type: 'text' },
-  { key: 'Aria2.token', label: 'Aria2 密钥', type: 'text' },
-  { key: 'refererUrls', label: 'Referer 域名', type: 'textarea', help: '一行一个域名，用于浏览器下载防盗链' },
-];
-
-export const MODULE_SCHEMA: Record<string, SettingItem[]> = {
-  Messages: moduleSchema([
-    { key: 'isFull', label: '获取说说全文', type: 'checkbox' },
-    { key: 'isShowMore', label: '默认展开全文', type: 'checkbox' },
-    { key: 'hasThatYearToday', label: '生成那年今日', type: 'checkbox' },
-    { key: 'RecoverDeleted', label: '恢复已删除说说', type: 'checkbox', help: '实验性：通过互动消息恢复' },
-    { key: 'isFilterKeyword', label: '过滤广告关键词', type: 'checkbox' },
-    { key: 'Comments.isFull', label: '获取全部评论', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-    { key: 'Visitor.isGet', label: '获取最近访问', type: 'checkbox' },
-    { key: 'Visitor.randomSeconds', label: '最近访问间隔（秒）', type: 'range', min: 1 },
-  ]),
-  Blogs: moduleSchema([
-    { key: 'Comments.isFull', label: '获取全部评论', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-    { key: 'Visitor.isGet', label: '获取最近访问', type: 'checkbox' },
-    { key: 'Visitor.randomSeconds', label: '最近访问间隔（秒）', type: 'range', min: 1 },
-  ]),
-  Diaries: moduleSchema([
-    { key: 'Comments.isFull', label: '获取全部评论', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-    { key: 'Visitor.isGet', label: '获取最近访问', type: 'checkbox' },
-    { key: 'Visitor.randomSeconds', label: '最近访问间隔（秒）', type: 'range', min: 1 },
-  ]),
-  Photos: moduleSchema([
-    { key: 'Comments.isGet', label: '相册评论', type: 'checkbox' },
-    { key: 'Images.Comments.isGet', label: '图片评论', type: 'checkbox' },
-    { key: 'Images.Info.isGet', label: '获取图片详情', type: 'checkbox' },
-    { key: 'Images.isGetVideo', label: '下载图片视频', type: 'checkbox' },
-    { key: 'Images.isGetPreview', label: '下载预览图', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-    { key: 'Visitor.isGet', label: '获取最近访问', type: 'checkbox' },
-    { key: 'Visitor.randomSeconds', label: '最近访问间隔（秒）', type: 'range', min: 1 },
-  ]),
-  Videos: moduleSchema([
-    { key: 'Comments.isGet', label: '获取视频评论', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-  ]),
-  Boards: moduleSchema(),
-  Friends: moduleSchema(),
-  Favorites: moduleSchema(),
-  Shares: moduleSchema([
-    { key: 'Comments.isFull', label: '获取全部评论', type: 'checkbox' },
-    { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox' },
-    { key: 'Visitor.isGet', label: '获取最近访问', type: 'checkbox' },
-    { key: 'Visitor.randomSeconds', label: '最近访问间隔（秒）', type: 'range', min: 1 },
-  ]),
-  Visitors: moduleSchema(),
-};
-
-export const DEV_SCHEMA: SettingItem[] = [
-  { key: 'Maps.TxKey', label: '腾讯地图 Key', type: 'text', help: '用于微信朋友圈说说坐标转地址；不填则跳过，不影响备份' },
-];
-
-/** 设置默认值（对齐引擎 config.js Default_Config） */
-export function defaultSettings() {
-  return {
-    Common: {
-      downloadType: 'Browser', downloadThread: 10, downloadSleep: 2,
-      isAutoFileSuffix: true, autoFileSuffixTimeOut: 30, AvatarHost: 1,
-      listRetryCount: 5, listRetrySleep: 2, waitCount: 2, waitTime: 3600,
-      thunderTaskNum: 1500, thunderTaskSleep: 60, disabledShelf: false,
-      useImageProxyGateway: false, hasUserLink: true,
-      Aria2: { rpc: 'http://localhost:6800/jsonrpc', token: '' },
-      refererUrls: ['gtimg.com'],
-    },
-    Dev: { Maps: { TxKey: '' } },
-    Messages: {
-      exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', isFull: true, isShowMore: false,
-      hasThatYearToday: true, RecoverDeleted: false, isFilterKeyword: false,
-      Comments: { isFull: true }, Like: { isGet: true },
-      Visitor: { isGet: false, randomSeconds: { min: 1, max: 2 } },
-    },
-    Blogs: { exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', Comments: { isFull: true }, Like: { isGet: true }, Visitor: { isGet: false, randomSeconds: { min: 1, max: 2 } } },
-    Diaries: { exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', Comments: { isFull: true }, Like: { isGet: true }, Visitor: { isGet: false, randomSeconds: { min: 1, max: 2 } } },
-    Photos: {
-      exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', Comments: { isGet: true },
-      Images: { Comments: { isGet: true }, Info: { isGet: true }, isGetVideo: false, isGetPreview: true },
-      Like: { isGet: true }, Visitor: { isGet: false, randomSeconds: { min: 1, max: 2 } },
-      // 注意：albumSelect 默认不设置（undefined = 未配置 = 备份全部相册；显式空数组 = 不备份相册）
-      // 相册列表加载后由 UI 默认全选并写入数组
-    },
-    Videos: { exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', Comments: { isGet: true }, Like: { isGet: true } },
-    Boards: { exportType: 'SPA', IncrementType: 'Full' },
-    Friends: { exportType: 'SPA', IncrementType: 'Full' },
-    Favorites: { exportType: 'SPA', IncrementType: 'Full' },
-    Shares: { exportType: 'SPA', IncrementType: 'Full', IncrementTime: '2005-06-06 00:00:00', Comments: { isFull: true }, Like: { isGet: true }, Visitor: { isGet: false, randomSeconds: { min: 1, max: 2 } } },
-    Visitors: { exportType: 'SPA', IncrementType: 'Full' },
-  };
-}
 
 /* ============ 纯工具 ============ */
 

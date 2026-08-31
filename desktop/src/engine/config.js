@@ -22,7 +22,7 @@ const Default_Config = {
         downloadType: 'Browser',
         Aria2: {
             rpc: 'http://localhost:6800/jsonrpc',
-            token: undefined
+            token: ''
         },
         // 自动识别文件后缀
         isAutoFileSuffix: true,
@@ -265,8 +265,8 @@ const Default_Config = {
                     max: 2
                 }
             },
-            isGetVideo: true, // 是否获取相片关联的视频
-            isGetPreview: false, // 是否获取预览图
+            isGetVideo: false, // 是否获取相片关联的视频
+            isGetPreview: true, // 是否获取预览图
             fileStructureType: 'File', // 文件夹结构类型
             RenameType: "Default", // 相片命名规则
         },

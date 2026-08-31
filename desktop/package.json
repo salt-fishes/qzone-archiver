@@ -7,6 +7,7 @@
   "main": "src/main/index.js",
   "scripts": {
     "sync:baseline": "node scripts/sync-baseline.mjs",
+    "gen:config": "node scripts/gen-engine-config.mjs && node scripts/gen-ui-schema.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
     "lint": "eslint .",
     "test": "vitest run",

@@ -19,6 +19,9 @@ jobs:
       - name: Install
         working-directory: desktop
         run: npm ci
+      - name: Config spec check
+        working-directory: desktop
+        run: node scripts/gen-engine-config.mjs --check
       - name: Typecheck
         working-directory: desktop
         run: npm run typecheck

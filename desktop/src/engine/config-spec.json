@@ -1,0 +1,165 @@
+{
+  "$comment": "P4.2 配置单一来源：UI 表单与引擎默认值的唯一事实源。新增/修改配置项只改本文件，然后运行 npm run gen:config —— gen-ui-schema.mjs 生成渲染层 schema.ts（表单模型 + defaultSettings），gen-engine-config.mjs 同步 config.js Default_Config 被覆盖字段的默认值。default 为引擎 Default_Config 的对齐值；type 为 UI 表单类型；range 型的 default 为 {min,max}。",
+  "labelMaps": {
+    "EXPORT_MAP": {
+      "SPA": "网页版",
+      "HTML": "单文件网页",
+      "MarkDown": "文本",
+      "JSON": "原始数据"
+    },
+    "INCREMENT_MAP": {
+      "Full": "全量",
+      "Last": "上次（只备份新增）",
+      "LastTime": "上次备份（累积）",
+      "Custom": "自定义（指定时间）"
+    },
+    "DOWNLOAD_MAP": {
+      "Browser": "应用内下载",
+      "Thunder_Link": "迅雷（链接文件）",
+      "Thunder_Clipboard": "迅雷（剪贴板）",
+      "Aria2": "Aria2 / Motrix"
+    }
+  },
+  "groups": {
+    "Common": {
+      "ui": "common",
+      "items": [
+        { "key": "downloadType", "label": "文件下载方式", "type": "select", "options": ["Browser", "Thunder_Link", "Thunder_Clipboard", "Aria2"], "labelMap": "DOWNLOAD_MAP", "default": "Browser" },
+        { "key": "downloadThread", "label": "下载并发数", "type": "number", "min": 1, "default": 10 },
+        { "key": "downloadSleep", "label": "下载间隔（秒）", "type": "number", "min": 0, "step": 0.5, "default": 2 },
+        { "key": "isAutoFileSuffix", "label": "自动识别文件后缀", "type": "checkbox", "default": true },
+        { "key": "autoFileSuffixTimeOut", "label": "后缀识别超时（秒）", "type": "number", "min": 10, "default": 30 },
+        { "key": "AvatarHost", "label": "头像服务器（0 自动）", "type": "number", "min": 0, "max": 4, "default": 1 },
+        { "key": "listRetryCount", "label": "列表重试次数", "type": "number", "min": 0, "default": 5 },
+        { "key": "listRetrySleep", "label": "列表重试间隔（秒）", "type": "number", "min": 0, "default": 2 },
+        { "key": "waitCount", "label": "稍候重试次数", "type": "number", "min": 0, "default": 2 },
+        { "key": "waitTime", "label": "稍候重试间隔（秒）", "type": "number", "min": 1, "default": 3600 },
+        { "key": "thunderTaskNum", "label": "迅雷任务数", "type": "number", "min": 50, "default": 1500 },
+        { "key": "thunderTaskSleep", "label": "迅雷唤起间隔（秒）", "type": "number", "min": 1, "default": 60 },
+        { "key": "disabledShelf", "label": "隐藏浏览器下载栏", "type": "checkbox", "default": false },
+        { "key": "useImageProxyGateway", "label": "Aria2 图片走代理网关", "type": "checkbox", "help": "实验性：仅 Aria2 图片任务生效", "default": false },
+        { "key": "hasUserLink", "label": "生成用户空间链接", "type": "checkbox", "default": true },
+        { "key": "Aria2.rpc", "label": "Aria2 RPC 地址", "type": "text", "default": "http://localhost:6800/jsonrpc" },
+        { "key": "Aria2.token", "label": "Aria2 密钥", "type": "text", "default": "" },
+        { "key": "refererUrls", "label": "Referer 域名", "type": "textarea", "help": "一行一个域名，用于浏览器下载防盗链", "default": ["gtimg.com"] }
+      ]
+    },
+    "Dev": {
+      "ui": "dev",
+      "items": [
+        { "key": "Maps.TxKey", "label": "腾讯地图 Key", "type": "text", "help": "用于微信朋友圈说说坐标转地址；不填则跳过，不影响备份", "default": "" }
+      ]
+    },
+    "Messages": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "isFull", "label": "获取说说全文", "type": "checkbox", "default": true },
+        { "key": "isShowMore", "label": "默认展开全文", "type": "checkbox", "default": false },
+        { "key": "hasThatYearToday", "label": "生成那年今日", "type": "checkbox", "default": true },
+        { "key": "RecoverDeleted", "label": "恢复已删除说说", "type": "checkbox", "help": "实验性：通过互动消息恢复", "default": false },
+        { "key": "isFilterKeyword", "label": "过滤广告关键词", "type": "checkbox", "default": false },
+        { "key": "Comments.isFull", "label": "获取全部评论", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true },
+        { "key": "Visitor.isGet", "label": "获取最近访问", "type": "checkbox", "default": false },
+        { "key": "Visitor.randomSeconds", "label": "最近访问间隔（秒）", "type": "range", "min": 1, "default": { "min": 1, "max": 2 } }
+      ]
+    },
+    "Blogs": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "Comments.isFull", "label": "获取全部评论", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true },
+        { "key": "Visitor.isGet", "label": "获取最近访问", "type": "checkbox", "default": false },
+        { "key": "Visitor.randomSeconds", "label": "最近访问间隔（秒）", "type": "range", "min": 1, "default": { "min": 1, "max": 2 } }
+      ]
+    },
+    "Diaries": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "Comments.isFull", "label": "获取全部评论", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true },
+        { "key": "Visitor.isGet", "label": "获取最近访问", "type": "checkbox", "default": false },
+        { "key": "Visitor.randomSeconds", "label": "最近访问间隔（秒）", "type": "range", "min": 1, "default": { "min": 1, "max": 2 } }
+      ]
+    },
+    "Photos": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "Comments.isGet", "label": "相册评论", "type": "checkbox", "default": true },
+        { "key": "Images.Comments.isGet", "label": "图片评论", "type": "checkbox", "default": true },
+        { "key": "Images.Info.isGet", "label": "获取图片详情", "type": "checkbox", "default": true },
+        { "key": "Images.isGetVideo", "label": "下载图片视频", "type": "checkbox", "default": false },
+        { "key": "Images.isGetPreview", "label": "下载预览图", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true },
+        { "key": "Visitor.isGet", "label": "获取最近访问", "type": "checkbox", "default": false },
+        { "key": "Visitor.randomSeconds", "label": "最近访问间隔（秒）", "type": "range", "min": 1, "default": { "min": 1, "max": 2 } }
+      ]
+    },
+    "Videos": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "Comments.isGet", "label": "获取视频评论", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true }
+      ]
+    },
+    "Boards": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" }
+      ]
+    },
+    "Friends": {
+      "ui": "module",
+      "$comment": "Friends 增量由 isIncrement 布尔控制（collectors/friends.js:59），不走 IncrementType/IncrementTime",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "isIncrement", "label": "增量备份", "type": "checkbox", "help": "按上次备份结果只采集新增好友", "default": false }
+      ]
+    },
+    "Favorites": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" }
+      ]
+    },
+    "Shares": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" },
+        { "key": "Comments.isFull", "label": "获取全部评论", "type": "checkbox", "default": true },
+        { "key": "Like.isGet", "label": "获取赞列表", "type": "checkbox", "default": true },
+        { "key": "Visitor.isGet", "label": "获取最近访问", "type": "checkbox", "default": false },
+        { "key": "Visitor.randomSeconds", "label": "最近访问间隔（秒）", "type": "range", "min": 1, "default": { "min": 1, "max": 2 } }
+      ]
+    },
+    "Visitors": {
+      "ui": "module",
+      "items": [
+        { "key": "exportType", "label": "备份类型", "type": "select", "options": ["SPA", "HTML", "MarkDown", "JSON"], "labelMap": "EXPORT_MAP", "default": "SPA" },
+        { "key": "IncrementType", "label": "增量备份", "type": "select", "options": ["Full", "Last", "Custom"], "labelMap": "INCREMENT_MAP", "help": "「上次」只采集上次之后的新内容并累积全部历史；「自定义」从指定时间起备份", "default": "Full" },
+        { "key": "IncrementTime", "label": "自定义备份时间", "type": "datetime", "help": "仅「自定义」模式生效", "default": "2005-06-06 00:00:00" }
+      ]
+    }
+  }
+}
