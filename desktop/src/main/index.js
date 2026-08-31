@@ -9,6 +9,7 @@ import { registerEngineIpc } from './ipc/engine.js';
 import { watchAuthStatus } from './ipc/auth.js';
 import { engineBridge } from './services/engine-bridge.js';
 import { downloadManager } from './services/download-manager.js';
+import { logger } from './services/logger.js';
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -32,15 +33,16 @@ if (!gotLock) {
 
     // 引擎窗口加载到 qzone 页面后注入引擎（登录跳转完成后也会触发）
     const engineWc = windows.engine?.webContents;
-    // 开发期：引擎窗口 console 转发到 stdout（排查注入错误）
+    // 引擎窗口 console 透传（P6.1 分级白名单）：desktop-adapters 的 console 包装为引擎日志
+    // 加 [e:level] 标记，这里只透传带标记的日志并经 logger 落盘（分级 + 轮转）；
+    // qzone 页面自身噪音（JSONP 回调未定义、CSP/Mixed Content、遥测上报等）无标记，整体降噪丢弃，
+    // 取代原正则黑名单（新增页面噪音不再需要逐条补正则）。
     engineWc?.on('console-message', (event, level, message) => {
       const msg = typeof event === 'object' ? event.message : message;
       if (!msg) return;
-      // 过滤 qzone 页面自身噪音（页面脚本 JSONP 回调未定义、CSP/Mixed Content 遥测上报等），仅转发引擎侧有效日志
-      if (/SHARE is not defined|shine0_Callback is not defined|Content Security Policy|Mixed Content|galileotelemetry|isdspeed/.test(msg)) {
-        return;
-      }
-      console.log(`[engine:console] ${msg}`);
+      const m = /^\[e:(debug|info|warn|error)\]\s?/.exec(msg);
+      if (!m) return;
+      logger.log(m[1], `[engine] ${msg.slice(m[0].length)}`);
     });
     engineWc?.on('did-navigate', (_event, url) => {
       // 离开 qzone 页面（如跳转登录页）视为引擎上下文失效，待回到 qzone 页重新注入
@@ -50,7 +52,7 @@ if (!gotLock) {
     });
     engineWc?.on('did-finish-load', () => {
       if (!engineBridge.ready && engineWc.getURL().startsWith('https://user.qzone.qq.com')) {
-        engineBridge.inject().catch((e) => console.error('[main] 引擎注入失败', e));
+        engineBridge.inject().catch((e) => logger.error(`[main] 引擎注入失败 ${e?.stack || e}`));
       }
     });
 

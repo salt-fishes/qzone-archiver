@@ -11,6 +11,8 @@
   // 引擎侧 console 包装：格式化 %s/%d/%i/%f/%o/%% 占位符、对象转 JSON。
   // 主进程 console-message 事件拿不到调用参数，不预格式化会导致日志出现原始占位符（如 共有日志%i篇 0）
   // 或 [object Object]，影响排查可读性。
+  // P6.1：同时为每条引擎日志加 [e:level] 分级标记——主进程 console-message 只透传带标记的
+  // 引擎日志（qzone 页面自身噪音无标记，整体降噪丢弃，取代原正则黑名单）。
   (function () {
     const fmt = (format, args) => {
       let i = 0;
@@ -29,21 +31,23 @@
         return v === undefined ? 'undefined' : String(v);
       });
     };
+    const plain = (v) =>
+      typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v);
     for (const name of ['log', 'info', 'warn', 'error', 'debug']) {
       const orig = console[name];
+      const lvl = name === 'log' ? 'info' : name;
       console[name] = function (...args) {
+        let text;
         if (typeof args[0] === 'string' && /%[sdifoO%]/.test(args[0])) {
-          return orig.call(console, fmt(args[0], args.slice(1)));
-        }
-        if (args.length > 1) {
+          text = fmt(args[0], args.slice(1));
+        } else if (args.length > 1) {
           // 无占位符但带附加参数：对象转 JSON，避免 [object Object]
-          const tail = args
-            .slice(1)
-            .map((v) => (typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)))
-            .join(' ');
-          return orig.call(console, args[0] + (tail ? ' ' + tail : ''));
+          const tail = args.slice(1).map(plain).join(' ');
+          text = String(args[0]) + (tail ? ' ' + tail : '');
+        } else {
+          text = plain(args[0]);
         }
-        return orig.apply(console, args);
+        return orig.call(console, `[e:${lvl}] ` + text);
       };
     }
   })();
