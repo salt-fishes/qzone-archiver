@@ -30,6 +30,8 @@ desktop/src/renderer/dist/
 node_modules/
 package-lock.json
 yarn.lock
+# 桌面端锁文件入库：CI 的 npm ci 与 setup-node 缓存依赖它（b694cdc 发布后首次跑 CI 发现）
+!desktop/package-lock.json
 
 # ============ SPA 测试数据（含真实隐私，本地保留）============
 # 开发时放入测试数据，不入库；保留目录结构通过 .gitkeep
