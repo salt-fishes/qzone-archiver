@@ -90,7 +90,7 @@ export const backupStats = {
    * P3-4：目录统计异步化，本函数为 async，调用方 fire-and-forget 即可
    * @param {object} p.errors 模块级失败明细（P3-1：P0-3 遗留项落库，重启后历史不再显示假成功）
    */
-  async recordBackup({ taskId, targetDir, modules, results, errors }) {
+  async recordBackup({ taskId, targetDir, modules, results, errors, target }) {
     const dir = String(targetDir || '');
     if (!dir) return null;
 
@@ -103,6 +103,8 @@ export const backupStats = {
       results: results || {},
       // 部分模块失败时记录明细（module/phase/code/message），全成功不落字段
       errors: Array.isArray(errors) && errors.length ? errors : undefined,
+      // v4.6：采集目标（uin/昵称），他人模式档案按目标分组展示（旧记录无此字段，回退为本人）
+      target: target && target.uin ? { uin: String(target.uin), nickname: target.nickname || '' } : undefined,
       total: 0,
       moduleCounts: {},
       size: 0,

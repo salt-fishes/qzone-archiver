@@ -1,28 +1,33 @@
 <script setup lang="ts">
-/** 历史视图（S5）：备份记录列表（自动记录，无需手动选择目录） */
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+/**
+ * 我的档案（v4.6）：历史备份按采集目标分组展示（本人 / 各好友）
+ * 操作：浏览（viewer）/ 打开文件夹 / 压缩
+ */
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import { NButton, NTag, NEmpty, NAvatar, NPopconfirm, useMessage } from 'naive-ui';
+import { MODULE_META } from '../stores/config';
 
 type HistoryEntry = {
   taskId?: string | null;
   completedAt: number;
   targetDir: string;
   name: string;
+  modules: string[];
   total: number;
   moduleCounts: Record<string, number>;
   size: number;
   files: number;
-  /** P3-1：模块级失败明细落库后，历史卡片显示「部分失败」标记 */
-  errors?: { module: string; message?: string }[];
+  errors?: unknown[];
+  target?: { uin: string; nickname?: string };
 };
+
+const router = useRouter();
+const message = useMessage();
 
 const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
-let unsub: (() => void) | null = null;
-
-// zip 打包（后端链路：window.api.zip.create → packager archiver，进度经 zip:progress 推送）
 const zipping = ref<string | null>(null);
-const zipPercent = ref(0);
-let unsubZip: (() => void) | null = null;
 
 async function loadHistory() {
   try {
@@ -35,235 +40,273 @@ async function loadHistory() {
   }
 }
 
-function openViewer(b: HistoryEntry) {
-  window.api.viewer.open(`${b.targetDir}/index.html`);
-}
-function openFolder(b: HistoryEntry) {
-  window.api.fs.showInFolder(`${b.targetDir}/index.html`);
-}
-
-async function zipBackup(b: HistoryEntry) {
-  if (zipping.value) return;
-  zipping.value = b.targetDir;
-  zipPercent.value = 0;
-  const dest = `${b.targetDir}.zip`;
-  try {
-    const r = await window.api.zip.create(b.targetDir, dest);
-    if (r?.ok) {
-      window.api.fs.showInFolder(dest);
-    } else {
-      console.warn('zip 打包失败', r?.error);
+/** 按目标 uin 分组（旧记录无 target 字段 → 归入"我的空间"） */
+const groups = computed(() => {
+  const map = new Map<string, { key: string; label: string; uin?: string; items: HistoryEntry[] }>();
+  for (const h of history.value) {
+    const uin = h.target?.uin;
+    const key = uin || 'me';
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        uin,
+        label: uin ? h.target?.nickname || `好友 ${uin}` : '我的空间',
+        items: [],
+      });
     }
-  } catch (e) {
-    console.warn('zip 打包失败', e);
+    map.get(key)!.items.push(h);
+  }
+  return Array.from(map.values());
+});
+
+function openViewer(dir: string) {
+  window.api.viewer.open(dir);
+}
+function openFolder(dir: string) {
+  window.api.fs.showInFolder(dir);
+}
+async function zip(h: HistoryEntry) {
+  if (zipping.value) return;
+  zipping.value = h.targetDir;
+  try {
+    const dest = `${h.targetDir.replace(/[\\/]+$/, '')}.zip`;
+    await window.api.zip.create(h.targetDir, dest);
+    message.success(`已压缩：${dest}`);
+  } catch (e: any) {
+    message.error(`压缩失败：${e?.message || e}`);
   } finally {
     zipping.value = null;
   }
 }
 
-function formatSize(bytes?: number) {
-  if (!bytes) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+function fmtSize(n: number) {
+  if (!n) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
 }
-function formatTime(ms: number) {
-  const d = new Date(ms);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+function fmtTime(ts: number) {
+  const d = new Date(ts);
+  const p2 = (x: number) => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+function moduleLabels(h: HistoryEntry) {
+  return (h.modules || [])
+    .filter((m) => m !== 'Statistics')
+    .map((m) => MODULE_META[m]?.label || m)
+    .join('、');
 }
 
+let unsub: (() => void) | null = null;
 onMounted(async () => {
   await loadHistory();
   unsub = window.api.on('backup:history-changed', () => loadHistory());
-  unsubZip = window.api.on('zip:progress', (p: any) => {
-    zipPercent.value = p?.percent ?? 0;
-  });
 });
 onBeforeUnmount(() => {
   unsub?.();
-  unsubZip?.();
 });
 </script>
 
 <template>
-  <section class="archives-view">
-    <div class="av-head">
-      <h2 class="view-title">
-        历史备份
-      </h2>
-      <p class="view-desc">
-        每次备份完成会自动记录在这里，无需手动选择目录。
-      </p>
+  <section class="archives">
+    <div class="ar-head">
+      <h2>我的档案</h2>
+      <p>每一次备份都会生成可直接打开的离线档案</p>
     </div>
 
-    <div
-      v-if="loading"
-      class="av-empty"
-    >
-      加载中…
-    </div>
-    <div
-      v-else-if="history.length === 0"
-      class="av-empty"
-    >
-      <p>暂无备份记录</p>
-      <p class="av-empty-sub">
-        完成一次备份后，记录会自动出现在这里。
-      </p>
-      <router-link
-        class="btn primary"
-        to="/backup"
+    <template v-if="loading && !history.length">
+      <div class="ar-empty">
+        加载中…
+      </div>
+    </template>
+    <template v-else-if="!history.length">
+      <NEmpty
+        description="还没有备份档案"
+        class="ar-empty"
       >
-        去备份
-      </router-link>
-    </div>
+        <template #extra>
+          <NButton
+            type="primary"
+            round
+            @click="router.push('/new')"
+          >
+            去备份
+          </NButton>
+        </template>
+      </NEmpty>
+    </template>
 
-    <div
-      v-else
-      class="av-list"
-    >
+    <template v-else>
       <div
-        v-for="b in history"
-        :key="b.taskId || b.targetDir"
-        class="av-row"
+        v-for="g in groups"
+        :key="g.key"
+        class="group"
       >
-        <div class="av-info">
-          <span
-            class="av-name"
-            :title="b.targetDir"
-          >{{ b.name }}</span>
-          <span class="av-meta">
-            {{ formatTime(b.completedAt) }}
-            <template v-if="b.total"> · {{ b.total.toLocaleString() }} 条</template>
-            <template v-if="b.files"> · {{ b.files.toLocaleString() }} 文件</template>
-            <template v-if="b.size"> · {{ formatSize(b.size) }}</template>
-          </span>
-          <span
-            v-if="b.errors?.length"
-            class="av-err"
-            :title="b.errors.map((e) => `${e.module}: ${e.message || '失败'}`).join('\n')"
-          >部分失败（{{ b.errors.length }} 模块）</span>
+        <div class="g-head">
+          <NAvatar
+            round
+            :size="30"
+            :src="g.uin ? `https://q1.qlogo.cn/g?b=qq&nk=${g.uin}&s=60` : undefined"
+            style="background: #b45f3d"
+          >
+            {{ (g.label || '?').slice(0, 1) }}
+          </NAvatar>
+          <span class="g-name">{{ g.label }}</span>
+          <NTag
+            v-if="g.uin"
+            size="tiny"
+            round
+            :bordered="false"
+          >
+            好友
+          </NTag>
+          <span class="g-count">{{ g.items.length }} 次备份</span>
         </div>
-        <div class="av-actions">
-          <button
-            class="btn primary sm"
-            @click="openViewer(b)"
-          >
-            浏览
-          </button>
-          <button
-            class="btn sm"
-            :disabled="!!zipping && zipping !== b.targetDir"
-            @click="zipBackup(b)"
-          >
-            {{ zipping === b.targetDir ? `打包中 ${zipPercent}%` : '打包 zip' }}
-          </button>
-          <button
-            class="btn sm"
-            @click="openFolder(b)"
-          >
-            打开文件夹
-          </button>
+
+        <div
+          v-for="h in g.items"
+          :key="h.taskId || h.completedAt"
+          class="ar-item"
+        >
+          <div class="ai-main">
+            <div class="ai-time">
+              {{ fmtTime(h.completedAt) }}
+              <NTag
+                v-if="h.errors?.length"
+                size="tiny"
+                type="warning"
+                round
+                :bordered="false"
+              >
+                部分失败
+              </NTag>
+            </div>
+            <div class="ai-meta">
+              <span class="ai-modules">{{ moduleLabels(h) || '—' }}</span>
+              <span>{{ (h.total || 0).toLocaleString() }} 条</span>
+              <span>{{ h.files || 0 }} 个文件</span>
+              <span v-if="h.size">{{ fmtSize(h.size) }}</span>
+            </div>
+          </div>
+          <div class="ai-actions">
+            <NButton
+              size="tiny"
+              type="primary"
+              round
+              @click="openViewer(h.targetDir)"
+            >
+              浏览
+            </NButton>
+            <NButton
+              size="tiny"
+              quaternary
+              round
+              @click="openFolder(h.targetDir)"
+            >
+              文件夹
+            </NButton>
+            <NPopconfirm @positive-click="zip(h)">
+              <template #trigger>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  round
+                  :loading="zipping === h.targetDir"
+                >
+                  压缩
+                </NButton>
+              </template>
+              在档案同级目录生成 .zip 压缩包？
+            </NPopconfirm>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
   </section>
 </template>
 
 <style scoped>
-.archives-view {
+.archives {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 760px;
+  gap: 22px;
 }
-.av-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.view-title {
-  margin: 0;
-  font-family: Georgia, 'STZhongsong', 'SimSun', serif;
+.ar-head h2 {
+  margin: 0 0 4px;
   font-size: 20px;
-  color: var(--accent-deep);
-  letter-spacing: 1px;
 }
-.view-desc {
+.ar-head p {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  font-size: 13px;
+  opacity: 0.55;
 }
-.av-empty {
-  padding: 46px 20px;
-  background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
+.ar-empty {
+  padding: 60px 0;
   text-align: center;
-  font-size: 14px;
-  color: var(--ink-soft);
+  opacity: 0.7;
+}
+.group {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
 }
-.av-empty p {
-  margin: 0;
-}
-.av-empty-sub {
-  font-size: 12px;
-  margin-bottom: 6px !important;
-}
-.av-list {
+.g-head {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.av-row {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  padding: 14px 18px;
-  background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  gap: 10px;
+  margin-bottom: 2px;
 }
-.av-row:hover {
-  border-color: #c8b28a;
-  box-shadow: 0 2px 8px rgba(80, 60, 30, 0.06);
+.g-name {
+  font-size: 14.5px;
+  font-weight: 600;
 }
-.av-info {
+.g-count {
+  margin-left: auto;
+  font-size: 12px;
+  opacity: 0.45;
+}
+.ar-item {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  transition: border-color var(--dur-fast) ease;
+}
+.ar-item:hover {
+  border-color: rgba(180, 95, 61, 0.4);
+}
+.ai-main {
   min-width: 0;
 }
-.av-name {
-  font-size: 14px;
+.ai-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
   font-weight: 600;
-  color: var(--ink);
+  margin-bottom: 4px;
+}
+.ai-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  opacity: 0.55;
+}
+.ai-modules {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 340px;
 }
-.av-meta {
-  font-size: 12px;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.av-err {
-  font-size: 12px;
-  color: var(--warn, #c0392b);
-  white-space: nowrap;
-  cursor: help;
-}
-.av-actions {
+.ai-actions {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
 }
 </style>

@@ -1,16 +1,11 @@
 <script setup lang="ts">
-/** 概览视图（S2）：登录态 + 累计档案统计 + 上次备份 + 主 CTA + 隐私条
- *  统计来自主进程备份完成时自动记录的历史（backup:get-history），不依赖目录扫描 */
+/** 首页（v4.6 简化版）：居中主视觉（图标+主 CTA）+ 一行统计 + 最近任务，其余全部让位给主要内容 */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
+import { NButton, NTag, NEmpty } from 'naive-ui';
+import { Motion } from 'motion-v';
 import { useAuthStore } from '../stores/auth';
-import LoginCard from '../components/home/LoginCard.vue';
-import StatSummary from '../components/home/StatSummary.vue';
-import LastBackupCard from '../components/home/LastBackupCard.vue';
-import PrivacyNote from '../components/home/PrivacyNote.vue';
-
-const router = useRouter();
-const { auth, refresh: refreshAuth, login, initAuth } = useAuthStore();
+import appIcon from '../assets/icon.png';
 
 type HistoryEntry = {
   taskId?: string | null;
@@ -18,12 +13,15 @@ type HistoryEntry = {
   targetDir: string;
   name: string;
   modules: string[];
-  results: Record<string, string>;
   total: number;
   moduleCounts: Record<string, number>;
   size: number;
   files: number;
+  target?: { uin: string; nickname?: string };
 };
+
+const router = useRouter();
+const { auth, refresh: refreshAuth, login, initAuth } = useAuthStore();
 
 const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
@@ -39,28 +37,41 @@ async function loadHistory() {
   }
 }
 
-/** 数据概览：备份次数 + 最近一次条目数（避免增量备份重复累计误导）+ 累计文件/空间 */
-const stats = computed(() => {
-  const list = history.value;
-  const last = list[0];
-  return {
-    backups: list.length,
-    total: last?.total || 0,
-    files: list.reduce((s, h) => s + (h.files || 0), 0),
-    size: list.reduce((s, h) => s + (h.size || 0), 0),
-  };
+const recent = computed(() => history.value.slice(0, 3));
+
+/** 一行统计：无记录时不显示 */
+const statLine = computed(() => {
+  if (!history.value.length) return '';
+  const last = history.value[0];
+  const files = history.value.reduce((s, h) => s + (h.files || 0), 0);
+  const size = fmtSize(history.value.reduce((s, h) => s + (h.size || 0), 0));
+  const bits = [`已备份 ${history.value.length} 次`];
+  if (last?.total) bits.push(`最近一次 ${last.total.toLocaleString()} 条`);
+  if (files) bits.push(`共 ${files.toLocaleString()} 个文件`);
+  if (size) bits.push(size);
+  return bits.join(' · ');
 });
 
-/** 上次备份（最新一条记录） */
-const lastBackup = computed<HistoryEntry | null>(() => history.value[0] || null);
-
-/** 主 CTA：未登录先引导扫码，已登录进入备份向导 */
 function onStart() {
   if (!auth.loggedIn) {
     login();
     return;
   }
-  router.push('/backup');
+  router.push('/new');
+}
+
+function fmtSize(n: number) {
+  if (!n) return '';
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
+  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+function fmtTime(ts: number) {
+  const d = new Date(ts);
+  const p2 = (x: number) => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
 let unsub: (() => void) | null = null;
@@ -69,7 +80,6 @@ onMounted(async () => {
   initAuth();
   refreshAuth();
   await loadHistory();
-  // 备份完成时主进程自动记录并广播，概览实时刷新
   unsub = window.api.on('backup:history-changed', () => loadHistory());
 });
 
@@ -80,62 +90,101 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="home">
-    <!-- 主行动：欢迎/登录 + 主 CTA（首屏焦点） -->
-    <div class="home-hero">
-      <section
-        v-if="auth.loggedIn"
-        class="panel welcome-card"
+    <!-- 主视觉：一行说清这是什么、下一步做什么 -->
+    <Motion
+      tag="div"
+      class="hero"
+      :initial="{ opacity: 0, y: 16 }"
+      :animate="{ opacity: 1, y: 0 }"
+      :transition="{ duration: 0.35 }"
+    >
+      <img
+        class="hero-icon"
+        :src="appIcon"
+        alt=""
       >
-        <h2 class="welcome-title">
-          欢迎回来{{ auth.nickname ? `，${auth.nickname}` : '' }}
-        </h2>
-        <p class="welcome-sub">
-          你的空间记忆已备妥，随时可以开启新一轮备份。
-        </p>
-      </section>
-      <LoginCard v-else />
-      <div class="hero-cta">
-        <button
-          class="btn primary cta-btn"
+      <h1>{{ auth.loggedIn ? `你好${auth.nickname ? `，${auth.nickname}` : ''}` : '备份你的 QQ 空间' }}</h1>
+      <p class="hero-sub">
+        {{ auth.loggedIn ? '把空间记忆完整保存到本地，随时离线浏览。' : '扫码登录后，一键保存说说、相册、日志到本机。' }}
+      </p>
+      <div class="hero-actions">
+        <NButton
+          type="primary"
+          size="large"
+          round
+          class="cta"
           @click="onStart"
         >
-          <svg
-            class="cta-ico"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.5"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <rect
-              x="5"
-              y="10"
-              width="14"
-              height="10"
-              rx="2"
-            />
-            <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-          </svg>
-          开始备份
-        </button>
-        <p class="cta-hint">
-          {{ auth.loggedIn ? '选择内容，一键备份到本地' : '登录后即可开始备份你的空间' }}
-        </p>
+          {{ auth.loggedIn ? '开始备份' : '扫码登录' }}
+        </NButton>
+        <NButton
+          v-if="history.length"
+          size="large"
+          quaternary
+          round
+          @click="router.push('/archives')"
+        >
+          浏览档案
+        </NButton>
       </div>
+      <p
+        v-if="statLine"
+        class="hero-stat"
+      >
+        {{ statLine }}
+      </p>
+    </Motion>
+
+    <!-- 最近任务 -->
+    <div class="recent">
+      <div class="recent-head">
+        <h3>最近任务</h3>
+        <NButton
+          v-if="history.length"
+          quaternary
+          size="small"
+          @click="router.push('/archives')"
+        >
+          查看全部
+        </NButton>
+      </div>
+      <template v-if="loading && !recent.length">
+        <div class="recent-empty">
+          加载中…
+        </div>
+      </template>
+      <template v-else-if="!recent.length">
+        <NEmpty
+          description="还没有备份记录"
+          class="recent-empty"
+        />
+      </template>
+      <template v-else>
+        <div
+          v-for="h in recent"
+          :key="h.taskId || h.completedAt"
+          class="recent-item"
+          @click="router.push('/archives')"
+        >
+          <div class="ri-main">
+            <span class="ri-name">{{ h.target?.nickname ? `${h.target.nickname} 的档案` : h.name || 'QQ 空间档案' }}</span>
+            <NTag
+              v-if="h.target && h.target.uin"
+              size="tiny"
+              round
+              :bordered="false"
+            >
+              好友
+            </NTag>
+          </div>
+          <div class="ri-meta">
+            <span>{{ fmtTime(h.completedAt) }}</span>
+            <span>{{ (h.total || 0).toLocaleString() }} 条</span>
+            <span v-if="h.size">{{ fmtSize(h.size) }}</span>
+          </div>
+        </div>
+      </template>
     </div>
-
-    <StatSummary
-      :backups="stats.backups"
-      :total="stats.total"
-      :files="stats.files"
-      :size="stats.size"
-      :loading="loading"
-    />
-
-    <LastBackupCard :backup="lastBackup" />
-    <PrivacyNote />
   </section>
 </template>
 
@@ -143,72 +192,103 @@ onBeforeUnmount(() => {
 .home {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 860px;
+  gap: 26px;
 }
-.home-hero {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 18px;
-  align-items: stretch;
-}
-@media (max-width: 720px) {
-  .home-hero {
-    grid-template-columns: 1fr;
-  }
-}
-.welcome-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px 26px;
-}
-.welcome-title {
-  margin: 0;
-  font-family: Georgia, 'STZhongsong', 'SimSun', serif;
-  font-size: 19px;
-  letter-spacing: 1px;
-  color: var(--accent-deep);
-}
-.welcome-sub {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--ink-soft);
-}
-/* 主 CTA：视觉锚点 */
-.hero-cta {
+.hero {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px 30px;
-  background:
-    linear-gradient(160deg, rgba(154, 83, 54, 0.1), rgba(154, 83, 54, 0.02)) 0 0 / cover,
-    var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
   text-align: center;
+  padding: 52px 30px 42px;
+  border-radius: 18px;
+  background:
+    radial-gradient(90% 130% at 50% -10%, rgba(180, 95, 61, 0.12), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--surface-border);
 }
-.cta-btn {
-  display: inline-flex;
+.hero-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 14px;
+  margin-bottom: 18px;
+  box-shadow: 0 4px 16px rgba(153, 79, 49, 0.25);
+}
+.hero h1 {
+  margin: 0 0 8px;
+  font-size: 25px;
+  letter-spacing: 0.5px;
+}
+.hero-sub {
+  margin: 0 0 24px;
+  font-size: 13.5px;
+  opacity: 0.6;
+}
+.hero-actions {
+  display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 14px 40px;
-  font-size: 16px;
-  border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(126, 63, 41, 0.25);
+  gap: 12px;
 }
-.cta-ico {
-  width: 17px;
-  height: 17px;
+.cta {
+  padding: 0 34px;
+  height: 46px;
+  font-size: 15px;
 }
-.cta-hint {
-  margin: 0;
+.hero-stat {
+  margin: 22px 0 0;
   font-size: 12px;
-  color: var(--ink-soft);
+  opacity: 0.45;
+}
+.recent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.recent-head h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.recent-empty {
+  padding: 26px 0;
+  opacity: 0.7;
+}
+.recent-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) ease;
+}
+.recent-item + .recent-item {
+  margin-top: 8px;
+}
+.recent-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(180, 95, 61, 0.45);
+}
+.ri-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  min-width: 0;
+}
+.ri-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ri-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  opacity: 0.5;
+  flex-shrink: 0;
 }
 </style>

@@ -1,126 +1,196 @@
 <script setup lang="ts">
-/** 首次启动欢迎引导（P4.3 自 App.vue 拆出）
- *  完成时写入 onboardingDone 标记；帮助链接经 open-help 事件交由 App.vue 切换到帮助中心
- */
-const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'open-help', tab: 'guide' | 'faq' | 'privacy'): void;
-}>();
+/** 首次启动欢迎引导（v4.6 重写：Naive UI 模态 + 三步说明） */
+import { NModal, NButton } from 'naive-ui';
 
-async function finish() {
-  emit('close');
-  try {
-    await window.api.config.set({ onboardingDone: true });
-  } catch (e) {
-    console.warn('保存首次启动标记失败', e);
-  }
+const show = defineModel<boolean>('show', { default: false });
+const emit = defineEmits<{ done: []; tour: [] }>();
+
+function finish() {
+  window.api.config.set({ onboardingDone: true }).catch((e) => console.warn('保存引导状态失败', e));
+  emit('done');
 }
+
+/** 指引式教程：关闭欢迎页并启动聚光引导 */
+function startTour() {
+  show.value = false;
+  emit('tour');
+}
+
+const STEPS = [
+  {
+    title: '登录',
+    desc: '使用你的 QQ 扫码登录，应用只在你自己的电脑上运行，凭证不会上传。',
+    icon: 'M8 10V7a4 4 0 0 1 8 0v3 M5 10h14v10H5V10Z',
+  },
+  {
+    title: '选择要备份的内容',
+    desc: '说说、日志、相册、视频、留言等 10 类内容，按需勾选；也支持备份好友的公开内容。',
+    icon: 'M4 6h16v12H4V6Z M4 10h16 M8 14h5',
+  },
+  {
+    title: '一键备份，离线浏览',
+    desc: '备份完成后生成可直接打开的网页档案，双击 index.html 即可离线浏览。',
+    icon: 'M5 12l4 4 10-10 M5 20h14',
+  },
+];
 </script>
 
 <template>
-  <div class="overlay">
+  <NModal
+    v-model:show="show"
+    :auto-focus="false"
+    :mask-closable="false"
+  >
     <div class="welcome">
-      <div class="welcome-brand">
-        <span class="seal big">檔</span>
-        <div>
-          <h2 class="welcome-title">
-            欢迎使用 QQ空间档案备份
-          </h2>
-          <p class="welcome-sub">
-            将你的 QQ 空间数据完整保存在本地，随时浏览、永不丢失
-          </p>
-        </div>
+      <div class="welcome-hero">
+        <span class="seal">檔</span>
+        <h2>欢迎使用空间档案备份</h2>
+        <p>把你的 QQ 空间记忆，完整地留在自己的电脑里</p>
       </div>
-      <div class="welcome-steps">
-        <div class="wstep">
-          <span class="wstep-num">1</span>
-          <div>
-            <strong>扫码登录</strong>
-            <p>点击右上角「扫码登录」，用手机 QQ 扫码授权，即可开始备份你的空间</p>
+
+      <div class="steps">
+        <div
+          v-for="(s, i) in STEPS"
+          :key="s.title"
+          class="step"
+        >
+          <div class="step-no">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path :d="s.icon" />
+            </svg>
           </div>
-        </div>
-        <div class="wstep">
-          <span class="wstep-num">2</span>
           <div>
-            <strong>选择备份内容</strong>
-            <p>勾选要备份的模块（说说 / 日志 / 相册 / 视频…），可在设置中调整备份类型与获取选项</p>
-          </div>
-        </div>
-        <div class="wstep">
-          <span class="wstep-num">3</span>
-          <div>
-            <strong>开始备份</strong>
-            <p>选择保存位置并点击「开始备份」，助手自动采集数据并将多媒体下载到目标目录</p>
-          </div>
-        </div>
-        <div class="wstep">
-          <span class="wstep-num">4</span>
-          <div>
-            <strong>浏览备份</strong>
-            <p>备份完成后打开目标目录，双击 index.html 即可离线浏览全部内容</p>
+            <div class="step-title">
+              {{ i + 1 }}. {{ s.title }}
+            </div>
+            <div class="step-desc">
+              {{ s.desc }}
+            </div>
           </div>
         </div>
       </div>
-      <div class="welcome-foot">
-        <div class="welcome-links">
-          <button
-            class="link-btn"
-            @click="emit('open-help', 'guide')"
-          >
-            新手教程
-          </button>
-          <button
-            class="link-btn"
-            @click="emit('open-help', 'faq')"
-          >
-            常见问题
-          </button>
-          <button
-            class="link-btn"
-            @click="emit('open-help', 'privacy')"
-          >
-            隐私政策
-          </button>
-        </div>
-        <button
-          class="btn primary"
-          @click="finish"
+
+      <p class="privacy">
+        隐私说明：所有数据均保存到本地，应用不接入任何服务器；
+        备份好友空间时仅采集对方公开内容，并会留下普通访客记录。
+      </p>
+
+      <div class="actions">
+        <NButton
+          tertiary
+          @click="startTour()"
+        >
+          快速教程
+        </NButton>
+        <span class="flex1" />
+        <NButton
+          tertiary
+          @click="finish()"
+        >
+          先逛逛
+        </NButton>
+        <NButton
+          type="primary"
+          @click="finish()"
         >
           开始使用
-        </button>
+        </NButton>
       </div>
     </div>
-  </div>
+  </NModal>
 </template>
 
 <style scoped>
-.overlay {
-  position: fixed; inset: 0; background: rgba(50, 40, 28, 0.5);
-  display: flex; align-items: flex-start; justify-content: center;
-  padding: 36px 16px; z-index: 100;
-}
 .welcome {
-  background: var(--card); border-radius: 14px; max-width: 600px; width: 100%;
-  padding: 26px 28px; box-shadow: 0 14px 48px rgba(40, 30, 15, 0.32);
-  animation: fadeUp 0.35s ease both;
+  width: 460px;
+  max-width: calc(100vw - 60px);
+  border-radius: 16px;
+  padding: 30px 32px 24px;
+  background: var(--surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
 }
-.welcome-brand { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
-.seal.big { width: 52px; height: 52px; font-size: 26px; }
-.welcome-title { margin: 0; font-family: Georgia, 'STZhongsong', 'SimSun', serif; color: var(--accent-deep); font-size: 20px; letter-spacing: 1px; }
-.welcome-sub { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
-.welcome-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px; }
-.wstep { display: flex; gap: 12px; }
-.wstep-num {
-  flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%;
-  background: var(--accent); color: #fbe9d8; font-size: 13px; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-  font-family: Consolas, monospace;
+.welcome-hero {
+  text-align: center;
+  margin-bottom: 20px;
 }
-.wstep strong { font-size: 14px; color: var(--ink); }
-.wstep p { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.6; }
-.welcome-foot {
-  display: flex; justify-content: space-between; align-items: center;
-  padding-top: 16px; border-top: 1px solid var(--line-soft);
+.seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #b45f3d, #994f31);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(153, 79, 49, 0.4);
+  margin-bottom: 12px;
 }
-.welcome-links { display: flex; gap: 14px; }
+.welcome-hero h2 {
+  margin: 0 0 6px;
+  font-size: 19px;
+}
+.welcome-hero p {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.6;
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.step-no {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(180, 95, 61, 0.12);
+  color: #b45f3d;
+  flex-shrink: 0;
+}
+.step-no svg {
+  width: 18px;
+  height: 18px;
+}
+.step-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+.step-desc {
+  font-size: 12.5px;
+  line-height: 1.65;
+  opacity: 0.65;
+}
+.privacy {
+  margin: 0 0 18px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  opacity: 0.5;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.flex1 {
+  flex: 1;
+}
 </style>

@@ -16,6 +16,8 @@ export const Channels = {
   app: {
     getInfo: 'app:get-info',
     openExternal: 'app:open-external',
+    /** v4.6 只增：GitHub Releases 检查更新 */
+    checkUpdate: 'app:check-update',
   },
   auth: {
     getStatus: 'auth:get-status',
@@ -39,6 +41,9 @@ export const Channels = {
     getHistory: 'backup:get-history',
     listAlbums: 'backup:list-albums',
     engineInject: 'backup:engine-inject',
+    /** 他人模式（v4.6 只增）：好友列表（目标选择器数据源）与目标空间可访问性探测 */
+    listFriends: 'backup:list-friends',
+    validateTarget: 'backup:validate-target',
   },
   download: {
     pause: 'download:pause',

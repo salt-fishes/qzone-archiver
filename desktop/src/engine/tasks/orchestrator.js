@@ -15,6 +15,54 @@
 
   // ---------- 模块序列执行 ----------
 
+  /** 他人空间不可见的隐私模块（与原版扩展 popup.js 的 privateTypeList 同源） */
+  const PRIVATE_MODULES = ['Diaries', 'Friends', 'Favorites'];
+
+  /**
+   * v4.6 他人模式：显式指定采集目标。
+   * 引擎的采集目标由引擎窗口所在空间页决定（initUin 从 URL 提取 Target），
+   * 桌面版固定停在登录者空间，此处在其后覆写 Target，使「输入好友 QQ 号采集」成为可能。
+   * Owner/Target 分离在 API 层早已就绪（采集列表用 Target.uin、鉴权用 Owner.uin），
+   * 增量仓库亦按 Target.uin 分桶，覆写后天然隔离。
+   * @param {string|number|undefined} targetUin 目标 QQ 号（缺省 = 引擎窗口所在空间 = 登录者）
+   * @returns {boolean} 是否处于他人模式
+   */
+  function applyTargetUin(targetUin) {
+    if (!targetUin) return false;
+    const ownerUin = QZone.Common.Owner && QZone.Common.Owner.uin;
+    const target = String(targetUin).replace(/\D/g, '');
+    if (!target) return false;
+    if (String(ownerUin) === target) return false; // 目标即登录者，等价本人模式
+    const prev = QZone.Common.Target;
+    QZone.Common.Target = {
+      uin: target - 0,
+      route: (prev && prev.route) || 102,
+      title: `${targetUin} 的空间`,
+      name: 'TA',
+      nickname: 'TA',
+    };
+    return true;
+  }
+
+  /**
+   * v4.6 他人模式：覆写 Target 后拉取对方资料，回填昵称/头像（不阻塞，失败保持占位）。
+   * 用 USER_INFO_URL（uin=目标, vuin=登录者），code=-4009 表示无权限。
+   */
+  async function fetchTargetProfile() {
+    try {
+      const data = await API.Friends.getQZoneUserInfo();
+      const d = data && (data.data || data);
+      const info = d && (d.userinfo || d.UserInfo || d);
+      if (info && (info.nickname || info.avatar)) {
+        QZone.Common.Target.nickname = info.nickname || QZone.Common.Target.nickname;
+        QZone.Common.Target.name = info.nickname || QZone.Common.Target.name;
+        QZone.Common.Target.avatar = info.avatar;
+      }
+    } catch (e) {
+      console.warn('[tasks/orchestrator] 获取目标用户资料失败（不阻塞）', e);
+    }
+  }
+
   /**
    * P0-3/P2-5：模块失败记录为结构化错误（随 completed 通知透传给渲染层展示）。
    * P2-5 起模块层抛 ModuleError（含 module/phase/code/cause），此处统一取结构化字段；
@@ -58,9 +106,10 @@
   window.__engineCommands = {
     /**
      * 启动备份：装配配置 → 初始化身份 → 逐模块执行 export()
-     * @param {{taskId:string, config?:object, modules:string[], targetDir:string}} payload
+     * @param {{taskId:string, config?:object, modules:string[], targetDir:string, targetUin?:string}} payload
+     *        targetUin 为 v4.6 他人模式可选参数（缺省 = 备份本人空间，行为与旧版一致）
      */
-    async start({ taskId, config, modules, targetDir }) {
+    async start({ taskId, config, modules, targetDir, targetUin }) {
       P.setTargetDir(targetDir);
 
       // 装配配置：引擎默认打底 → 深度合入已保存 → 深度合入本次备份配置，并持久化
@@ -85,6 +134,15 @@
         console.warn('[tasks/orchestrator] initUin 失败（不阻塞）', e);
       }
 
+      // v4.6 他人模式：覆写采集目标（必须在 initBackedUpItems 之前——增量仓库按 Target.uin 分桶）
+      const isOtherUser = applyTargetUin(targetUin);
+      if (isOtherUser) {
+        P.notify.log({ level: 'info', message: `他人模式：采集目标 ${targetUin}（登录 ${QZone.Common.Owner.uin}），仅采集对方公开内容` });
+        await fetchTargetProfile();
+      }
+      // 立即上报一条启动日志：确认 notify 链路存活（排障锚点）
+      P.notify.log({ level: 'info', message: `备份任务已启动（${taskId}）` });
+
       // 先重置导出状态（清空上次取消/暂停残留），再进入各采集环节
       const s = window.__engineExportState;
       s.running = true;
@@ -106,7 +164,8 @@
       // 相册选择：QZone_Config.Photos.albumSelect 三态语义
       //   undefined/未配置 = 备份全部相册；[] = 明确不备份相册；非空 = 按选择备份
       // 预取完整相册对象写入 QZone.Photos.Album.Select，initAlbums 会据此处理
-      const selIds = window.QZone_Config.Photos && window.QZone_Config.Photos.albumSelect;
+      // v4.6 他人模式忽略相册多选（选择列表基于登录者相册 ID，对他人空间无意义）→ 备份对方全部相册
+      const selIds = isOtherUser ? undefined : window.QZone_Config.Photos && window.QZone_Config.Photos.albumSelect;
       const prevSuppress = s._suppressProgress;
       s._suppressProgress = true; // 预取列表不让进度/日志刷屏
       try {
@@ -136,7 +195,22 @@
       P.notify.state({ taskId, state: 'running', modules });
 
       const results = {};
-      const moduleList = modules || [];
+      let moduleList = modules || [];
+      // v4.6 他人模式：剔除隐私模块（日记/好友/收藏，对方空间不可见）+ 强制开启照片详情（取原图/免权限地址）
+      if (isOtherUser) {
+        const blocked = moduleList.filter((m) => PRIVATE_MODULES.includes(m));
+        if (blocked.length) {
+          P.notify.log({
+            level: 'warn',
+            message: `他人模式下已跳过仅本人可见的内容：${blocked.map((m) => modName(m)).join('、')}`,
+          });
+        }
+        moduleList = moduleList.filter((m) => !PRIVATE_MODULES.includes(m));
+        const photos = (window.QZone_Config.Photos = window.QZone_Config.Photos || {});
+        photos.Images = photos.Images || {};
+        photos.Images.Info = photos.Images.Info || {};
+        photos.Images.Info.isGet = true;
+      }
       s.modules = moduleList;
       for (const mod of moduleList) {
         if (s.cancelled) break;
@@ -181,7 +255,14 @@
       s.currentModule = null;
       s.running = false;
       // P0-3：errors 随 completed 通知透传（主进程 backup:completed 原样转发 → 成功页展示）
-      P.notify.state({ taskId, state: 'completed', results, errors: s.errors || [] });
+      // v4.6：附采集目标信息（他人模式档案页按目标分组展示）
+      P.notify.state({
+        taskId,
+        state: 'completed',
+        results,
+        errors: s.errors || [],
+        target: { uin: String(QZone.Common.Target.uin || ''), nickname: QZone.Common.Target.nickname || '' },
+      });
       if (s.errors && s.errors.length) {
         P.notify.log({
           level: 'warn',
@@ -189,6 +270,121 @@
         });
       }
       P.notify.log({ level: 'info', message: '备份完成' });
+    },
+
+    /**
+     * v4.6 他人模式：获取登录者的好友列表（备份目标选择器数据源）
+     * 直接走好友接口（登录者视角），不触碰 QZone.Common.Target，也不写进度。
+     * 返回 { ok, friends?, error? }：getFriends 失败/为空时回退 getSortFriends，
+     * 错误原样上报（未登录 / code / 异常），供 UI 展示并可重试。
+     */
+    async listFriends() {
+      const s = window.__engineExportState;
+      const prevSuppress = s ? s._suppressProgress : undefined;
+      if (s) s._suppressProgress = true;
+      try {
+        try {
+          if (API && API.Utils && API.Utils.initUin) {
+            API.Utils.initUin();
+          }
+        } catch (e) {
+          console.warn('[tasks/orchestrator] listFriends initUin 失败', e);
+        }
+        const owner = QZone.Common.Owner && QZone.Common.Owner.uin;
+        if (!owner) {
+          return { ok: false, error: '尚未登录 QQ 空间，请先扫码登录' };
+        }
+        try {
+          if (API && API.Utils && API.Utils.initGtk) {
+            API.Utils.initGtk();
+          }
+        } catch (_) { /* ignore */ }
+
+        /** 解析响应：toJson 只接受字符串，兼容已解析对象 */
+        const parse = (raw) => {
+          let d = raw;
+          if (typeof d === 'string') {
+            d = API.Utils.toJson(d, /^_Callback\(/);
+          }
+          return d;
+        };
+        const mapItems = (items) =>
+          items
+            .filter((it) => it && it.uin)
+            .map((it) => ({
+              uin: String(it.uin),
+              nickname: it.nickname || '',
+              remark: it.remark || '',
+              avatar: it.avatar || (it.uin ? `https://q1.qlogo.cn/g?b=qq&nk=${it.uin}&s=40` : ''),
+            }));
+
+        let lastErr = null;
+        for (const fetcher of [API.Friends.getFriends, API.Friends.getSortFriends]) {
+          try {
+            const d = parse(await fetcher.call(API.Friends));
+            if (d && d.code && d.code != 0) {
+              lastErr = `接口返回 code ${d.code}${d.message ? `（${d.message}）` : ''}`;
+              continue;
+            }
+            const list = (d && d.data && (d.data.items || d.data.list)) || [];
+            if (list.length) {
+              return { ok: true, friends: mapItems(list) };
+            }
+            lastErr = lastErr || '接口返回列表为空';
+          } catch (e) {
+            lastErr = (e && e.message) || String(e);
+            console.warn('[tasks/orchestrator] 好友接口调用失败', e);
+          }
+        }
+        return { ok: false, error: `获取好友列表失败：${lastErr || '未知原因'}` };
+      } finally {
+        if (s) s._suppressProgress = prevSuppress;
+      }
+    },
+
+    /**
+     * v4.6 他人模式：探测目标空间可访问性。
+     * 临时覆写 Target 调 USER_INFO_URL（uin=目标, vuin=登录者），结束后还原。
+     * 返回 { ok, isOwner, uin, nickname?, avatar?, error? }
+     */
+    async validateTarget(targetUin) {
+      const clean = String(targetUin || '').replace(/\D/g, '');
+      if (!clean) return { ok: false, error: 'QQ 号不能为空' };
+      const ownerUin = QZone.Common.Owner && QZone.Common.Owner.uin;
+      if (!ownerUin) {
+        try {
+          if (API && API.Utils && API.Utils.initUin) API.Utils.initUin();
+        } catch (_) { /* ignore */ }
+      }
+      const owner = QZone.Common.Owner && QZone.Common.Owner.uin;
+      if (!owner) return { ok: false, error: '尚未登录 QQ 空间，请先扫码登录' };
+      if (String(owner) === clean) return { ok: true, isOwner: true, uin: clean };
+
+      const prevTarget = QZone.Common.Target;
+      QZone.Common.Target = { uin: clean - 0, route: (prevTarget && prevTarget.route) || 102 };
+      try {
+        try {
+          if (API && API.Utils && API.Utils.initGtk) API.Utils.initGtk();
+        } catch (_) { /* ignore */ }
+        const data = await API.Friends.getQZoneUserInfo();
+        const d = data && (data.data || data);
+        const info = d && (d.userinfo || d.UserInfo || d);
+        // code=-4009 无权限 / code<0 异常：对方空间对登录者不可见或接口拒绝
+        if (data && data.code && data.code < 0) {
+          return { ok: false, error: data.code === -4009 ? '对方空间不公开，或你无权限访问' : `探测失败（code ${data.code}）` };
+        }
+        return {
+          ok: true,
+          isOwner: false,
+          uin: clean,
+          nickname: (info && (info.nickname || info.nick)) || '',
+          avatar: (info && info.avatar) || `https://q1.qlogo.cn/g?b=qq&nk=${clean}&s=100`,
+        };
+      } catch (e) {
+        return { ok: false, error: `探测失败：${(e && e.message) || e}` };
+      } finally {
+        QZone.Common.Target = prevTarget;
+      }
     },
 
     async pause() {

@@ -208,6 +208,7 @@ export function registerEngineIpc() {
                 modules: active?.modules || [],
                 results: data.results,
                 errors: data.errors,
+                target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
               })
               .then((rec) => {
                 if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());

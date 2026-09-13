@@ -101,7 +101,10 @@ export function createViewerWindow(backupPath) {
       contextIsolation: true,
     },
   });
-  viewer.loadFile(backupPath);
+  // 返回 loadFile 的 Promise：入口文件加载失败（如产物缺失）时可被调用方捕获并上报
+  return viewer
+    .loadFile(backupPath)
+    .then(() => viewer);
   // P5.1：内置浏览窗口为本地静态产物渲染器，禁止派生任何子窗口（无 preload，链接可经主窗口白名单打开）
   viewer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   viewer.on('closed', () => {

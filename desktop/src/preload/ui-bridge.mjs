@@ -15,6 +15,8 @@ const api = {
   app: {
     getInfo: () => invoke(Channels.app.getInfo),
     openExternal: (url) => invoke(Channels.app.openExternal, { url }),
+    // v4.6：GitHub Releases 检查更新
+    checkUpdate: () => invoke(Channels.app.checkUpdate),
   },
   auth: {
     getStatus: () => invoke(Channels.auth.getStatus),
@@ -38,6 +40,9 @@ const api = {
     getHistory: () => invoke(Channels.backup.getHistory),
     listAlbums: () => invoke(Channels.backup.listAlbums),
     engineInject: () => invoke(Channels.backup.engineInject),
+    // v4.6 他人模式：好友列表 / 目标空间可访问性探测
+    listFriends: () => invoke(Channels.backup.listFriends),
+    validateTarget: (targetUin) => invoke(Channels.backup.validateTarget, targetUin),
   },
   download: {
     pause: () => invoke(Channels.download.pause),

@@ -61,8 +61,9 @@ export function copyBuiltinEmoticons(targetDir) {
 const TASK_PREFIX = 'task-';
 
 export function registerBackupIpc() {
-  ipcMain.handle(Channels.backup.start, async (event, { taskId, modules, config, targetDir }) => {
-    console.log('[backup:start] 进入', { taskId, modules, targetDir });
+  // targetUin（可选，v4.6 他人模式）：缺省/等于登录号 = 备份本人空间，行为与旧版完全一致
+  ipcMain.handle(Channels.backup.start, async (event, { taskId, modules, config, targetDir, targetUin }) => {
+    console.log('[backup:start] 进入', { taskId, modules, targetDir, targetUin: targetUin || undefined });
     if (!engineBridge.ready) {
       console.log('[backup:start] 引擎未就绪');
       return { ok: false, error: '引擎未就绪' };
@@ -71,7 +72,7 @@ export function registerBackupIpc() {
       return { ok: false, error: '请先选择备份目标目录' };
     }
     const id = taskId || `${TASK_PREFIX}${Date.now()}`;
-    const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir };
+    const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir, targetUin: targetUin ? String(targetUin) : undefined };
     // P3-1：状态机裁决——上一任务未终态时拒绝并发启动
     const pre = taskMachine.dispatch('prepare', ctx);
     if (!pre.ok) {
@@ -177,6 +178,34 @@ export function registerBackupIpc() {
     try {
       await engineBridge.inject();
       return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e.message || String(e) };
+    }
+  });
+
+  // v4.6 他人模式：好友列表（登录者视角，供目标选择器远程搜索）
+  ipcMain.handle(Channels.backup.listFriends, async () => {
+    try {
+      const r = await engineBridge.exec(
+        'window.__engineCommands && window.__engineCommands.listFriends ? window.__engineCommands.listFriends() : null',
+        { returnValue: true }
+      );
+      if (r && Array.isArray(r.friends)) return { ok: true, friends: r.friends };
+      if (r && r.error) return { ok: false, error: r.error };
+      return { ok: true, friends: [] };
+    } catch (e) {
+      return { ok: false, error: e.message || String(e) };
+    }
+  });
+
+  // v4.6 他人模式：探测目标空间可访问性（返回 isOwner / 昵称 / 头像，供向导第①步确认）
+  ipcMain.handle(Channels.backup.validateTarget, async (event, targetUin) => {
+    try {
+      const r = await engineBridge.exec(
+        `window.__engineCommands ? window.__engineCommands.validateTarget(${JSON.stringify(String(targetUin ?? ''))}) : null`,
+        { returnValue: true }
+      );
+      return r || { ok: false, error: '引擎未就绪' };
     } catch (e) {
       return { ok: false, error: e.message || String(e) };
     }

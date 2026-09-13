@@ -11,6 +11,7 @@ declare global {
       app: {
         getInfo(): Promise<{ version: string; platform: string; arch: string }>;
         openExternal(url: string): Promise<void>;
+        checkUpdate(): Promise<{ ok: boolean; current?: string; latest?: string; hasUpdate?: boolean; url?: string; notes?: string; publishedAt?: string; error?: string }>;
       };
       auth: {
         getStatus(): Promise<{ loggedIn: boolean; qqNumber?: string; nickname?: string; avatar?: string }>;
@@ -26,7 +27,7 @@ declare global {
         export(path?: string): Promise<any>;
       };
       backup: {
-        start(payload: { taskId?: string; modules: string[]; config?: any; targetDir: string }): Promise<{ ok: boolean; taskId?: string; error?: string }>;
+        start(payload: { taskId?: string; modules: string[]; config?: any; targetDir: string; targetUin?: string }): Promise<{ ok: boolean; taskId?: string; error?: string }>;
         pause(taskId?: string): Promise<{ ok: boolean; error?: string }>;
         resume(taskId?: string): Promise<{ ok: boolean; error?: string }>;
         cancel(taskId?: string): Promise<{ ok: boolean; error?: string }>;
@@ -44,9 +45,12 @@ declare global {
             moduleCounts: Record<string, number>;
             size: number;
             files: number;
+            target?: { uin: string; nickname?: string };
           }[];
         }>;
         listAlbums(): Promise<{ ok: boolean; albums?: { id: string | number; name: string; classid?: string | number; className?: string; total?: number; desc?: string }[]; error?: string }>;
+        listFriends(): Promise<{ ok: boolean; friends?: { uin: string; nickname?: string; remark?: string; avatar?: string }[]; error?: string }>;
+        validateTarget(uin: string): Promise<{ ok: boolean; isOwner?: boolean; uin?: string; nickname?: string; avatar?: string; error?: string }>;
         engineInject(): Promise<{ ok: boolean; error?: string }>;
       };
       download: {

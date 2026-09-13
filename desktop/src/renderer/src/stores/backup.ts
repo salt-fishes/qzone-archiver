@@ -29,6 +29,8 @@ export type BackupResult = {
   files?: number;
   moduleCounts?: Record<string, number>;
   errors?: BackupModuleError[];
+  /** 采集目标（v4.6：他人模式档案展示；缺省/旧记录 = 本人） */
+  target?: { uin: string; nickname?: string };
 };
 
 export type DownloadItem = {
@@ -168,6 +170,9 @@ export const useBackupStore = defineStore('backup', () => {
   /** 最近一次备份完成记录（备份完成后置位，成功页展示；再次备份/返回时清空） */
   const lastResult = ref<BackupResult | null>(null);
 
+  /** 本次任务已完成的模块（module-done 事件收集，进行中面板逐模块清单展示） */
+  const doneModules = ref<string[]>([]);
+
   function resetResult() {
     lastResult.value = null;
   }
@@ -236,7 +241,7 @@ export const useBackupStore = defineStore('backup', () => {
 
   /* -------- 备份控制 -------- */
 
-  async function startBackup() {
+  async function startBackup(targetUin?: string) {
     const modules = cfg.selectedModules;
     if (!cfg.targetDir) {
       pushLog('warn', '请先选择备份目标目录');
@@ -244,11 +249,16 @@ export const useBackupStore = defineStore('backup', () => {
     }
     // P3-1：不再乐观置位 busy——状态由主进程 backup:state-changed 派生
     progress.value = { module: modules[0] || '', phase: '启动', percent: 0 };
+    doneModules.value = [];
+    // 新任务清空上一轮日志，避免看起来"日志没在更新"
+    logs.value = [];
     // 生成本次备份任务 ID：主进程检查点/状态推送均以 taskId 关联，缺失会导致日志显示 undefined 且无法精确追踪
     const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    pushLog('info', `开始备份：${modules.map((m) => MODULE_META[m]?.label || m).join('、')} → ${cfg.targetDir}`);
+    const targetLabel = targetUin ? `好友 ${targetUin} 的公开内容` : '我的空间';
+    pushLog('info', `开始备份：${targetLabel} · ${modules.map((m) => MODULE_META[m]?.label || m).join('、')} → ${cfg.targetDir}`);
     try {
-      const r = await window.api.backup.start({ taskId, modules, targetDir: cfg.targetDir, config: cfg.buildEngineConfig() });
+      // v4.6：targetUin 为可选他人模式参数，缺省 undefined 时引擎行为与旧版一致
+      const r = await window.api.backup.start({ taskId, modules, targetDir: cfg.targetDir, config: cfg.buildEngineConfig(), targetUin });
       if (!r.ok) {
         pushLog('error', `启动失败：${r.error}`);
         return false;
@@ -322,6 +332,7 @@ export const useBackupStore = defineStore('backup', () => {
         pushLog(p.level || 'info', p.message || '');
       }),
       window.api.on('backup:module-done', (p) => {
+        if (p.module && !doneModules.value.includes(p.module)) doneModules.value.push(p.module);
         pushLog('success', `模块完成：${MODULE_META[p.module]?.label || p.module}`);
       }),
       window.api.on('backup:completed', async (p) => {
@@ -340,10 +351,11 @@ export const useBackupStore = defineStore('backup', () => {
         // 拉取最新一条备份记录作为成功页数据（主进程已落盘 backup-history.json）
         try {
           const r = await window.api.backup.getHistory();
-          lastResult.value = { ...((r?.history && r.history[0]) || { targetDir: cfg.targetDir }), errors: errs };
+          // v4.6：target 取完成事件附带的采集目标（历史记录亦已落 target 字段）
+          lastResult.value = { ...((r?.history && r.history[0]) || { targetDir: cfg.targetDir }), errors: errs, target: p?.target };
         } catch (e) {
           console.warn('读取备份结果失败', e);
-          lastResult.value = { targetDir: cfg.targetDir, errors: errs };
+          lastResult.value = { targetDir: cfg.targetDir, errors: errs, target: p?.target };
         }
       }),
       window.api.on('download:state-changed', (p) => {
@@ -402,7 +414,7 @@ export const useBackupStore = defineStore('backup', () => {
   return {
     // 状态
     taskState, busy, paused, engineReady, engineFailed, progress, elapsedSec, logs, downloads,
-    lastResult, resetResult,
+    lastResult, resetResult, doneModules,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES,
     // 函数

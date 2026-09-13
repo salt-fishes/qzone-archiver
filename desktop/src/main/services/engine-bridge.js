@@ -205,10 +205,10 @@ export const engineBridge = {
     return execInEngine(wc, code, opts);
   },
 
-  /** 启动备份（runner.__engineCommands.start） */
-  async start({ taskId, config, modules, targetDir }) {
+  /** 启动备份（runner.__engineCommands.start）；targetUin 为可选他人模式参数（v4.6 只增） */
+  async start({ taskId, config, modules, targetDir, targetUin }) {
     registerTaskContext({ taskId, config, modules, targetDir });
-    const payload = { taskId, config: config || null, modules: modules || [], targetDir };
+    const payload = { taskId, config: config || null, modules: modules || [], targetDir, targetUin: targetUin || undefined };
     // 守卫：__engineCommands 缺失时明确报错，避免静默失败导致 UI 卡 0%
     return this.exec(
       `window.__engineCommands ? window.__engineCommands.start(${JSON.stringify(payload)}) : (() => { throw new Error('引擎任务层未就绪，请确认已登录 QQ 空间') })()`

@@ -1,624 +1,414 @@
 <script setup lang="ts">
-/** 设置视图（S5）：公共 / 模块 / 开发者 分组设置
- *  层级：页头 → 分区 tab → 表单组 → 底部操作（保存 + 危险区恢复默认）
- *  交互：未保存修改提示、恢复默认确认、离开未保存确认
+/**
+ * 设置（v4.6 精简重写）：通用 / 内容默认设置 / 相册选择 / 高级
+ * 全部数据源为 config store（settings + albums），自动保存；schema 由 config-spec.json 生成
  */
-import { ref, watch, onMounted } from 'vue';
-import { onBeforeRouteLeave } from 'vue-router';
-import { storeToRefs } from 'pinia';
+import { ref, onMounted } from 'vue';
 import {
-  useConfigStore, COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA,
-  MODULES, MODULE_META, defaultSettings,
-  getPath, setPath, toPlain, toLocalTime, toDbTime,
-} from '../stores/config';
-import { useAuthStore } from '../stores/auth';
+  NTabs, NTabPane, NCollapse, NCollapseItem, NButton, NSelect, NAlert, NInput,
+  useDialog, useMessage,
+} from 'naive-ui';
+import { useConfigStore, MODULE_META, MODULE_KEYS } from '../stores/config';
+import { COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA } from '../stores/schema';
+import { useAppearanceStore } from '../stores/appearance';
 import { useBackupStore } from '../stores/backup';
-import { CSelect } from '../components/ui/CSelect';
-import ConfirmDialog from '../components/ui/ConfirmDialog.vue';
+import SettingItems from '../components/settings/SettingItems.vue';
 
 const cfg = useConfigStore();
-const {
-  settings, albums, albumsLoading, albumError, albumSel, albumClassNames,
-} = storeToRefs(cfg);
-const { loadAlbums, albumSelAll, albumSelNone } = cfg;
-const { auth } = useAuthStore();
-const { pushLog } = useBackupStore();
+const appearance = useAppearanceStore();
+const bk = useBackupStore();
+const dialog = useDialog();
+const message = useMessage();
 
-const TABS = [
-  { key: 'Common', label: '公共' },
-  ...MODULES.filter((m) => m !== 'Statistics').map((m) => ({ key: m, label: MODULE_META[m].label })),
-  { key: 'Dev', label: '开发者' },
+const themeOptions = [
+  { label: '浅色', value: 'light' },
+  { label: '深色', value: 'dark' },
 ];
 
-const tab = ref('Common');
+/* -------- 检查更新（GitHub Releases） -------- */
+type UpdateInfo = {
+  ok: boolean;
+  current?: string;
+  latest?: string;
+  hasUpdate?: boolean;
+  url?: string;
+  notes?: string;
+  error?: string;
+};
+const checkingUpdate = ref(false);
+const updateInfo = ref<UpdateInfo | null>(null);
+const appVersion = ref('');
 
-/* ============ 未保存检测 ============ */
-const saved = ref(true);
-const savedSnapshot = ref('');
-watch(
-  () => JSON.stringify(toPlain(settings.value)),
-  () => {
-    if (savedSnapshot.value && savedSnapshot.value !== JSON.stringify(toPlain(settings.value))) {
-      saved.value = false;
-    }
+async function checkUpdate() {
+  if (checkingUpdate.value) return;
+  checkingUpdate.value = true;
+  updateInfo.value = null;
+  try {
+    const r = await window.api.app.checkUpdate();
+    updateInfo.value = r;
+  } catch (e: any) {
+    updateInfo.value = { ok: false, error: e?.message || String(e) };
+  } finally {
+    checkingUpdate.value = false;
   }
-);
+}
+
+function openUpdatePage() {
+  if (updateInfo.value?.url) window.api.app.openExternal(updateInfo.value.url);
+}
+
+/* -------- 相册选择 -------- */
+const albumOptions = ref<{ type: string; label: string; children?: { label: string; value: string }[] }[]>([]);
+const albumSelectLoading = ref(false);
+
+async function loadAlbumsForSelect() {
+  if (albumSelectLoading.value) return;
+  albumSelectLoading.value = true;
+  cfg.albumError = '';
+  await cfg.loadAlbums();
+  albumOptions.value = cfg.albumClassNames.map((g) => ({
+    type: 'group',
+    label: g.cls,
+    key: g.cls,
+    children: g.items.map((a) => ({ label: `${a.name}${a.total != null ? `（${a.total}）` : ''}`, value: String(a.id) })),
+  })) as any;
+  albumSelectLoading.value = false;
+}
+
 onMounted(() => {
-  savedSnapshot.value = JSON.stringify(toPlain(settings.value));
+  // 相册列表按需加载（进入该页时预取，登录后有效）
+  if (!cfg.albums.length) loadAlbumsForSelect();
+  window.api.app.getInfo().then((i) => (appVersion.value = i.version));
 });
 
-function save() {
-  window.api.config
-    .set({ engineSettings: toPlain(settings.value) })
-    .then(() => {
-      pushLog('info', '设置已保存');
-      saved.value = true;
-      savedSnapshot.value = JSON.stringify(toPlain(settings.value));
-    })
-    .catch((e: any) => pushLog('error', `设置保存失败：${e?.message || e}`));
+/* -------- 配置管理 -------- */
+function confirmReset() {
+  dialog.warning({
+    title: '恢复默认设置？',
+    content: '全部引擎设置将恢复为默认值，备份历史与档案文件不受影响。',
+    positiveText: '恢复默认',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      const r = await window.api.config.reset();
+      if (r?.ok) {
+        await cfg.initConfig();
+        message.success('已恢复默认设置');
+      } else {
+        message.error(r?.error || '重置失败');
+      }
+    },
+  });
 }
 
-/* ============ 恢复默认（带确认） ============ */
-const showResetConfirm = ref(false);
-function doReset() {
-  settings.value = defaultSettings();
-  showResetConfirm.value = false;
-  saved.value = false;
-}
-
-/* ============ 离开未保存确认 ============ */
-const showLeaveConfirm = ref(false);
-let pendingLeave: (() => void) | null = null;
-onBeforeRouteLeave((to, from, next) => {
-  if (!saved.value) {
-    showLeaveConfirm.value = true;
-    pendingLeave = next;
-    return;
+async function importConfig() {
+  const r = await window.api.config.import();
+  if (r?.ok) {
+    await cfg.initConfig();
+    message.success('配置导入成功');
+  } else if (r?.error !== 'canceled') {
+    message.error(r?.error || '导入失败');
   }
-  next();
-});
-function leaveProceed() {
-  const fn = pendingLeave;
-  pendingLeave = null;
-  showLeaveConfirm.value = false;
-  fn?.();
-}
-function leaveCancel() {
-  pendingLeave = null;
-  showLeaveConfirm.value = false;
 }
 
-/* ============ 相册选择（Photos tab 时加载） ============ */
-watch(
-  () => tab.value,
-  (t) => {
-    if (t === 'Photos' && auth.loggedIn && !albums.value.length && !albumsLoading.value) {
-      loadAlbums();
-    }
-  }
-);
+async function exportConfig() {
+  const r = await window.api.config.export();
+  if (r?.ok && r.path) message.success(`已导出到 ${r.path}`);
+  else if (r?.error && r.error !== 'canceled') message.error(r.error);
+}
 </script>
 
 <template>
-  <section class="settings-view">
-    <div class="sv-head">
-      <h2 class="view-title">
-        设置
-      </h2>
-      <p class="view-desc">
-        调整备份类型与采集选项，修改后点击「保存」生效。
-      </p>
+  <section class="settings">
+    <div class="st-head">
+      <h2>设置</h2>
+      <p>改动自动保存；引擎设置在下次备份时生效</p>
     </div>
 
-    <nav
-      class="sv-tabs"
-      role="tablist"
+    <NTabs
+      type="line"
+      animated
+      class="st-tabs"
     >
-      <button
-        v-for="t in TABS"
-        :key="t.key"
-        class="sv-tab"
-        :class="{ active: tab === t.key }"
-        @click="tab = t.key"
+      <NTabPane
+        name="general"
+        tab="通用"
       >
-        {{ t.label }}
-      </button>
-    </nav>
-
-    <div class="sv-content">
-      <!-- 公共 -->
-      <template v-if="tab === 'Common'">
-        <div class="sv-group">
-          <h4 class="sv-group-title">
-            通用
-          </h4>
-          <div
-            v-for="item in COMMON_SCHEMA"
-            :key="item.key"
-            class="setrow"
-          >
-            <label class="set-label">{{ item.label }}</label>
-            <CSelect
-              v-if="item.type === 'select'"
-              :model-value="getPath(settings.Common, item.key)"
-              :options="item.options"
-              :label-map="item.labelMap"
-              @update:model-value="setPath(settings.Common, item.key, $event)"
+        <div class="st-card">
+          <div class="st-block">
+            <h4>外观</h4>
+            <NSelect
+              :value="appearance.theme"
+              :options="themeOptions"
+              size="small"
+              class="ctl"
+              @update:value="(v) => (appearance.theme = (v as 'light' | 'dark'))"
             />
-            <input
-              v-else-if="item.type === 'checkbox'"
-              type="checkbox"
-              :checked="getPath(settings.Common, item.key)"
-              @change="setPath(settings.Common, item.key, ($event.target as HTMLInputElement).checked)"
-            >
-            <input
-              v-else-if="item.type === 'number'"
-              type="number"
-              :value="getPath(settings.Common, item.key)"
-              :min="item.min"
-              :max="item.max"
-              :step="item.step ?? 1"
-              @input="setPath(settings.Common, item.key, Number(($event.target as HTMLInputElement).value))"
-            >
-            <textarea
-              v-else-if="item.type === 'textarea'"
-              :value="(getPath(settings.Common, item.key) || []).join('\n')"
-              @input="setPath(settings.Common, item.key, ($event.target as HTMLTextAreaElement).value.split('\n').map((s) => s.trim()).filter(Boolean))"
+          </div>
+          <div class="st-block">
+            <h4>下载与网络</h4>
+            <SettingItems
+              mod="Common"
+              :items="COMMON_SCHEMA"
             />
-            <input
-              v-else
-              type="text"
-              :value="getPath(settings.Common, item.key)"
-              @input="setPath(settings.Common, item.key, ($event.target as HTMLInputElement).value)"
-            >
-            <span
-              v-if="item.help"
-              class="set-help"
-            >{{ item.help }}</span>
           </div>
         </div>
-      </template>
+      </NTabPane>
 
-      <!-- 模块 -->
-      <template v-else-if="tab !== 'Dev' && MODULE_SCHEMA[tab]">
-        <!-- 相册选择（仅相册模块） -->
-        <div
-          v-if="tab === 'Photos'"
-          class="sv-group"
-        >
-          <h4 class="sv-group-title">
-            相册选择
-          </h4>
-          <p class="sv-group-desc">
-            默认全选；取消勾选则不备份该相册。
-          </p>
-          <div class="album-sel">
-            <div class="album-sel-actions">
-              <button
-                class="btn sm"
-                :disabled="albumsLoading || !auth.loggedIn"
-                @click="loadAlbums"
-              >
-                {{ albumsLoading ? '加载中…' : albums.length ? '重新加载' : '加载相册列表' }}
-              </button>
-              <template v-if="albums.length">
-                <button
-                  class="btn sm"
-                  @click="albumSelAll"
+      <NTabPane
+        name="modules"
+        tab="内容默认设置"
+      >
+        <div class="st-card">
+          <NAlert
+            type="info"
+            :show-icon="true"
+            class="st-note"
+          >
+            各类内容的默认备份方式与采集细节；在「新建任务」里勾选要备份的内容即可套用。
+          </NAlert>
+          <NCollapse :default-expanded-names="['Messages']">
+            <NCollapseItem
+              v-for="m in MODULE_KEYS"
+              :key="m"
+              :title="MODULE_META[m]?.label || m"
+              :name="m"
+            >
+              <SettingItems
+                :mod="m"
+                :items="MODULE_SCHEMA[m] || []"
+              />
+            </NCollapseItem>
+          </NCollapse>
+        </div>
+      </NTabPane>
+
+      <NTabPane
+        name="albums"
+        tab="相册选择"
+      >
+        <div class="st-card">
+          <div class="st-block">
+            <div class="st-row">
+              <h4>备份哪些相册？</h4>
+              <div class="st-actions">
+                <NButton
+                  size="tiny"
+                  quaternary
+                  :loading="albumSelectLoading"
+                  @click="loadAlbumsForSelect()"
+                >
+                  刷新列表
+                </NButton>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  @click="cfg.albumSelAll()"
                 >
                   全选
-                </button>
-                <button
-                  class="btn sm"
-                  @click="albumSelNone"
+                </NButton>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  @click="cfg.albumSelNone()"
                 >
                   清空
-                </button>
-              </template>
-            </div>
-            <div
-              v-if="albumError"
-              class="album-error"
-            >
-              {{ albumError }}
-            </div>
-            <div
-              v-else-if="!albums.length && !albumsLoading"
-              class="album-empty"
-            >
-              {{ auth.loggedIn ? '点击「加载相册列表」获取你的相册' : '请先登录 QQ 空间再加载相册列表' }}
-            </div>
-            <div
-              v-else-if="albums.length"
-              class="album-list"
-            >
-              <div
-                v-for="g in albumClassNames"
-                :key="g.cls"
-                class="album-group"
-              >
-                <div class="album-group-name">
-                  {{ g.cls }}
-                </div>
-                <label
-                  v-for="a in g.items"
-                  :key="a.id"
-                  class="album-item"
-                >
-                  <input
-                    v-model="albumSel"
-                    type="checkbox"
-                    :value="String(a.id)"
-                    class="album-check"
-                  >
-                  <span
-                    class="album-name"
-                    :title="a.desc || a.name"
-                  >{{ a.name }}</span>
-                  <span class="album-cnt">{{ a.total ?? 0 }} 张</span>
-                </label>
+                </NButton>
               </div>
             </div>
-            <div
-              v-if="albums.length"
-              class="album-foot"
+            <NAlert
+              v-if="cfg.albumError"
+              type="error"
+              :show-icon="true"
+              class="st-note"
             >
-              已选 <b>{{ albumSel.length }}</b> 个相册{{ albumSel.length ? '' : '（将不备份相册）' }}
-            </div>
-          </div>
-        </div>
-
-        <div class="sv-group">
-          <h4 class="sv-group-title">
-            {{ MODULE_META[tab].label }}设置
-          </h4>
-          <div
-            v-for="item in MODULE_SCHEMA[tab]"
-            v-show="item.key !== 'IncrementTime' || getPath(settings[tab], 'IncrementType') === 'Custom'"
-            :key="item.key"
-            class="setrow"
-          >
-            <label class="set-label">{{ item.label }}</label>
-            <CSelect
-              v-if="item.type === 'select'"
-              :model-value="getPath(settings[tab], item.key)"
-              :options="item.options"
-              :label-map="item.labelMap"
-              @update:model-value="setPath(settings[tab], item.key, $event)"
-            />
-            <input
-              v-else-if="item.type === 'checkbox'"
-              type="checkbox"
-              :checked="getPath(settings[tab], item.key)"
-              @change="setPath(settings[tab], item.key, ($event.target as HTMLInputElement).checked)"
-            >
-            <template v-else-if="item.type === 'range'">
-              <div class="range-row">
-                <input
-                  type="number"
-                  :value="getPath(settings[tab], item.key)?.min"
-                  :min="item.min ?? 1"
-                  title="最小间隔（秒）"
-                  @input="setPath(settings[tab], `${item.key}.min`, Number(($event.target as HTMLInputElement).value))"
-                >
-                <span class="range-sep">~</span>
-                <input
-                  type="number"
-                  :value="getPath(settings[tab], item.key)?.max"
-                  :min="item.min ?? 1"
-                  title="最大间隔（秒）"
-                  @input="setPath(settings[tab], `${item.key}.max`, Number(($event.target as HTMLInputElement).value))"
-                >
-              </div>
-            </template>
-            <input
-              v-else-if="item.type === 'datetime'"
-              type="datetime-local"
-              class="set-datetime"
-              :value="toLocalTime(getPath(settings[tab], item.key))"
-              @input="setPath(settings[tab], item.key, toDbTime(($event.target as HTMLInputElement).value))"
-            >
-            <input
+              {{ cfg.albumError }}（需要登录且勾选过「相册」模块）
+            </NAlert>
+            <p
               v-else
-              type="number"
-              :value="getPath(settings[tab], item.key)"
-              :min="item.min"
-              :max="item.max"
-              @input="setPath(settings[tab], item.key, Number(($event.target as HTMLInputElement).value))"
+              class="st-tip"
             >
-            <span
-              v-if="item.help"
-              class="set-help"
-            >{{ item.help }}</span>
+              已选 {{ cfg.albumSel.length }} / {{ cfg.albums.length }} 个相册；不选择任何相册时备份全部。
+            </p>
+            <NSelect
+              v-model:value="cfg.albumSel"
+              multiple
+              filterable
+              clearable
+              :options="albumOptions"
+              :loading="albumSelectLoading"
+              placeholder="选择要备份的相册（可按名称搜索）"
+              size="small"
+              :max-tag-count="6"
+            />
           </div>
         </div>
-      </template>
+      </NTabPane>
 
-      <!-- 开发者 -->
-      <template v-else-if="tab === 'Dev'">
-        <div class="sv-group">
-          <h4 class="sv-group-title">
-            开发者
-          </h4>
-          <p class="sv-group-desc">
-            高级配置，一般用户无需修改。
-          </p>
-          <div
-            v-for="item in DEV_SCHEMA"
-            :key="item.key"
-            class="setrow"
-          >
-            <label class="set-label">{{ item.label }}</label>
-            <input
-              type="text"
-              :value="getPath(settings.Dev, item.key)"
-              @input="setPath(settings.Dev, item.key, ($event.target as HTMLInputElement).value)"
+      <NTabPane
+        name="advanced"
+        tab="高级"
+      >
+        <div class="st-card">
+          <div class="st-block">
+            <h4>开发者</h4>
+            <SettingItems
+              mod="Dev"
+              :items="DEV_SCHEMA"
+            />
+          </div>
+          <div class="st-block">
+            <h4>配置管理</h4>
+            <div class="st-actions">
+              <NButton
+                size="small"
+                @click="exportConfig"
+              >
+                导出配置
+              </NButton>
+              <NButton
+                size="small"
+                @click="importConfig"
+              >
+                导入配置
+              </NButton>
+              <NButton
+                size="small"
+                type="warning"
+                secondary
+                @click="confirmReset"
+              >
+                恢复默认
+              </NButton>
+            </div>
+          </div>
+          <div class="st-block">
+            <h4>引擎连接</h4>
+            <p class="st-tip">
+              备份页面加载失败时，可尝试重新注入引擎脚本。
+            </p>
+            <div class="st-actions">
+              <NInput
+                :value="bk.engineReady ? '引擎已就绪' : '引擎未就绪'"
+                readonly
+                size="small"
+                class="ctl"
+              />
+              <NButton
+                size="small"
+                @click="bk.retryEngine()"
+              >
+                重新连接
+              </NButton>
+            </div>
+          </div>
+          <div class="st-block">
+            <h4>关于与更新</h4>
+            <p class="st-tip">当前版本 v{{ updateInfo?.current || appVersion || '—' }}；更新源为 GitHub Releases，仅提醒、不自动下载。</p>
+            <div class="st-actions">
+              <NButton size="small" type="primary" secondary round :loading="checkingUpdate" @click="checkUpdate">
+                检查更新
+              </NButton>
+              <NButton v-if="updateInfo?.hasUpdate" size="small" type="primary" round @click="openUpdatePage">
+                前往下载 v{{ updateInfo?.latest }}
+              </NButton>
+              <NButton
+                v-else-if="updateInfo?.ok"
+                size="small"
+                quaternary
+                round
+                @click="openUpdatePage"
+              >
+                查看发布页
+              </NButton>
+            </div>
+            <NAlert
+              v-if="updateInfo?.ok && !updateInfo.hasUpdate"
+              type="success"
+              :show-icon="true"
+              class="st-note"
             >
-            <span
-              v-if="item.help"
-              class="set-help"
-            >{{ item.help }}</span>
+              已是最新版本（v{{ updateInfo.latest }}）
+            </NAlert>
+            <NAlert
+              v-else-if="updateInfo?.ok && updateInfo.hasUpdate"
+              type="info"
+              :show-icon="true"
+              class="st-note"
+            >
+              发现新版本 v{{ updateInfo.latest }}（当前 v{{ updateInfo.current }}），点击「前往下载」获取安装包。
+            </NAlert>
+            <NAlert
+              v-else-if="updateInfo && !updateInfo.ok"
+              type="warning"
+              :show-icon="true"
+              class="st-note"
+            >
+              {{ updateInfo.error }}
+            </NAlert>
           </div>
         </div>
-      </template>
-    </div>
-
-    <div class="sv-actions">
-      <div class="sv-actions-left">
-        <button
-          class="btn primary"
-          @click="save"
-        >
-          保存设置
-        </button>
-        <span
-          v-if="!saved"
-          class="sv-unsaved"
-        >有未保存的修改</span>
-      </div>
-      <div class="sv-actions-right">
-        <button
-          class="btn danger ghost-sm"
-          @click="showResetConfirm = true"
-        >
-          恢复默认
-        </button>
-      </div>
-    </div>
-
-    <ConfirmDialog
-      :show="showResetConfirm"
-      title="恢复默认设置？"
-      message="所有模块的设置将恢复为默认值。当前尚未保存的修改也会被覆盖。"
-      confirm-text="恢复默认"
-      danger
-      @confirm="doReset"
-      @cancel="showResetConfirm = false"
-    />
-    <ConfirmDialog
-      :show="showLeaveConfirm"
-      title="有未保存的修改"
-      message="离开设置页将丢失未保存的修改，确定要离开吗？"
-      confirm-text="放弃修改"
-      @confirm="leaveProceed"
-      @cancel="leaveCancel"
-    />
+      </NTabPane>
+    </NTabs>
   </section>
 </template>
 
 <style scoped>
-.settings-view {
+.settings {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-width: 760px;
+  gap: 18px;
 }
-.sv-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.view-title {
-  margin: 0;
-  font-family: Georgia, 'STZhongsong', 'SimSun', serif;
+.st-head h2 {
+  margin: 0 0 4px;
   font-size: 20px;
-  color: var(--accent-deep);
-  letter-spacing: 1px;
 }
-.view-desc {
+.st-head p {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-
-/* 分区 tab（一级层级） */
-.sv-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 10px 12px;
-  background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-}
-.sv-tab {
-  padding: 5px 14px;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: none;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-.sv-tab:hover {
-  background: var(--line-soft);
-  color: var(--ink);
-}
-.sv-tab.active {
-  background: var(--accent);
-  color: #fbe9d8;
-  font-weight: 600;
-}
-
-/* 表单组（二级层级） */
-.sv-content {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.sv-group {
-  background: var(--card);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-.sv-group-title {
-  margin: 0;
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--accent-deep);
-  padding-bottom: 8px;
-  border-bottom: 1px dashed var(--line-soft);
-}
-.sv-group-desc {
-  margin: -4px 0 0;
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-.setrow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   font-size: 13px;
-  flex-wrap: wrap;
+  opacity: 0.55;
 }
-.set-label {
-  flex-shrink: 0;
-  width: 140px;
-  color: var(--ink);
-}
-.setrow input[type='text'],
-.setrow input[type='number'],
-.setrow textarea,
-.set-datetime {
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: #fffdf7;
-  padding: 5px 9px;
-  font-size: 12.5px;
-  font-family: inherit;
-  color: var(--ink);
-  min-width: 120px;
-}
-.setrow textarea {
+.st-tabs {
   flex: 1;
-  min-height: 56px;
-  resize: vertical;
 }
-.set-help {
-  font-size: 11.5px;
-  color: var(--ink-soft);
-}
-.range-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.range-sep {
-  color: var(--ink-soft);
-  font-size: 12px;
-}
-
-/* 相册选择 */
-.album-sel {
+.st-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 18px;
+  padding: 20px 24px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
 }
-.album-sel-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.st-block h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
 }
-.album-error {
-  color: var(--err);
-  font-size: 12.5px;
-}
-.album-empty {
-  color: var(--ink-soft);
-  font-size: 12.5px;
-}
-.album-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 320px;
-  overflow: auto;
-}
-.album-group-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent-deep);
-  margin: 4px 0 2px;
-}
-.album-item {
+.st-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12.5px;
-  cursor: pointer;
+  justify-content: space-between;
 }
-.album-check {
-  accent-color: var(--accent);
+.st-row h4 {
   margin: 0;
 }
-.album-name {
-  color: var(--ink);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.album-cnt {
-  margin-left: auto;
-  font-size: 11.5px;
-  color: var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.album-foot {
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-
-/* 底部操作（保存 + 危险区） */
-.sv-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 4px 0;
-  border-top: 1px dashed var(--line-soft);
-}
-.sv-actions-left,
-.sv-actions-right {
+.st-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
-.sv-unsaved {
-  font-size: 12px;
-  color: var(--accent);
+.st-note {
+  margin-bottom: 4px;
 }
-.btn.danger.ghost-sm {
-  background: transparent;
-  border-color: #d8a08a;
-  color: var(--err);
+.st-tip {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  opacity: 0.55;
 }
-.btn.danger.ghost-sm:hover {
-  background: #fbeee7;
+.ctl {
+  width: 200px;
+}
+.st-block :deep(.st-actions) {
+  margin-bottom: 0;
 }
 </style>

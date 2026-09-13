@@ -1,0 +1,91 @@
+/**
+ * 全局设计令牌与基础样式（v4.6 C 端化改版）
+ * 组件外观主体由 Naive UI 主题系统承担，此处只保留布局/字体/滚动条等应用级令牌
+ */
+
+:root {
+  --app-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
+    'Helvetica Neue', Arial, sans-serif;
+  --mono-font: Consolas, 'JetBrains Mono', Menlo, monospace;
+
+  --sidebar-w: 208px;
+  --header-h: 56px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-mid: 260ms;
+
+  /* 自定义面板表面色（随主题切换；html.dark 由 appearance store 切换） */
+  --surface: #ffffff;
+  --surface-border: rgba(0, 0, 0, 0.1);
+  --surface-soft: #f6f4f1;
+}
+
+html.dark {
+  --surface: #1b1b20;
+  --surface-border: rgba(255, 255, 255, 0.13);
+  --surface-soft: #16161a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+.mono {
+  font-family: var(--mono-font);
+}
+
+/* 细滚动条（应用内容区） */
+.app-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.app-scroll::-webkit-scrollbar-thumb {
+  border-radius: 4px;
+  background: rgba(128, 128, 128, 0.35);
+}
+.app-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.55);
+}
+.app-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 路由切换过渡（页面级轻动效；prefers-reduced-motion 降级） */
+.route-enter-active {
+  transition: opacity var(--dur-mid) var(--ease-out), transform var(--dur-mid) var(--ease-out);
+}
+.route-leave-active {
+  transition: opacity var(--dur-fast) ease;
+}
+.route-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.route-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-enter-active,
+  .route-leave-active {
+    transition: none;
+  }
+  .route-enter-from {
+    transform: none;
+  }
+}
