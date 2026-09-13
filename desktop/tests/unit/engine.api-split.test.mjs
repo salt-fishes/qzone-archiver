@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const desktopDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const ENGINE = path.join(desktopDir, 'src/engine');
-const ORIG_API = path.resolve(desktopDir, '../../api.js.p2-bak');
+const ORIG_API = path.join(desktopDir, 'tests/fixtures/api.js.p2-bak');
 
 /** 拆分产物注入顺序（与 engine-bridge.js ENGINE_SCRIPTS 保持一致） */
 const SPLIT_FILES = [

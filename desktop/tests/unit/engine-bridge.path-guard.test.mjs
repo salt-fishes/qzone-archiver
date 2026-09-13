@@ -4,6 +4,7 @@
  * engine-bridge.js 间接依赖 electron（windows.js/state-store.js），此处 mock。
  */
 import { describe, it, expect, vi } from 'vitest';
+import path from 'node:path';
 
 vi.mock('electron', () => ({
   app: { getPath: () => '/tmp/userData' },
@@ -24,24 +25,24 @@ describe('resolveEnginePath', () => {
   it('基础映射：Filer 虚拟根前缀剥离', () => {
     registerTaskContext({ taskId: 't1', targetDir: 'D:/backups' });
     expect(resolveEnginePath('/QQ空间备份_uin123/Photos/a.jpg')).toBe(
-      'D:\\backups\\Photos\\a.jpg',
+      path.resolve('D:/backups', 'Photos/a.jpg'),
     );
   });
 
   it('无前缀相对路径直接挂到根', () => {
     registerTaskContext({ taskId: 't1', targetDir: 'D:/backups' });
-    expect(resolveEnginePath('Photos/a.jpg')).toBe('D:\\backups\\Photos\\a.jpg');
+    expect(resolveEnginePath('Photos/a.jpg')).toBe(path.resolve('D:/backups', 'Photos/a.jpg'));
   });
 
   it('根路径与空路径映射到根目录', () => {
     registerTaskContext({ taskId: 't1', targetDir: 'D:/backups' });
-    expect(resolveEnginePath('/QQ空间备份')).toBe('D:\\backups');
-    expect(resolveEnginePath('')).toBe('D:\\backups');
+    expect(resolveEnginePath('/QQ空间备份')).toBe(path.resolve('D:/backups'));
+    expect(resolveEnginePath('')).toBe(path.resolve('D:/backups'));
   });
 
   it('反斜杠规范化为分隔符', () => {
     registerTaskContext({ taskId: 't1', targetDir: 'D:/backups' });
-    expect(resolveEnginePath('/QQ空间备份\\Blogs\\x.md')).toBe('D:\\backups\\Blogs\\x.md');
+    expect(resolveEnginePath('/QQ空间备份\\Blogs\\x.md')).toBe(path.resolve('D:/backups', 'Blogs/x.md'));
   });
 
   it('穿越攻击被拒绝（../ 越出根目录）', () => {
@@ -57,7 +58,7 @@ describe('resolveEnginePath', () => {
   it('根目录内的合法子路径不受影响（含 . 分段）', () => {
     registerTaskContext({ taskId: 't1', targetDir: 'D:/backups' });
     expect(resolveEnginePath('/QQ空间备份/./Diaries/d.md')).toBe(
-      'D:\\backups\\Diaries\\d.md',
+      path.resolve('D:/backups', 'Diaries/d.md'),
     );
   });
 });
@@ -67,7 +68,7 @@ describe('path-guard.resolveWithin（P5.1 收敛点：resource-read 语义）', 
 
   it('基目录内相对路径正常解析', () => {
     expect(resolveWithin(base, 'vendor/jquery/jquery.min.js')).toBe(
-      'D:\\app-resources\\vendor\\jquery\\jquery.min.js',
+      path.resolve(base, 'vendor/jquery/jquery.min.js'),
     );
   });
 
@@ -82,12 +83,12 @@ describe('path-guard.resolveWithin（P5.1 收敛点：resource-read 语义）', 
   });
 
   it('空路径解析到基目录本身', () => {
-    expect(resolveWithin(base, '')).toBe('D:\\app-resources');
+    expect(resolveWithin(base, '')).toBe(path.resolve(base));
   });
 
   it('assertWithin 对越界抛错（fs 映射语义）', () => {
     expect(() => assertWithin(base, '../escape')).toThrow(/非法路径/);
-    expect(assertWithin(base, 'css/common.css')).toBe('D:\\app-resources\\css\\common.css');
+    expect(assertWithin(base, 'css/common.css')).toBe(path.resolve(base, 'css/common.css'));
   });
 });
 
