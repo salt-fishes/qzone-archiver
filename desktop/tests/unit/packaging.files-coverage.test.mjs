@@ -86,9 +86,16 @@ const matchers = globs.map((g) => ({ glob: g, re: globToRegExp(g) }));
 const covered = (rel) => matchers.some((m) => m.re.test(rel));
 
 describe('打包 files 白名单覆盖性', () => {
-  it('files 中的字面量目录真实存在', () => {
+  /**
+   * 构建产物：仓库不保存（.gitignore 排除），由 CI 的 build 步骤先生成，
+   * 纯净 checkout 上不存在属正常，故豁免「目录必须存在」断言。
+   */
+  const BUILD_OUTPUT_GLOBS = new Set(['src/renderer/dist/**/*']);
+
+  it('files 中的字面量目录真实存在（构建产物除外）', () => {
     const missing = [];
     for (const g of globs) {
+      if (BUILD_OUTPUT_GLOBS.has(g)) continue;
       // 取 glob 中最长的非通配前缀作为目录
       const segs = g.split('/');
       const literal = [];
@@ -101,6 +108,14 @@ describe('打包 files 白名单覆盖性', () => {
       if (!fs.existsSync(path.join(ROOT, dir))) missing.push(`${g} → 目录不存在：${dir}`);
     }
     expect(missing, missing.join('\n')).toEqual([]);
+  });
+
+  it('构建产物目录已被 .gitignore 排除（豁免前提成立）', () => {
+    const ignore = fs.readFileSync(path.join(ROOT, '..', '.gitignore'), 'utf8');
+    for (const g of BUILD_OUTPUT_GLOBS) {
+      const dir = g.split('/').filter((s) => !/[*?]/.test(s)).join('/');
+      expect(ignore, `.gitignore 未排除构建产物目录 ${dir}`).toContain(dir + '/');
+    }
   });
 
   it('main 与 preload 的相对 import 全部被打包', () => {
