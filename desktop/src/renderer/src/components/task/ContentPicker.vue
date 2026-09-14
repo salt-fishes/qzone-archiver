@@ -212,6 +212,13 @@ function selectNone() {
   height: 21px;
   color: #b45f3d;
 }
+/* v4.7 修复：.mc-top svg 的 color 优先级高于 .mc-check，会把对勾染成主题色、
+   在同样主题色的背景上"消失"。这里显式还原为白色（对勾用 currentColor 描边）。 */
+.mc-top .mc-check svg {
+  width: 12px;
+  height: 12px;
+  color: #fff;
+}
 .mc-check {
   display: inline-flex;
   align-items: center;

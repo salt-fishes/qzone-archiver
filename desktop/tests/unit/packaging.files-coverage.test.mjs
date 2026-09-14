@@ -142,4 +142,49 @@ describe('打包 files 白名单覆盖性', () => {
   it('src/shared（IPC 契约）必须显式包含', () => {
     expect(globs.some((g) => g.startsWith('src/shared/'))).toBe(true);
   });
+
+  it('打包图标已配置且尺寸满足 electron-builder 要求（≥256×256）', () => {
+    const yml = fs.readFileSync(path.join(ROOT, 'electron-builder.yml'), 'utf8');
+    const m = /^\s*icon:\s*(\S+)\s*$/m.exec(yml);
+    expect(m, 'electron-builder.yml 未配置 win.icon（打出来的 exe 会用 Electron 默认图标）').toBeTruthy();
+    const iconRel = m[1];
+    const iconAbs = path.join(ROOT, iconRel);
+    expect(fs.existsSync(iconAbs), `图标不存在：${iconRel}（先跑 npm run gen:icon）`).toBe(true);
+
+    const buf = fs.readFileSync(iconAbs);
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    expect(buf.subarray(0, 8).equals(pngSignature), '图标必须是 PNG').toBe(true);
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    expect(
+      width >= 256 && height >= 256,
+      `图标尺寸 ${width}×${height} 低于 electron-builder 的 256×256 下限`
+    ).toBe(true);
+  });
+
+  it('NSIS 安装向导图标为合法多尺寸 ICO（传 PNG 会 makeNSIS 失败）', () => {
+    const yml = fs.readFileSync(path.join(ROOT, 'electron-builder.yml'), 'utf8');
+    const refs = [...yml.matchAll(/^\s*(?:installerIcon|uninstallerIcon):\s*(\S+)\s*$/gm)].map((m) => m[1]);
+    expect(refs.length, 'installerIcon / uninstallerIcon 未配置').toBeGreaterThan(0);
+
+    for (const rel of refs) {
+      const abs = path.join(ROOT, rel);
+      expect(fs.existsSync(abs), `ICO 不存在：${rel}（先跑 npm run gen:icon）`).toBe(true);
+      const buf = fs.readFileSync(abs);
+      expect(buf.readUInt16LE(0), 'ICO reserved 字段必须为 0').toBe(0);
+      expect(buf.readUInt16LE(2), 'ICO type 字段必须为 1').toBe(1);
+      const count = buf.readUInt16LE(4);
+      expect(count, 'ICO 至少应包含 1 张图像').toBeGreaterThan(0);
+      // 每张图像的偏移/长度必须落在文件内，且内容为 PNG 或 BMP
+      for (let i = 0; i < count; i++) {
+        const base = 6 + i * 16;
+        const length = buf.readUInt32LE(base + 8);
+        const offset = buf.readUInt32LE(base + 12);
+        expect(offset + length).toBeLessThanOrEqual(buf.length);
+        const isPng = buf[offset] === 0x89 && buf[offset + 1] === 0x50;
+        const isBmp = buf.readUInt32LE(offset) === 40;
+        expect(isPng || isBmp, `第 ${i} 张图像既不是 PNG 也不是 BMP`).toBe(true);
+      }
+    }
+  });
 });

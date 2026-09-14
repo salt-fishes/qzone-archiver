@@ -25,6 +25,10 @@ releases/
 desktop/dist/
 desktop/release/
 desktop/src/renderer/dist/
+# 打包图标产物（由 scripts/gen-app-icon.mjs 从 src/main/icon.png 生成，打包前自动重建）
+desktop/build/
+# 表情同步产物（由 scripts/sync-emoticons.mjs 从 desktop/assets/emoticons 生成，构建前自动重建）
+desktop/src/renderer/public/emoticons/
 
 # ============ 依赖 ============
 node_modules/
@@ -72,6 +76,8 @@ test-screenshots/
 !src/spa/src/**/*.png
 !desktop/src/main/icon.png
 !desktop/src/renderer/src/assets/*.png
+# 内置表情库（经典 e1~e320 为 gif，魔法表情 e327xxx 多为 png，须一并入库）
+!desktop/assets/emoticons/**/*.png
 
 # ============ 环境配置 =============
 .env

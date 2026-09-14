@@ -7,6 +7,9 @@ import { engineBridge, sendToUi } from '../services/engine-bridge.js';
 import { showEngineWindow, windows } from '../windows.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
+/** 登录成功后延迟最小化引擎窗口的秒数（对齐 UI 提示文案，v4.7 反馈 ④） */
+const LOGIN_MINIMIZE_DELAY_SEC = 3;
+
 /** 检测当前登录状态（p_skey 为登录凭证，httpOnly 只能从 session 读） */
 export async function getAuthStatus() {
   const pSkey = await engineBridge.getCookie('p_skey');
@@ -46,13 +49,19 @@ export function watchAuthStatus(intervalMs = 5000) {
         lastLoggedIn = loggedIn;
         sendToUi(PushChannels.authStatusChanged, status);
         if (loggedIn) {
-          // 登录成功：等 qzone 页面跳转完成后自动最小化引擎窗口（扫码后无需手动收起）
+          // v4.7 反馈 ④：扫码成功后先给 UI 一个明确的倒计时提示，
+          // 再自动最小化引擎窗口（此前是静默 2 秒最小化，用户不知道发生了什么）。
+          sendToUi(PushChannels.authStatusChanged, {
+            ...status,
+            loginJustSucceeded: true,
+            minimizeInSec: LOGIN_MINIMIZE_DELAY_SEC,
+          });
           setTimeout(() => {
             if (windows.engine && !windows.engine.isDestroyed()) {
               windows.engine.minimize();
               console.info('[auth] 登录成功，已自动最小化 QQ 空间窗口');
             }
-          }, 2000);
+          }, LOGIN_MINIMIZE_DELAY_SEC * 1000);
         }
       }
     } catch (e) {

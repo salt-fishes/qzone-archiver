@@ -124,6 +124,9 @@ export const MODULE_SCHEMA: Record<string, SettingItem[]> = {
   Friends: [
     { key: 'exportType', label: '备份类型', type: 'select', options: ["SPA","HTML","MarkDown","JSON"], labelMap: EXPORT_MAP, help: '备份后的格式。「网页版」可直接离线浏览，推荐保持默认' },
     { key: 'isIncrement', label: '增量备份', type: 'checkbox', help: '开启后按上次备份结果只采集新增好友' },
+    { key: 'ZoneAccess', label: '访问好友空间判断权限', type: 'checkbox', help: '逐个访问好友空间主页，记录「空间是否可见」。关闭后：不再产生访客记录、请求量大幅下降，但「空间权限」字段（可见/仅好友/不可见）会缺失，好友无法按权限分组' },
+    { key: 'Interactive', label: '获取好友互动信息', type: 'checkbox', help: '获取相识时间、好友类型、亲密度、共同好友/群组等。会为每个好友额外发请求，量大且更易触发频率限制' },
+    { key: 'SpecialCare', label: '获取特别关心', type: 'checkbox', help: '记录哪些好友被你设为特别关心' },
   ],
   Favorites: [
     { key: 'exportType', label: '备份类型', type: 'select', options: ["SPA","HTML","MarkDown","JSON"], labelMap: EXPORT_MAP, help: '备份后的格式。「网页版」可直接离线浏览，推荐保持默认' },
@@ -258,7 +261,10 @@ export function defaultSettings() {
     },
     Friends: {
       "exportType": "SPA",
-      "isIncrement": false
+      "isIncrement": false,
+      "ZoneAccess": true,
+      "Interactive": true,
+      "SpecialCare": true
     },
     Favorites: {
       "exportType": "SPA",

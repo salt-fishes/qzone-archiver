@@ -20,6 +20,10 @@ files:
   - package.json
 
 win:
+  # 应用图标（v4.7）：此前未配置，exe / 快捷方式 / 任务栏都回落成 Electron 默认图标。
+  # build/icon.png 由 scripts/gen-app-icon.mjs 生成（源图 src/main/icon.png 仅 128×128，
+  # 低于 electron-builder 要求的 256×256），打包前自动重建。
+  icon: build/icon.png
   target:
     - target: nsis
       arch:
@@ -34,6 +38,9 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: QZoneArchiver
+  # 安装向导 / 控制面板中的图标（NSIS 只接受 .ico，故用 gen-app-icon.mjs 生成的多尺寸 ico）
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
   artifactName: ${productName}-${version}-setup.${ext}
 
 # 免安装版（单文件自解压，解压即用）

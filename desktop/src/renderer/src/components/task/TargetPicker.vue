@@ -7,6 +7,7 @@ import { computed, ref } from 'vue';
 import { NInput, NSelect, NButton, NAlert, NAvatar, NSpin } from 'naive-ui';
 import { useTargetStore } from '../../stores/target';
 import { useAuthStore } from '../../stores/auth';
+import EmoticonText from '../common/EmoticonText.vue';
 
 const target = useTargetStore();
 const { auth } = useAuthStore();
@@ -167,7 +168,12 @@ async function doValidate() {
             </NAvatar>
             <div class="pc-info">
               <div class="pc-name">
-                {{ target.profile.nickname || target.profile.uin }}
+                <EmoticonText
+                  v-if="target.profile.nickname"
+                  :text="target.profile.nickname"
+                  :size="16"
+                />
+                <template v-else>{{ target.profile.uin }}</template>
                 <NTag
                   v-if="target.profile.isOwner"
                   size="tiny"
@@ -209,7 +215,12 @@ async function doValidate() {
       </NAvatar>
       <div class="pc-info">
         <div class="pc-name">
-          {{ auth.nickname || auth.qqNumber || '未登录' }}
+          <EmoticonText
+            v-if="auth.nickname"
+            :text="auth.nickname"
+            :size="16"
+          />
+          <template v-else>{{ auth.qqNumber || '未登录' }}</template>
         </div>
         <div class="pc-uin">
           {{ auth.loggedIn ? `QQ ${auth.qqNumber}` : '请先在顶栏扫码登录' }}

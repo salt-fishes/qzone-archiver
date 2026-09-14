@@ -12,6 +12,7 @@ import AppHeader from './components/layout/AppHeader.vue';
 import WelcomeModal from './components/onboarding/WelcomeModal.vue';
 import HelpModal from './components/onboarding/HelpModal.vue';
 import TourOverlay from './components/onboarding/TourOverlay.vue';
+import LoginSuccessNotifier from './components/system/LoginSuccessNotifier.vue';
 import { lightThemeOverrides, darkThemeOverrides } from './theme';
 import { useAuthStore } from './stores/auth';
 import { useBackupStore } from './stores/backup';
@@ -127,6 +128,8 @@ onBeforeUnmount(() => {
           @tour="showTour = true"
         />
         <TourOverlay v-model:show="showTour" />
+        <!-- 扫码登录成功提示 + 倒计时后跳转（必须在 NMessageProvider 内部） -->
+        <LoginSuccessNotifier />
       </NDialogProvider>
     </NMessageProvider>
   </NConfigProvider>

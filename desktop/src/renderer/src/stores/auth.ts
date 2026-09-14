@@ -11,6 +11,10 @@ export type AuthState = {
   qqNumber?: string;
   nickname?: string;
   avatar?: string;
+  /** v4.7 反馈 ④：本次是"刚扫码登录成功"（主进程置位，用于提示 + 倒计时后跳转） */
+  loginJustSucceeded?: boolean;
+  /** 主进程将在多少秒后最小化引擎窗口 */
+  minimizeInSec?: number;
 };
 
 export const useAuthStore = defineStore('auth', () => {
@@ -33,6 +37,11 @@ export const useAuthStore = defineStore('auth', () => {
     await window.api.auth.logout();
   }
 
+  /** 提示已展示完毕：清掉一次性标记，避免刷新又弹一次 */
+  function clearLoginJustSucceeded() {
+    auth.loginJustSucceeded = false;
+  }
+
   let inited = false;
   /** 订阅登录态变更（应用级单例，调用一次即可） */
   function initAuth() {
@@ -43,5 +52,5 @@ export const useAuthStore = defineStore('auth', () => {
     });
   }
 
-  return { auth, refresh, login, logout, initAuth };
+  return { auth, refresh, login, logout, initAuth, clearLoginJustSucceeded };
 });

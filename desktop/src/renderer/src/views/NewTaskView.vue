@@ -25,8 +25,14 @@ const { busy, lastResult } = storeToRefs(bk);
 const { startBackup, resetResult, pushLog } = bk;
 const target = useTargetStore();
 
-/* ============ 数据量参考（上次备份） ============ */
-const history = ref<{ moduleCounts?: Record<string, number>; size?: number; total?: number }[]>([]);
+/* ============ 数据量参考（同一备份目标的上次记录） ============ */
+type HistoryEntryLite = {
+  moduleCounts?: Record<string, number>;
+  size?: number;
+  total?: number;
+  target?: { uin?: string; nickname?: string };
+};
+const history = ref<HistoryEntryLite[]>([]);
 onMounted(async () => {
   try {
     const r = await window.api.backup.getHistory();
@@ -35,9 +41,21 @@ onMounted(async () => {
     console.warn('读取备份历史失败', e);
   }
 });
-const estimates = computed(() => history.value[0]?.moduleCounts || {});
-const lastSize = computed(() => history.value[0]?.size || 0);
-const lastTotal = computed(() => history.value[0]?.total || 0);
+
+/** 当前备份目标标识：本人 = ''，好友 = uin（与历史记录的 target.uin 口径一致） */
+const currentTargetKey = computed(() => String(target.effectiveUin || ''));
+
+/**
+ * v4.7 修复（反馈 ③④）：数据量参考只取**同一个 QQ** 的上次记录。
+ * 此前无条件取历史第一条，导致备份不同好友时也显示上一个好友的条数，容易误导。
+ */
+const lastSameTarget = computed<HistoryEntryLite | null>(() => {
+  const key = currentTargetKey.value;
+  return history.value.find((h) => String(h.target?.uin || '') === key) || null;
+});
+const estimates = computed(() => lastSameTarget.value?.moduleCounts || {});
+const lastSize = computed(() => lastSameTarget.value?.size || 0);
+const lastTotal = computed(() => lastSameTarget.value?.total || 0);
 
 const isIncremental = computed(() => {
   const first = selectedModules.value.find((m) => MODULE_KEYS.includes(m));
@@ -183,7 +201,7 @@ function pickDir() {
                 {{ lastTotal ? lastTotal.toLocaleString() + ' 条' : '' }}
                 {{ lastTotal && lastSize ? ' · ' : '' }}
                 {{ lastSize ? fmtSize(lastSize) : '' }}
-                <span class="c-hint">（按上次备份估算）</span>
+                <span class="c-hint">（按该目标上次备份估算）</span>
               </span>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { NTag, NButton, NDropdown, NAvatar, useDialog } from 'naive-ui';
 import { useAuthStore } from '../../stores/auth';
 import { useAppearanceStore } from '../../stores/appearance';
 import { useBackupStore } from '../../stores/backup';
+import EmoticonText from '../common/EmoticonText.vue';
 
 defineProps<{ version: string }>();
 
@@ -122,7 +123,13 @@ function onUserAction(key: string) {
             >
               {{ (auth.auth.nickname || auth.auth.qqNumber || '?').slice(0, 1) }}
             </NAvatar>
-            <span class="user-name">{{ auth.auth.nickname || auth.auth.qqNumber }}</span>
+            <span class="user-name">
+              <EmoticonText
+                :text="auth.auth.nickname"
+                :size="15"
+              />
+              <template v-if="!auth.auth.nickname">{{ auth.auth.qqNumber }}</template>
+            </span>
           </button>
         </NDropdown>
       </template>

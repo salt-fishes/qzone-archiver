@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { NButton, NTag, NEmpty } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { useAuthStore } from '../stores/auth';
+import EmoticonText from '../components/common/EmoticonText.vue';
 import appIcon from '../assets/icon.png';
 
 type HistoryEntry = {
@@ -103,7 +104,15 @@ onBeforeUnmount(() => {
         :src="appIcon"
         alt=""
       >
-      <h1>{{ auth.loggedIn ? `你好${auth.nickname ? `，${auth.nickname}` : ''}` : '备份你的 QQ 空间' }}</h1>
+      <h1 v-if="auth.loggedIn">
+        你好<template v-if="auth.nickname">，<EmoticonText
+          :text="auth.nickname"
+          :size="22"
+        /></template>
+      </h1>
+      <h1 v-else>
+        备份你的 QQ 空间
+      </h1>
       <p class="hero-sub">
         {{ auth.loggedIn ? '把空间记忆完整保存到本地，随时离线浏览。' : '扫码登录后，一键保存说说、相册、日志到本机。' }}
       </p>

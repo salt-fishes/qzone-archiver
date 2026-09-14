@@ -20,6 +20,19 @@ export const windows = {
 const PRELOAD_DIR = path.join(__dirname, '../preload');
 const RENDERER_INDEX = path.join(__dirname, '../renderer/dist/index.html');
 
+/**
+ * 禁止窗口接收拖拽（v4.7 反馈 B）
+ * Electron 默认允许把文件/链接拖进窗口，拖入时会显示 file:// 路径或直接导航过去。
+ * 本应用不需要这条交互：
+ *   1. webPreferences.disableBlinkFeatures: 'DragDrop' —— 从渲染引擎层面禁用，最彻底
+ *   2. will-navigate 拦截 —— 双保险，拖放万一触发导航也拒绝
+ */
+function hardenNavigation(win) {
+  win.webContents.on('will-navigate', (event) => {
+    event.preventDefault();
+  });
+}
+
 /** 主 UI 窗口（Vue3 渲染器，file:// 加载构建产物） */
 export function createMainWindow() {
   if (windows.main && !windows.main.isDestroyed()) {
@@ -38,9 +51,12 @@ export function createMainWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      // v4.7 反馈 B：禁用渲染引擎的拖放能力，避免拖入文件/链接时出现 file:// 拖放提示
+      disableBlinkFeatures: 'DragDrop',
     },
   });
   windows.main.loadFile(RENDERER_INDEX);
+  hardenNavigation(windows.main);
   windows.main.once('ready-to-show', () => {
     windows.main.show();
   });
@@ -96,9 +112,11 @@ export function createViewerWindow(backupPath) {
     width: 1280,
     height: 860,
     title: 'QQ空间档案浏览',
+    icon: APP_ICON,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      disableBlinkFeatures: 'DragDrop',
     },
   });
   // 返回 loadFile 的 Promise：入口文件加载失败（如产物缺失）时可被调用方捕获并上报
