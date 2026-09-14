@@ -57,12 +57,10 @@ export const COMMON_SCHEMA: SettingItem[] = [
     { key: 'waitTime', label: '稍候重试间隔（秒）', type: 'number', help: '每次等待风控解除的秒数，默认 1 小时，一般不用改', min: 1 },
     { key: 'thunderTaskNum', label: '迅雷任务数', type: 'number', help: '每批交给迅雷的下载任务数量', min: 50 },
     { key: 'thunderTaskSleep', label: '迅雷唤起间隔（秒）', type: 'number', help: '两次唤起迅雷之间间隔几秒，太快会卡电脑', min: 1 },
-    { key: 'disabledShelf', label: '隐藏浏览器下载栏', type: 'checkbox', help: '下载时不弹出应用右上角的下载列表，界面更清爽' },
     { key: 'useImageProxyGateway', label: 'Aria2 图片走代理网关', type: 'checkbox', help: '实验性：仅 Aria2 图片任务生效' },
     { key: 'hasUserLink', label: '生成用户空间链接', type: 'checkbox', help: '备份页面里保留一条跳转到原空间的链接，方便对照' },
     { key: 'Aria2.rpc', label: 'Aria2 RPC 地址', type: 'text', help: 'Aria2 / Motrix 的控制地址，装在本机用默认值即可' },
     { key: 'Aria2.token', label: 'Aria2 密钥', type: 'text', help: 'Aria2 设置过密钥就填在这里，没设就留空' },
-    { key: 'refererUrls', label: 'Referer 域名', type: 'textarea', help: '一行一个域名，用于浏览器下载防盗链' },
 ];
 
 export const MODULE_SCHEMA: Record<string, SettingItem[]> = {
@@ -303,16 +301,12 @@ export function defaultSettings() {
       "waitTime": 3600,
       "thunderTaskNum": 1500,
       "thunderTaskSleep": 60,
-      "disabledShelf": false,
       "useImageProxyGateway": false,
       "hasUserLink": true,
       "Aria2": {
         "rpc": "http://localhost:6800/jsonrpc",
         "token": ""
-      },
-      "refererUrls": [
-        "gtimg.com"
-      ]
+      }
     },
     Dev: {
       "Maps": {

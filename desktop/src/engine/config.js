@@ -38,14 +38,8 @@ const Default_Config = {
         downloadThread: 10,
         // 文件下载间隔        
         downloadSleep: 2,
-        // 是否禁用下载状态栏提醒
-        disabledShelf: false,
         // 生成内容是否包含其他空间用户链接
-        hasUserLink: true,
-        // 需要添加来源页的URL，目前主要用来下载视频
-        refererUrls: [
-            "gtimg.com"
-        ]
+        hasUserLink: true
     },
     // 开发者
     Dev: {

@@ -558,13 +558,14 @@ QZoneCollectors.Messages = {
 
     // 2. 二分查找获取互动消息总数（进度回调显示到终端面板）
     indicator.setNextTip('探测互动消息总数...');
+    // v4.7：探测失败会抛错（不再静默返回 0），由此处向上传播，让模块记为失败
     const totalCount = await API.Messages.getFeedsCount((msg) => {
         indicator.setNextTip('探测互动消息总数：' + msg);
     });
     console.info('互动消息总数', totalCount);
     if (totalCount === 0) {
-        // complete 会把 {nextTip} 替换为 nextTip 内容，并把"正在"→"已"
-        indicator.setNextTip('探测结果：0 条（互动消息为空或接口异常）');
+        // 到这里说明探测确实成功、接口返回没有互动消息（接口异常的情况已在 getFeedsCount 抛错）
+        indicator.setNextTip('探测结果：0 条（互动消息为空）');
         indicator.complete();
         return [];
     }

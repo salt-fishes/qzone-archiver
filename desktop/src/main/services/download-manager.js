@@ -26,14 +26,41 @@ import { PushChannels } from '../../shared/ipc-contract.mjs';
 import { stateStore } from './state-store.js';
 
 const DEFAULT_THREAD = 10;
+const MAX_THREAD = 20; // 并发上限（防止配置误填打爆 CDN）
 const BIG_FILE_THRESHOLD = 50 * 1024 * 1024; // 大文件阈值
 const BIG_CONCURRENCY = 2; // 大文件并发槽位
+const HEADER_TIMEOUT = 30_000; // 建连/首字节超时（响应头到达前）
 const IDLE_TIMEOUT = 60_000; // 空闲超时（无数据即 abort）
+const MAX_RETRY = 5; // 单任务重试上限（v4.7：与 P1 计划一致）
+const RETRY_BASE_DELAY = 2_000; // 重试退避基数（2s/4s/8s…）
 const PROGRESS_MIN_INTERVAL = 500; // 进度节流：最小间隔 ms
 const PROGRESS_MIN_PERCENT = 1; // 进度节流：最小百分比增量
+const SUMMARY_MIN_INTERVAL = 500; // 队列汇总节流 ms
 const REFERER = 'https://user.qzone.qq.com/';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+
+/**
+ * 媒体文件后缀白名单（v4.7：下载列表只展示多媒体文件）。
+ * 目录约定（非 Common/ 即媒体）会把说说语音、日志附件等非媒体一并算进来，
+ * 故改为按真实文件后缀判定；无后缀/未知后缀一律按非媒体处理（不进列表）。
+ */
+const MEDIA_EXT = new Set([
+  // 图片
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic', 'heif', 'avif', 'tif', 'tiff', 'svg',
+  // 视频
+  'mp4', 'm4v', 'mov', 'avi', 'mkv', 'flv', 'wmv', 'webm', 'ts', '3gp', 'mpg', 'mpeg', 'rmvb',
+  // 音频
+  'mp3', 'm4a', 'aac', 'wav', 'flac', 'ogg', 'opus', 'amr', 'wma',
+]);
+
+/** 是否多媒体文件（按后缀判定；无后缀视为非媒体） */
+function isMediaFile(name) {
+  const n = String(name || '');
+  const dot = n.lastIndexOf('.');
+  if (dot < 0 || dot === n.length - 1) return false;
+  return MEDIA_EXT.has(n.slice(dot + 1).toLowerCase());
+}
 
 let queue = [];
 let running = 0; // 常规任务运行数
@@ -47,6 +74,40 @@ let pausedTaskId = null;
 /** 当前暂停位应绑定的任务标识：活跃备份 taskId，无则独立暂停哨兵 */
 function pauseKey() {
   return getActiveTaskContext()?.taskId || STANDALONE_PAUSE;
+}
+
+/**
+ * 运行时设置（v4.7 P1）：并发与批间间隔改为从本次备份配置读取。
+ * v4.6 之前这两个设置项只被无调用点的 downloadsByBrowser/downloadByAria2 读取，
+ * 主进程下载器写死 10 并发且无间隔 —— 用户改设置无效（"哑巴设置"）。
+ * @returns {{thread:number, sleepMs:number}} thread 常规并发；sleepMs 每轮槽位跑满后的停顿
+ */
+function settings() {
+  const cfg = getActiveTaskContext()?.config || {};
+  const common = cfg.Common || {};
+  const rawThread = Number(common.downloadThread);
+  const rawSleep = Number(common.downloadSleep);
+  const thread = Number.isFinite(rawThread) && rawThread > 0
+    ? Math.min(MAX_THREAD, Math.max(1, Math.floor(rawThread)))
+    : DEFAULT_THREAD;
+  const sleepMs = Number.isFinite(rawSleep) && rawSleep > 0 ? Math.round(rawSleep * 1000) : 0;
+  return { thread, sleepMs };
+}
+
+/** 队列汇总节流（v4.7 P1：让用户看到"整体还剩多少"） */
+let lastSummaryAt = 0;
+function pushSummary(force) {
+  const now = Date.now();
+  if (!force && now - lastSummaryAt < SUMMARY_MIN_INTERVAL) return;
+  lastSummaryAt = now;
+  const counts = { pending: 0, running: 0, done: 0, failed: 0 };
+  for (const q of queue) {
+    if (counts[q.state] !== undefined) counts[q.state] += 1;
+  }
+  sendToUi(PushChannels.downloadStateChanged, {
+    state: 'summary',
+    summary: { ...counts, total: queue.length },
+  });
 }
 
 function persist() {
@@ -72,25 +133,27 @@ export const downloadManager = {
   load() {
     const { queue: saved } = stateStore.loadDownloads();
     queue = Array.isArray(saved) ? saved : [];
-    // 重启后：残留 running/pending 统一回 pending，断点续传；旧记录补齐 media 标志
+    // 重启后：残留 running/pending 统一回 pending，断点续传；
+    // 按真实后缀重算媒体标志（v4.7：旧记录沿用目录口径会把非媒体算进来）
     for (const q of queue) {
       if (q.state === 'running') q.state = 'pending';
-      if (q.media === undefined) {
-        q.media = !String(q.dir || '').replace(/^\/+/, '').startsWith('Common/');
-      }
+      q.media = isMediaFile(q.name);
+      if (!Number.isFinite(q.retries)) q.retries = 0;
     }
   },
 
-  /** 简单并发调度：保持运行数不超并发上限；暂停时不调度新任务 */
+  /** 并发调度：并发数与批间间隔来自本次备份配置；暂停时不调度新任务 */
   pump() {
     // P3-2：暂停位只对发起暂停时的活跃任务有效；任务已切换则自动失效并恢复调度
     if (pausedTaskId) {
       if (pausedTaskId === pauseKey()) return;
       pausedTaskId = null;
     }
+    const { thread } = settings();
+    let dispatched = 0;
     while (true) {
       const big = bigRunning < BIG_CONCURRENCY;
-      const reg = running < DEFAULT_THREAD;
+      const reg = running < thread;
       // 大文件占专用槽位，常规任务占常规槽位
       const candidate =
         (big && queue.find((q) => q.state === 'pending' && isBig(q))) ||
@@ -99,8 +162,10 @@ export const downloadManager = {
       candidate.state = 'running';
       if (isBig(candidate)) bigRunning += 1;
       else running += 1;
+      dispatched += 1;
       persist();
       sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'running', module: candidate.module, media: candidate.media });
+      pushSummary();
       this._run(candidate)
         .catch((e) => {
           if (candidate.pauseInterrupted) {
@@ -119,8 +184,16 @@ export const downloadManager = {
         .finally(() => {
           if (isBig(candidate)) bigRunning = Math.max(0, bigRunning - 1);
           else running = Math.max(0, running - 1);
+          pushSummary();
           this.pump();
         });
+    }
+    // 本轮槽位跑满：按「下载间隔」停顿后再续（v4.7：1 万条媒体需给 CDN 喘息）
+    if (dispatched > 0 && running >= thread && queue.some((q) => q.state === 'pending')) {
+      const { sleepMs } = settings();
+      if (sleepMs > 0) {
+        setTimeout(() => this.pump(), sleepMs);
+      }
     }
   },
 
@@ -136,8 +209,9 @@ export const downloadManager = {
       state: 'pending',
       createdAt: Date.now(),
       totalBytes: task.totalBytes || 0,
-      // 媒体标志：Common/ 目录为头像/通用资源（小文件），下载列表仅展示媒体文件
-      media: !String(task.dir || '').replace(/^\/+/, '').startsWith('Common/'),
+      retries: 0,
+      // 媒体标志（v4.7）：按真实文件后缀判定，只有多媒体文件进下载列表
+      media: isMediaFile(task.name),
     };
     if (!record.targetDir) {
       throw new Error('备份目标目录未设置');
@@ -150,12 +224,45 @@ export const downloadManager = {
     queue.push(record);
     persist();
     sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'pending', module: record.module, media: record.media });
+    pushSummary();
     this.pump();
     return record.id;
   },
 
-  /** 单任务下载：流式 + 断点续传 + 空闲超时 + 磁盘预检 */
+  /**
+   * 单任务下载：流式 + 断点续传 + 建连/空闲超时 + 重试（v4.7 P1）
+   * 失败按 MAX_RETRY 次退避重试；终态失败上抛由 pump() 标记 failed 并释放槽位。
+   */
   async _run(record) {
+    const maxAttempts = MAX_RETRY + 1;
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await this._attempt(record);
+        return;
+      } catch (e) {
+        // 取消/暂停中断不重试（保留 .part 断点）
+        if (record.cancelRequested || record.pauseInterrupted) throw e;
+        if (attempt >= maxAttempts) {
+          record.retries = attempt - 1;
+          throw e;
+        }
+        record.retries = attempt;
+        const delay = RETRY_BASE_DELAY * 2 ** (attempt - 1);
+        console.warn(
+          '[download-manager] 下载失败，%d/%d 次重试，%dms 后重试：%s %s',
+          attempt, MAX_RETRY, delay, record.url, e && e.message
+        );
+        sendToUi(PushChannels.downloadStateChanged, {
+          taskId: record.id, state: 'pending', module: record.module, media: record.media, retry: attempt,
+        });
+        await new Promise((r) => setTimeout(r, delay));
+        if (record.cancelRequested || record.pauseInterrupted) throw e;
+      }
+    }
+  },
+
+  /** 单次尝试：请求 → 流式落盘 → 校验 → 改名 */
+  async _attempt(record) {
     const dest = resolveTarget(record);
     const partFile = dest + '.part';
     fs.mkdirSync(path.dirname(dest), { recursive: true });
@@ -177,7 +284,20 @@ export const downloadManager = {
     const headers = { Referer: REFERER, 'User-Agent': UA };
     if (offset > 0) headers.Range = `bytes=${offset}-`;
 
-    const response = await net.fetch(record.url, { headers });
+    // v4.7 P1：建连/首字节超时。此前 net.fetch 无 signal —— 请求若卡在
+    // 连接/TLS/等响应头，会一直占着并发槽位（1 万条媒体场景下整个队列静止）。
+    const controller = new AbortController();
+    let headerTimer = setTimeout(() => controller.abort(), HEADER_TIMEOUT);
+    let response;
+    try {
+      response = await net.fetch(record.url, { headers, signal: controller.signal });
+    } catch (e) {
+      if (record.cancelRequested || record.pauseInterrupted) throw new Error('已取消');
+      const aborted = e && (e.name === 'AbortError' || /abort/i.test(String(e.message || '')));
+      throw new Error(aborted ? `请求超时（${HEADER_TIMEOUT / 1000}s 内未收到响应）` : `请求失败：${(e && e.message) || e}`);
+    } finally {
+      clearTimeout(headerTimer);
+    }
     // 断点续传时服务端可能不支持 Range 返回 200（全量），此时回到 0 重下
     if (offset > 0 && response.status === 200) {
       offset = 0;
@@ -209,7 +329,11 @@ export const downloadManager = {
     let idleTimer = null;
     const resetIdle = () => {
       if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => nodeStream.destroy(new Error('下载空闲超时，自动重试')), IDLE_TIMEOUT);
+      // 空闲超时：中断响应体（同时中止底层请求），保留 .part 供下次续传
+      idleTimer = setTimeout(() => {
+        try { controller.abort(); } catch (_) { /* ignore */ }
+        nodeStream.destroy(new Error('下载空闲超时'));
+      }, IDLE_TIMEOUT);
     };
     resetIdle();
     nodeStream.on('data', (chunk) => {
@@ -227,12 +351,15 @@ export const downloadManager = {
         lastReport = now;
         lastPercent = percent;
         record.receivedBytes = received;
-        sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: received, total, currentUrl: record.url, media: record.media });
+        sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: received, total, currentUrl: record.url, media: record.media, module: record.module });
       }
     });
 
     try {
       await pipeline(nodeStream, ws);
+    } catch (e) {
+      if (record.cancelRequested || record.pauseInterrupted) throw new Error('已取消');
+      throw e;
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
     }
@@ -245,8 +372,9 @@ export const downloadManager = {
     record.state = 'done';
     record.doneAt = Date.now();
     record.receivedBytes = received;
+    record.retries = record.retries || 0;
     persist();
-    sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: total, total, currentUrl: record.url, media: record.media });
+    sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: total, total, currentUrl: record.url, media: record.media, module: record.module });
     sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'done', module: record.module, media: record.media });
   },
 

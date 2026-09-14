@@ -178,6 +178,8 @@ const API_MODULE_MESSAGES = {
      * 获取好友互动消息总数（二分查找）
      * 该接口不返回 total 字段，需二分查找探测边界
      * 参照 GetQQzonehistory 的 Python 实现：检查响应是否含 feeds 数据
+     * v4.7：探测异常不再静默返回 0 —— 全程失败时抛错，交由上层标记模块失败，
+     *       避免"接口 501 但备份报告显示成功、实际一条没恢复"的假成功。
      * @param {function} onProgress 进度回调 (message: string) => void
      * @returns {Promise<integer>}
      */
@@ -186,7 +188,7 @@ const API_MODULE_MESSAGES = {
             console.info('[getFeedsCount]', msg);
             if (typeof onProgress === 'function') onProgress(msg);
         };
-        return new Promise(async (resolve) => {
+        return new Promise(async (resolve, reject) => {
             let lowerBound = 0;
             // 上限与 Python 版一致（1000 万），实际互动消息总数小，二分查找 ~23 次即可收敛
             let upperBound = 10000000;
@@ -195,6 +197,10 @@ const API_MODULE_MESSAGES = {
             const maxRetries = 30;
             let retry = 0;
             let blocked = false;
+            /** 成功探测次数（用于区分"真的没数据"与"接口全挂"） */
+            let succeeded = 0;
+            /** 首次异常（用于失败时报出根因） */
+            let firstError = null;
             log('开始二分查找互动消息总数...');
             while (lowerBound <= upperBound && retry < maxRetries && !blocked) {
                 retry++;
@@ -233,6 +239,7 @@ const API_MODULE_MESSAGES = {
                         hasData = Array.isArray(feeds) && feeds.length > 0;
                         sample = `对象响应 feeds=${hasData ? feeds.length : 0}`;
                     }
+                    succeeded++;
                     log(`第${retry}次探测 offset=${total} → ${hasData ? '有数据' : '无数据'} (${sample})`);
                     if (hasData) {
                         lowerBound = total + 1;
@@ -245,12 +252,20 @@ const API_MODULE_MESSAGES = {
                 } catch (e) {
                     // 取消：向上传播中止探测
                     if (e && e.__exportCancelled) throw e;
+                    if (!firstError) firstError = e;
                     log(`第${retry}次探测异常: ${e.message || e}`);
                     break;
                 }
             }
             if (blocked) {
                 log('已被 WAF 拦截，建议稍后再试或降低请求频率');
+            }
+            // v4.7：一次都没探测成功 → 接口不可用，抛错让上层记为失败（而不是当成 0 条）
+            if (succeeded === 0) {
+                const reason = (firstError && (firstError.message || firstError)) || (blocked ? '被 WAF 拦截' : '接口无响应');
+                log(`互动消息总数探测失败：${reason}`);
+                reject(new Error(`互动消息接口不可用，无法恢复已删除说说（${reason}）`));
+                return;
             }
             log(`二分查找完成，互动消息总数约 ${Math.max(0, lowerBound)}`);
             resolve(Math.max(0, lowerBound));

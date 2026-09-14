@@ -4,6 +4,60 @@
  */
 const API_NETWORK_METHODS = {
     /**
+     * 连续服务端异常熔断计数（v4.7 P2）
+     * 背景：issue #1/#2 反馈 501 成片出现，属于账号/网络侧访问频率限制；
+     * 此前每次失败都按 listRetryCount 重试（6 次请求 × 每接口），反而持续加重风控。
+     * 策略：连续 5xx/请求失败累计到阈值后短路后续请求，只提示用户等待，
+     *       任何一次成功响应（HTTP 层或业务 code=0）即清零。
+     */
+    _serverFailureStreak: 0,
+    _serverFailureTripped: false,
+    SERVER_FAILURE_THRESHOLD: 5,
+
+    /** 记录一次服务端异常；达阈值则触发熔断并返回 true */
+    noteServerFailure(status) {
+        this._serverFailureStreak += 1;
+        if (this._serverFailureStreak >= this.SERVER_FAILURE_THRESHOLD && !this._serverFailureTripped) {
+            this._serverFailureTripped = true;
+            console.warn(
+                '[network] 连续 %d 次服务端异常（最近 HTTP %s），已暂停后续接口请求：建议等待风控解除后重试',
+                this._serverFailureStreak, status
+            );
+            try {
+                if (typeof window !== 'undefined' && window.QZonePlatform && window.QZonePlatform.notify) {
+                    window.QZonePlatform.notify.progress({
+                        module: 'Common',
+                        phase: '限流保护',
+                        tip: `连续 ${this._serverFailureStreak} 次接口异常（HTTP ${status}），已暂停请求。建议等待 10~30 分钟或更换网络后重试。`,
+                        percent: 0,
+                    });
+                }
+            } catch (_) { /* 提示失败不影响主流程 */ }
+            return true;
+        }
+        return false;
+    },
+
+    /** 请求成功（HTTP 2xx）时清零熔断状态 */
+    noteServerSuccess() {
+        if (this._serverFailureStreak || this._serverFailureTripped) {
+            this._serverFailureStreak = 0;
+            this._serverFailureTripped = false;
+        }
+    },
+
+    /** 是否处于熔断状态（供调用方提前短路） */
+    isServerFailureTripped() {
+        return this._serverFailureTripped === true;
+    },
+
+    /** 组装熔断提示文案（统一给 UI 与 console 用） */
+    serverFailureMessage(status) {
+        return `QQ 空间接口连续异常（HTTP ${status}），已暂停请求以避免加重限制` +
+            "<br/><span style='color:#f39c12'>💡 建议：等待 10~30 分钟或更换网络后重试；期间不要反复重跑完整备份。</span>";
+    },
+
+    /**
      * 根据 xhr/status/error/url 组装具体可读的错误信息，
      * 并识别 WAF/风控拦截（403 特征）、登录态失效（302/401）等常见场景。
      * 返回 string，可直接赋给 customMessage 或塞进 innerHTML（包含 <br/> + <span> 建议）。
@@ -264,6 +318,8 @@ const API_NETWORK_METHODS = {
                 retries: QZone_Config.Common.listRetryCount, // 重试次数
                 retryInterval: QZone_Config.Common.listRetrySleep * 1000, // 每次重试间隔秒数
                 success: function(result) {
+                    // v4.7：HTTP 层成功，清空连续异常计数
+                    API.Utils.noteServerSuccess();
                     try {
                         const resJson = API.Utils.toJson(result);
                         // 0 正常场景
@@ -303,6 +359,16 @@ const API_NETWORK_METHODS = {
                 error: function(xhr, status, error) {
                     // 使用统一的错误构造器，自动识别 WAF 403 / 超时 / CORS / Motrix 端口 等
                     this.customMessage = API.Utils.buildNetworkErrorMessage(xhr, status, error, this.url);
+                    // v4.7 P2：5xx / 无响应计入连续异常；达阈值直接熔断，后续请求短路
+                    const is5xx = xhr.status >= 500;
+                    const isNetFail = !xhr.status;
+                    if (is5xx || isNetFail) {
+                        if (API.Utils.noteServerFailure(xhr.status || 0)) {
+                            $('#errorTips').hide();
+                            reject(new Error(API.Utils.serverFailureMessage(xhr.status || '网络错误')));
+                            return;
+                        }
+                    }
                     // HTTP 501：服务端异常（接口不支持/该请求不可用），重试无法恢复，快速失败避免请求风暴
                     if (xhr.status === 501) {
                         $('#errorTips').hide();

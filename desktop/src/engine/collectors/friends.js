@@ -90,6 +90,16 @@ QZoneCollectors.Friends = {
       const indicator = new StatusIndicator('Friends_Access');
       indicator.setTotal(friends.length);
 
+      // v4.7 P2：该接口是「逐个好友访问其空间主页」（main_page_cgi），
+      // 此前循环内无任何间隔，几百上千好友会在几分钟内连打同一域名 ——
+      // 这是 issue #1 报 501 的直接诱因。改为每条随机间隔 + 每批额外停顿。
+      const ACCESS_MIN_MS = 300;
+      const ACCESS_MAX_MS = 1200;
+      const ACCESS_BATCH = 20;
+      const ACCESS_BATCH_SLEEP_MS = 3000;
+      let processed = 0;
+      let intervalSkipped = false;
+
       // 遍历
       for (const friend of friends) {
           // 检查点：每条好友处理前检查暂停/取消（该循环原本无检查点）
@@ -101,6 +111,12 @@ QZoneCollectors.Friends = {
           if (friend.isMe || !API.Friends.isNewItem(friend)) {
               indicator.addSkip(friend);
               continue;
+          }
+          // 请求间隔：降低被识别为爬虫/频率限制的风险
+          await API.Utils.sleep(ACCESS_MIN_MS + Math.random() * (ACCESS_MAX_MS - ACCESS_MIN_MS));
+          processed++;
+          if (processed % ACCESS_BATCH === 0) {
+              await API.Utils.sleep(ACCESS_BATCH_SLEEP_MS);
           }
           // 设置默认值
           await API.Friends.getZoneAccess(friend.uin).then((data) => {
@@ -120,7 +136,15 @@ QZoneCollectors.Friends = {
               // 失败
               indicator.addFailed(friend);
               console.error("获取好友空间权限异常", friend, e);
+              // v4.7：熔断生效时无需继续逐条打接口，提前结束本模块
+              if (API.Utils.isServerFailureTripped && API.Utils.isServerFailureTripped()) {
+                  intervalSkipped = true;
+              }
           })
+          if (intervalSkipped) {
+              console.warn('[getZoneAccessList] 接口连续异常已熔断，停止继续判断好友空间权限');
+              break;
+          }
       }
       // 完成
       indicator.complete();

@@ -29,7 +29,6 @@ const VISIBLE_WHEN: Record<string, (root: any) => boolean> = {
   useImageProxyGateway: (root) => root?.downloadType === 'Aria2',
   thunderTaskNum: (root) => String(root?.downloadType || '').startsWith('Thunder'),
   thunderTaskSleep: (root) => String(root?.downloadType || '').startsWith('Thunder'),
-  refererUrls: (root) => root?.downloadType === 'Browser',
 };
 
 const visibleItems = computed(() =>

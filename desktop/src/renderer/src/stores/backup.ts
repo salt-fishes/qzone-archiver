@@ -36,7 +36,12 @@ export type BackupResult = {
 export type DownloadItem = {
   id: string; name?: string; url: string; state: string; module?: string; error?: string;
   received?: number; total?: number; percent?: number; skipped?: boolean; media?: boolean;
+  /** v4.7：已重试次数（主进程重试中回置 pending 时携带） */
+  retry?: number;
 };
+
+/** v4.7：下载队列汇总（主进程 download:state-changed state=summary 推送） */
+export type DownloadSummary = { pending: number; running: number; done: number; failed: number; total: number };
 
 export const DL_STATES: { key: string; label: string }[] = [
   { key: 'all', label: '全部' },
@@ -161,9 +166,30 @@ export const useBackupStore = defineStore('backup', () => {
   const downloads = ref<Record<string, DownloadItem>>({});
   const downloadFilter = ref('all');
   const downloadModule = ref('all');
+  /** v4.7：队列汇总（排队/下载中/完成/失败 + 总数），用于「下载中 x / 共 y」 */
+  const downloadSummary = ref<DownloadSummary | null>(null);
 
   /** 取消备份后置位：中断任务的失败事件不再重建列表（否则取消后残留失败条目） */
   let ignoreAfterCancel = false;
+
+  /**
+   * v4.7：下载事件高频（1 万条媒体进度）→ 合并到 ~200ms 一次刷新，
+   * 避免每条 chunk 都触发 Vue 响应式重算与整表重渲染。
+   */
+  const pendingDownloadPatch = new Map<string, DownloadItem>();
+  let downloadFlushTimer: ReturnType<typeof setTimeout> | null = null;
+  function flushDownloadPatches() {
+    downloadFlushTimer = null;
+    if (!pendingDownloadPatch.size) return;
+    const next = { ...downloads.value };
+    for (const [id, patch] of pendingDownloadPatch) {
+      const prev = next[id];
+      next[id] = { ...(prev || {}), ...patch };
+      if (patch.module && !prev?.module) next[id].module = patch.module;
+    }
+    pendingDownloadPatch.clear();
+    downloads.value = next;
+  }
 
   /* -------- 备份结果（成功页数据） -------- */
 
@@ -177,17 +203,27 @@ export const useBackupStore = defineStore('backup', () => {
     lastResult.value = null;
   }
 
-  /** 媒体文件任务（头像/通用资源等小文件不入列表，聚焦多媒体下载） */
-  const mediaDownloads = computed(() => Object.values(downloads.value).filter((d) => d.media !== false));
+  /**
+   * 媒体文件任务（v4.7）：只展示多媒体文件。
+   * media 由主进程按真实文件后缀判定（图片/视频/音频），
+   * 说说语音、日志附件等非媒体不再混入列表。
+   */
+  const mediaDownloads = computed(() => Object.values(downloads.value).filter((d) => d.media === true));
 
   const filteredDownloads = computed(() => {
     const list = mediaDownloads.value;
     const byState = downloadFilter.value === 'all' ? list : list.filter((d) => d.state === downloadFilter.value);
     const byModule = downloadModule.value === 'all' ? byState : byState.filter((d) => d.module === downloadModule.value);
-    return byModule.reverse();
+    // 倒序：最新任务在前（不原地 reverse，避免污染 computed 依赖数组）
+    return [...byModule].reverse();
   });
   const dlCount = computed(() => mediaDownloads.value.length);
   const dlFilterCount = computed(() => filteredDownloads.value.length);
+  /** v4.7：后台仍在下载时提示「下载中 x / 共 y」 */
+  const downloadingCount = computed(() => {
+    if (downloadSummary.value) return downloadSummary.value.pending + downloadSummary.value.running;
+    return mediaDownloads.value.filter((d) => d.state === 'pending' || d.state === 'running').length;
+  });
 
   function downloadName(url: string) {
     try {
@@ -207,10 +243,34 @@ export const useBackupStore = defineStore('backup', () => {
     }
   }
 
+  /**
+   * v4.7：下载明细展示名 —— 「文件名（模块名）」。
+   * 主进程在进度/状态事件中回传 module；这里只做展示拼接，未知模块回退文件名。
+   */
+  function downloadLabel(d: DownloadItem) {
+    const file = d.name || downloadName(d.url);
+    const mod = d.module ? MODULE_META[d.module]?.label || d.module : '';
+    return mod ? `${file}（${mod}）` : file;
+  }
+
   function applyDownloadState(item: DownloadItem) {
     const prev = downloads.value[item.id];
-    downloads.value[item.id] = { ...(prev || {}), ...item };
-    if (item.module && !prev?.module) downloads.value[item.id].module = item.module;
+    const merged: DownloadItem = { ...(prev || {}), ...item };
+    if (item.module && !prev?.module) merged.module = item.module;
+    // 节流合并：立即记录到待刷表，200ms 内统一提交
+    pendingDownloadPatch.set(item.id, merged);
+    if (!downloadFlushTimer) {
+      downloadFlushTimer = setTimeout(flushDownloadPatches, 200);
+    }
+  }
+
+  /** v4.7：局部状态（清除已完成）需要立即生效，先冲刷待处理补丁 */
+  function flushDownloadsNow() {
+    if (downloadFlushTimer) {
+      clearTimeout(downloadFlushTimer);
+      downloadFlushTimer = null;
+    }
+    flushDownloadPatches();
   }
 
   function stateLabel(s: string) {
@@ -231,6 +291,7 @@ export const useBackupStore = defineStore('backup', () => {
       .clearDone()
       .catch((e: any) => console.warn('清除下载队列失败', e));
     // 白名单重建：仅保留排队/下载中，其余（完成/失败/异常/幽灵条目）全部清除
+    flushDownloadsNow();
     const next: Record<string, DownloadItem> = {};
     for (const [key, d] of Object.entries(downloads.value)) {
       if (d.state === 'pending' || d.state === 'running') next[key] = d;
@@ -359,10 +420,14 @@ export const useBackupStore = defineStore('backup', () => {
         }
       }),
       window.api.on('download:state-changed', (p) => {
-        // 全局状态事件（cleared/cancelled）不带 taskId：同步本地列表，与主进程保持一致
+        // 全局状态事件（cleared/cancelled/summary）不带 taskId：同步本地列表或汇总
         if (!p.taskId) {
-          if (p.state === 'cleared') {
+          if (p.state === 'summary') {
+            // v4.7：主进程队列汇总（排队/下载中/完成/失败 + 总数）
+            if (p.summary) downloadSummary.value = p.summary;
+          } else if (p.state === 'cleared') {
             // 仅清除完成/失败（与主进程 clearDone 语义一致，保留排队/下载中）
+            flushDownloadsNow();
             const next: Record<string, DownloadItem> = {};
             for (const [k, d] of Object.entries(downloads.value)) {
               if (d.state === 'pending' || d.state === 'running') next[k] = d;
@@ -370,19 +435,25 @@ export const useBackupStore = defineStore('backup', () => {
             downloads.value = next;
           } else if (p.state === 'cancelled') {
             downloads.value = {};
+            downloadSummary.value = null;
             ignoreAfterCancel = true; // 取消后中断任务的失败事件不再重建列表
           }
           return;
         }
         if (ignoreAfterCancel) return;
         // 下载文件详情在「下载列表」展示，不写日志（避免刷屏）
-        applyDownloadState({ id: p.taskId, state: p.state, url: p.url || '', module: p.module, skipped: p.skipped, error: p.error });
+        applyDownloadState({
+          id: p.taskId, state: p.state, url: p.url || '', module: p.module,
+          media: p.media, skipped: p.skipped, retry: p.retry, error: p.error,
+        });
       }),
       window.api.on('download:progress', (p) => {
         if (ignoreAfterCancel) return;
         if (p.currentUrl) {
           applyDownloadState({
             id: p.taskId, url: p.currentUrl, state: 'running', module: p.module,
+            // v4.7：progress 事件同样带 media，缺失会让列表项在下载中阶段漏筛
+            media: p.media,
             received: p.done, total: p.total,
             percent: p.total ? Math.round((p.done / p.total) * 100) : 0,
           });
@@ -390,7 +461,7 @@ export const useBackupStore = defineStore('backup', () => {
       }),
       window.api.on('download:item-failed', (p) => {
         if (ignoreAfterCancel) return;
-        applyDownloadState({ id: p.taskId, url: p.url, state: 'failed', error: p.error, module: p.module });
+        applyDownloadState({ id: p.taskId, url: p.url, state: 'failed', error: p.error, module: p.module, media: p.media });
         pushLog('error', `下载失败：${downloadName(p.url)} - ${p.error}`);
       })
     );
@@ -400,13 +471,15 @@ export const useBackupStore = defineStore('backup', () => {
       .getState()
       .then((st) => {
         for (const q of st?.queue || []) {
-          applyDownloadState({ id: q.id, url: q.url, state: q.state, error: q.error, module: q.module, media: q.media });
+          applyDownloadState({ id: q.id, url: q.url, name: q.name, state: q.state, error: q.error, module: q.module, media: q.media });
         }
+        flushDownloadsNow();
       })
       .catch((e) => console.warn('读取下载队列失败', e));
   }
 
   function disposeBackup() {
+    flushDownloadsNow();
     unsubs.forEach((fn) => fn());
     unsubs = [];
   }
@@ -416,9 +489,9 @@ export const useBackupStore = defineStore('backup', () => {
     taskState, busy, paused, engineReady, engineFailed, progress, elapsedSec, logs, downloads,
     lastResult, resetResult, doneModules,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
-    dlCount, dlFilterCount, DL_STATES,
+    dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,
     // 函数
-    retryEngine, pushLog, exportLogs, downloadName, applyDownloadState, stateLabel,
+    retryEngine, pushLog, exportLogs, downloadName, downloadLabel, applyDownloadState, stateLabel,
     formatBytes, clearDoneDownloads, startBackup, pause, resume, cancel,
     initBackup, disposeBackup,
   };

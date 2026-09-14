@@ -258,7 +258,14 @@ QZoneExporters.Messages = {
             } catch (e) {
                 // 取消：向上传播中止整个备份流程
                 if (e && e.__exportCancelled) throw e;
+                // v4.7：恢复已删除说说失败必须上抛 —— 此前只 console.error 吞掉，
+                // 结果接口 501 时该功能一条没恢复，备份报告却显示"成功"。
                 console.error('恢复已删除说说异常', e);
+                throw new ModuleError({
+                    module: 'Messages',
+                    phase: 'recover-deleted',
+                    cause: e,
+                });
             }
         }
 

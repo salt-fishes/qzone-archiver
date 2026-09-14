@@ -7,9 +7,13 @@ directories:
   buildResources: build
 
 # 打包进应用的资源（渲染器产物位于 src/renderer/dist）
+# 注意：src/shared/ipc-contract.mjs 被 main 与 preload 直接 import，
+# 漏配会导致打包后 ERR_MODULE_NOT_FOUND（v4.6.0 便携版启动即崩的根因），
+# 由 tests/unit/packaging.files-coverage.test.mjs 守住。
 files:
   - src/main/**/*
   - src/preload/**/*
+  - src/shared/**/*
   - src/engine/**/*
   - src/renderer/dist/**/*
   - assets/**/*

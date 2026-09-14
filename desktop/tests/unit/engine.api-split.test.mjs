@@ -58,6 +58,18 @@ const grab = (ctx, expr) => vm.runInContext(expr, ctx);
 /** P2-3 死代码清理：基线中 Shares/Favorites 的 convert 已迁 repos 并从接口层删除（计划内变化） */
 const P23_REMOVED = { Shares: ['convert'], Favorites: ['convert'] };
 
+/**
+ * v4.7 计划内行为变更（登记在此，逐字比对对这些方法放行源码全等，但仍校验其存在与类型）：
+ * - Messages.getFeedsCount：探测全失败时抛错，不再静默返回 0（修「恢复已删除说说」假成功）
+ * - Utils.get：加入连续 5xx/无响应熔断（避免风控期间持续重试打接口）
+ * 新增方法不适用本表：API.Utils 由多个 METHOD 对象 Object.assign 合并，
+ * 基线键集合是拆分产物的子集，故 Utils 只要求「基线键全部保留且源码一致」，允许新增。
+ */
+const V47_CHANGED = { Messages: ['getFeedsCount'], Utils: ['get'] };
+
+/** 允许新增方法（拆分层合并而来）的命名空间 */
+const ADDITIVE_NAMESPACES = new Set(['Utils']);
+
 describe('P2-1 api.js 拆分逐字搬迁证明', () => {
   it('API 骨架命名空间集合一致', () => {
     expect(grab(newCtx, 'Object.keys(API).sort()')).toEqual(grab(origCtx, 'Object.keys(API).sort()'));
@@ -69,9 +81,17 @@ describe('P2-1 api.js 拆分逐字搬迁证明', () => {
       const b = grab(newCtx, `API.${ns}`);
       const aKeys = Object.keys(a).filter((k) => !(P23_REMOVED[ns] || []).includes(k)).sort();
       const bKeys = Object.keys(b).sort();
-      expect(bKeys).toEqual(aKeys);
+      if (ADDITIVE_NAMESPACES.has(ns)) {
+        // 合并式命名空间：允许新增，但基线方法一个都不能少
+        const missing = aKeys.filter((k) => !bKeys.includes(k));
+        expect(missing, `${ns} 缺失基线方法`).toEqual([]);
+      } else {
+        expect(bKeys).toEqual(aKeys);
+      }
+      const changed = V47_CHANGED[ns] || [];
       for (const k of aKeys) {
         expect(typeof b[k], `${ns}.${k} 类型`).toBe(typeof a[k]);
+        if (changed.includes(k)) continue; // v4.7 计划内行为变更，详见 V47_CHANGED
         expect(String(b[k]), `${ns}.${k} 源码`).toBe(String(a[k]));
       }
     });

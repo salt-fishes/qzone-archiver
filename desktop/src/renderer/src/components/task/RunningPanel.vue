@@ -8,6 +8,7 @@ import { NButton, NProgress, NDrawer, NDrawerContent, NTag, useDialog } from 'na
 import { AnimatePresence, Motion } from 'motion-v';
 import { useBackupStore, DL_STATES } from '../../stores/backup';
 import { useConfigStore, MODULE_META, MODULE_ICONS } from '../../stores/config';
+import VirtualList from '../common/VirtualList.vue';
 
 const bk = useBackupStore();
 const cfg = useConfigStore();
@@ -49,6 +50,8 @@ const showDownloads = ref(false);
 
 const dlCount = computed(() => bk.dlCount);
 const dlFailed = computed(() => bk.mediaDownloads.filter((d) => d.state === 'failed').length);
+/** v4.7：后台仍在下载的媒体数（采集完成 ≠ 媒体下载完成） */
+const dlActive = computed(() => bk.downloadingCount);
 
 function onCancel() {
   dialog.warning({
@@ -114,6 +117,7 @@ function fmtElapsed(sec?: number) {
             v-if="(extra.failed ?? 0) > 0"
             class="fail"
           >失败 <b>{{ extra.failed }}</b></span>
+          <span v-if="dlActive > 0">媒体下载中 <b>{{ dlActive }}</b></span>
           <span>用时 <b>{{ fmtElapsed(bk.elapsedSec) }}</b></span>
         </div>
         <div class="ri-actions">
@@ -283,26 +287,30 @@ function fmtElapsed(sec?: number) {
           </NButton>
         </div>
         <div class="dl-list app-scroll">
-          <div
-            v-for="d in bk.filteredDownloads"
-            :key="d.id"
-            class="dl-item"
+          <!-- v4.7：虚拟滚动（1 万条媒体不虚拟化会把界面拖垮） -->
+          <VirtualList
+            :items="bk.filteredDownloads"
+            :item-height="34"
           >
-            <div
-              class="dl-name"
-              :title="d.url"
-            >
-              {{ bk.downloadName(d.url) }}
-            </div>
-            <NTag
-              size="tiny"
-              round
-              :bordered="false"
-              :type="d.state === 'failed' ? 'error' : d.state === 'done' ? 'success' : 'default'"
-            >
-              {{ bk.stateLabel(d.state) }}
-            </NTag>
-          </div>
+            <template #default="{ item: d }">
+              <div class="dl-row">
+                <div
+                  class="dl-name"
+                  :title="bk.downloadLabel(d)"
+                >
+                  {{ bk.downloadLabel(d) }}
+                </div>
+                <NTag
+                  size="tiny"
+                  round
+                  :bordered="false"
+                  :type="d.state === 'failed' ? 'error' : d.state === 'done' ? 'success' : 'default'"
+                >
+                  {{ bk.stateLabel(d.state) }}
+                </NTag>
+              </div>
+            </template>
+          </VirtualList>
           <div
             v-if="!bk.dlFilterCount"
             class="dl-empty"
@@ -487,20 +495,24 @@ function fmtElapsed(sec?: number) {
   margin-bottom: 12px;
 }
 .dl-list {
-  height: calc(100% - 40px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
-.dl-item {
+.dl-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 12px;
+  width: 100%;
+  padding: 0 12px;
   border-radius: 8px;
   border: 1px solid var(--surface-border);
+  box-sizing: border-box;
+  margin: 3px 0;
+  height: 28px;
 }
 .dl-name {
   font-size: 12.5px;
