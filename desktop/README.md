@@ -6,14 +6,22 @@ QQ 空间备份桌面应用（Electron + Vue 3）：内嵌登录 → 采集 → 
 
 ```bash
 npm install
-npm run start:dev        # 构建渲染器并启动
+npm run start:dev        # 构建渲染器并启动（构建前自动同步表情资产）
 npm run test             # 单元测试（vitest）
 npm run typecheck        # vue-tsc + tsc
 npm run lint             # eslint
 
 # 引擎配置单一来源：改 src/engine/config-spec.json 后重新生成双端配置
 npm run gen:config
+
+# 生成产物（均为 gitignore，不进库；构建/打包脚本会自动跑，也可手动重建）
+npm run gen:emoticons    # 内置表情 → 渲染层 public/emoticons + 双端清单
+npm run gen:icon         # 打包图标：build/icon.png(512) + build/icon.ico(多尺寸)
 ```
+
+> 表情与图标都是**生成产物**：`build:renderer` 会先跑 `sync-emoticons`，
+> `dist` / `dist:win` 会先跑 `gen:icon`。纯净 checkout 直接构建/打包即可，
+> 不需要手工补文件（缺失时的表现分别是界面表情不显示、打包用默认图标）。
 
 ## 打包发布
 
