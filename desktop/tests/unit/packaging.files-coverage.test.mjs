@@ -143,15 +143,44 @@ describe('打包 files 白名单覆盖性', () => {
     expect(globs.some((g) => g.startsWith('src/shared/'))).toBe(true);
   });
 
-  it('打包图标已配置且尺寸满足 electron-builder 要求（≥256×256）', () => {
+  /**
+   * 打包图标（build/icon.png / icon.ico）是 scripts/gen-app-icon.mjs 的生成物，
+   * 仓库不保存（.gitignore 排除），纯净 checkout 上必然不存在。
+   * 所以这里分两段守：
+   *   1. 配置与生成链路必须在位（icon 配了、生成器在、打包脚本会先跑 gen:icon）；
+   *   2. 产物存在时（本地/打包机）再校验尺寸与结构。
+   */
+  const iconPng = path.join(ROOT, 'build/icon.png');
+  const iconIco = path.join(ROOT, 'build/icon.ico');
+  const hasGeneratedIcons = fs.existsSync(iconPng) && fs.existsSync(iconIco);
+
+  it('打包图标已配置且由 gen:icon 在打包前自动生成（不依赖入库产物）', () => {
     const yml = fs.readFileSync(path.join(ROOT, 'electron-builder.yml'), 'utf8');
     const m = /^\s*icon:\s*(\S+)\s*$/m.exec(yml);
     expect(m, 'electron-builder.yml 未配置 win.icon（打出来的 exe 会用 Electron 默认图标）').toBeTruthy();
-    const iconRel = m[1];
-    const iconAbs = path.join(ROOT, iconRel);
-    expect(fs.existsSync(iconAbs), `图标不存在：${iconRel}（先跑 npm run gen:icon）`).toBe(true);
+    expect(m[1].startsWith('build/'), `win.icon 应为生成产物：${m[1]}`).toBe(true);
 
-    const buf = fs.readFileSync(iconAbs);
+    const refs = [...yml.matchAll(/^\s*(?:installerIcon|uninstallerIcon):\s*(\S+)\s*$/gm)].map((x) => x[1]);
+    expect(refs.length, 'installerIcon / uninstallerIcon 未配置').toBeGreaterThan(0);
+    for (const rel of refs) {
+      expect(rel.startsWith('build/'), `NSIS 图标应为生成产物：${rel}`).toBe(true);
+    }
+
+    // 生成器存在，且打包脚本会先跑它（此前只写在注释里"打包前自动重建"，实际没接）
+    expect(fs.existsSync(path.join(ROOT, 'scripts/gen-app-icon.mjs')), '缺少图标生成脚本').toBe(true);
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+    for (const name of ['dist', 'dist:win']) {
+      expect(pkg.scripts[name], `缺少 ${name} 脚本`).toBeTruthy();
+      expect(pkg.scripts[name], `${name} 未接入 gen:icon，打包机会拿到不存在的图标`).toContain('gen:icon');
+    }
+
+    // 产物目录必须仍被 .gitignore 排除（否则会有人把二进制图标提交进来）
+    const ignore = fs.readFileSync(path.join(ROOT, '..', '.gitignore'), 'utf8');
+    expect(ignore, '.gitignore 未排除 build/ 生成产物目录').toContain('desktop/build/');
+  });
+
+  it.runIf(hasGeneratedIcons)('已生成的图标尺寸/结构满足 electron-builder 与 NSIS 要求', () => {
+    const buf = fs.readFileSync(iconPng);
     const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     expect(buf.subarray(0, 8).equals(pngSignature), '图标必须是 PNG').toBe(true);
     const width = buf.readUInt32BE(16);
@@ -160,31 +189,21 @@ describe('打包 files 白名单覆盖性', () => {
       width >= 256 && height >= 256,
       `图标尺寸 ${width}×${height} 低于 electron-builder 的 256×256 下限`
     ).toBe(true);
-  });
 
-  it('NSIS 安装向导图标为合法多尺寸 ICO（传 PNG 会 makeNSIS 失败）', () => {
-    const yml = fs.readFileSync(path.join(ROOT, 'electron-builder.yml'), 'utf8');
-    const refs = [...yml.matchAll(/^\s*(?:installerIcon|uninstallerIcon):\s*(\S+)\s*$/gm)].map((m) => m[1]);
-    expect(refs.length, 'installerIcon / uninstallerIcon 未配置').toBeGreaterThan(0);
-
-    for (const rel of refs) {
-      const abs = path.join(ROOT, rel);
-      expect(fs.existsSync(abs), `ICO 不存在：${rel}（先跑 npm run gen:icon）`).toBe(true);
-      const buf = fs.readFileSync(abs);
-      expect(buf.readUInt16LE(0), 'ICO reserved 字段必须为 0').toBe(0);
-      expect(buf.readUInt16LE(2), 'ICO type 字段必须为 1').toBe(1);
-      const count = buf.readUInt16LE(4);
-      expect(count, 'ICO 至少应包含 1 张图像').toBeGreaterThan(0);
-      // 每张图像的偏移/长度必须落在文件内，且内容为 PNG 或 BMP
-      for (let i = 0; i < count; i++) {
-        const base = 6 + i * 16;
-        const length = buf.readUInt32LE(base + 8);
-        const offset = buf.readUInt32LE(base + 12);
-        expect(offset + length).toBeLessThanOrEqual(buf.length);
-        const isPng = buf[offset] === 0x89 && buf[offset + 1] === 0x50;
-        const isBmp = buf.readUInt32LE(offset) === 40;
-        expect(isPng || isBmp, `第 ${i} 张图像既不是 PNG 也不是 BMP`).toBe(true);
-      }
+    const ico = fs.readFileSync(iconIco);
+    expect(ico.readUInt16LE(0), 'ICO reserved 字段必须为 0').toBe(0);
+    expect(ico.readUInt16LE(2), 'ICO type 字段必须为 1').toBe(1);
+    const count = ico.readUInt16LE(4);
+    expect(count, 'ICO 至少应包含 1 张图像').toBeGreaterThan(0);
+    // 每张图像的偏移/长度必须落在文件内，且内容为 PNG 或 BMP
+    for (let i = 0; i < count; i++) {
+      const base = 6 + i * 16;
+      const length = ico.readUInt32LE(base + 8);
+      const offset = ico.readUInt32LE(base + 12);
+      expect(offset + length).toBeLessThanOrEqual(ico.length);
+      const isPng = ico[offset] === 0x89 && ico[offset + 1] === 0x50;
+      const isBmp = ico.readUInt32LE(offset) === 40;
+      expect(isPng || isBmp, `第 ${i} 张图像既不是 PNG 也不是 BMP`).toBe(true);
     }
   });
 });

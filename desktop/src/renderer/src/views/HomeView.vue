@@ -183,7 +183,16 @@ onBeforeUnmount(() => {
               :label="h.target?.nickname || h.name"
               :size="26"
             />
-            <span class="ri-name">{{ h.target?.nickname ? `${h.target.nickname} 的档案` : h.name || 'QQ 空间档案' }}</span>
+            <!-- v4.7.5：昵称里的 [em]e327806[/em] 也要渲染成图，不能直接插值（否则就是纯文本表情） -->
+            <span class="ri-name">
+              <template v-if="h.target?.nickname">
+                <EmoticonText
+                  :text="h.target.nickname"
+                  :size="15"
+                /> 的档案
+              </template>
+              <template v-else>{{ h.name || 'QQ 空间档案' }}</template>
+            </span>
             <NTag
               v-if="h.target && h.target.uin"
               size="tiny"

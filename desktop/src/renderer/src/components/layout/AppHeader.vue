@@ -1,10 +1,11 @@
 <script setup lang="ts">
 /** 应用顶栏（v4.6）：引擎连接状态 + 主题切换 + 登录态（头像下拉） */
-import { NTag, NButton, NDropdown, NAvatar, useDialog } from 'naive-ui';
+import { NTag, NButton, NDropdown, useDialog } from 'naive-ui';
 import { useAuthStore } from '../../stores/auth';
 import { useAppearanceStore } from '../../stores/appearance';
 import { useBackupStore } from '../../stores/backup';
 import EmoticonText from '../common/EmoticonText.vue';
+import TargetAvatar from '../common/TargetAvatar.vue';
 
 defineProps<{ version: string }>();
 
@@ -115,15 +116,14 @@ function onUserAction(key: string) {
           @select="onUserAction"
         >
           <button class="user-chip">
-            <NAvatar
-              round
+            <!-- v4.7.5：头像统一走 TargetAvatar（主进程本地缓存 → data URL）。
+                 直连 qlogo 外链会被 CSP 拦掉且离线不可用；文字占位也不能放 NAvatar
+                 默认插槽（会覆盖 src，导致永远只显示文字头像）。 -->
+            <TargetAvatar
+              :uin="auth.auth.qqNumber"
+              :label="auth.auth.nickname || auth.auth.qqNumber"
               :size="26"
-              :src="auth.auth.avatar"
-              fallback-src=""
-              style="background: #b45f3d"
-            >
-              {{ (auth.auth.nickname || auth.auth.qqNumber || '?').slice(0, 1) }}
-            </NAvatar>
+            />
             <span class="user-name">
               <EmoticonText
                 :text="auth.auth.nickname"

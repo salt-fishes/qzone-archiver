@@ -67,6 +67,14 @@ export const Channels = {
   avatars: {
     get: 'avatars:get',
   },
+  /**
+   * v4.7.4 只增：内置表情图片（主进程读 assets/emoticons → data URL）
+   * 渲染层此前用相对路径 `./emoticons/qq/e{id}.gif` 引图，实机上加载失败导致
+   * 界面显示原始表情代码；改为主进程内联返回 data URL，不走 URL 解析与网络。
+   */
+  emoticons: {
+    get: 'emoticons:get',
+  },
   viewer: {
     open: 'viewer:open',
   },

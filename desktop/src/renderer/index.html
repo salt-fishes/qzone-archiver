@@ -2,9 +2,14 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      CSP：img-src 里的 qzonestyle.gtimg.cn 是表情的最后一级兜底（内置库未收录的 id）。
+      原策略 `img-src 'self' data:` 会把该外链整个拦掉，于是兜底链断在最后一步、
+      界面直接显示原始表情代码（v4.7.5 修）。本地 ./emoticons/** 与内联 data: 不受影响。
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://qzonestyle.gtimg.cn;"
     />
     <title>QQ空间档案备份</title>
   </head>

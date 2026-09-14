@@ -75,6 +75,10 @@ declare global {
       avatars: {
         get(uin: string | number): Promise<{ ok: boolean; dataUrl: string | null }>;
       };
+      /** v4.7.4：内置表情图片（主进程读 assets/emoticons → data URL） */
+      emoticons: {
+        get(id: string | number): Promise<{ ok: boolean; dataUrl: string | null }>;
+      };
       viewer: {
         open(backupPath: string): Promise<any>;
       };

@@ -15,17 +15,32 @@ import { avatarStore } from '../services/avatar-store.js';
 import { Channels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-/** 内置表情库目录（assets/emoticons，打包时随应用分发） */
-const EMOTICONS_DIR = path.resolve(__dirname, '../../assets/emoticons');
+/**
+ * 内置表情库目录（assets/emoticons，打包时随 files 白名单分发）
+ *
+ * ⚠️ v4.7.5 修复：这里少写了一级 `..` —— 本文件位于 src/main/ipc，
+ * `../../assets/emoticons` 会解析到 **src/assets/emoticons（不存在）**，
+ * 正确目标是仓库根的 assets/emoticons（打包后 = app.asar/assets/emoticons）。
+ * 后果曾经是：内置表情一个都没复制进备份产物，
+ * 且 emoticons:get 永远返回 null（界面表情兜底链整条失效）。
+ */
+const EMOTICONS_DIR = path.resolve(__dirname, '../../../assets/emoticons');
 
 /**
  * 将内置表情库复制到备份目录 Common/images/（表情无需网络下载，
  * 备份产物直接引用本地路径即可正常显示）
+ *
+ * 注意：引擎侧对"内置库命中"的 id 是**跳过下载**的（api/common.js addEmoticonDowanloadTask），
+ * 所以这里是备份产物里内置表情的唯一来源，失败会直接表现为档案表情整批不显示。
  * @returns {number} 复制的表情数量
  */
 export function copyBuiltinEmoticons(targetDir) {
   const manifestPath = path.join(EMOTICONS_DIR, 'manifest.json');
-  if (!fs.existsSync(manifestPath)) return 0;
+  if (!fs.existsSync(manifestPath)) {
+    // 曾经这里是静默 return 0，导致"表情没复制"这类问题很难查（v4.7.5 改为显式告警）
+    console.warn(`[backup] 内置表情库缺失，跳过复制：${manifestPath}`);
+    return 0;
+  }
   let manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -47,7 +62,7 @@ export function copyBuiltinEmoticons(targetDir) {
     const m = /^e(\d+)\.(gif|png|jpe?g)$/i.exec(file);
     if (m) roster[m[1]] = file;
   }
-  for (const fileName of Object.values(roster)) {
+  for (const [id, fileName] of Object.entries(roster)) {
     const src = path.join(EMOTICONS_DIR, 'qq', fileName);
     if (!fs.existsSync(src)) continue;
     const dest = path.join(outDir, fileName);
@@ -55,9 +70,23 @@ export function copyBuiltinEmoticons(targetDir) {
       fs.copyFileSync(src, dest);
       count++;
     }
+    /**
+     * v4.7.5：档案 SPA 渲染表情时把扩展名写死成 `.gif`
+     * （export-resources/spa-dist 内 `${O4}e${id}.gif`），而魔法表情内置文件的真实
+     * 扩展名是 `.png` —— 只复制真实文件名，档案里 230 个魔法表情依旧全部取不到图。
+     * 图片是按内容识别的（CDN 返回的 e327806"gif" 本身就是 PNG 字节），
+     * 所以这里给非 .gif 的表情再补一份 `.gif` 字节拷贝，SPA 与静态模板两边都能取到。
+     */
+    if (path.extname(fileName).toLowerCase() !== '.gif') {
+      const aliasDest = path.join(outDir, `e${id}.gif`);
+      if (!fs.existsSync(aliasDest)) {
+        fs.copyFileSync(src, aliasDest);
+        count++;
+      }
+    }
   }
   if (count > 0) {
-    console.log(`[backup] 内置表情已复制 ${count} 个（含 png 魔法表情）`);
+    console.log(`[backup] 内置表情已复制 ${count} 个（含 png 魔法表情及其 .gif 别名）`);
   }
 
   for (const name of manifest.wx || []) {
@@ -73,7 +102,34 @@ export function copyBuiltinEmoticons(targetDir) {
   return count;
 }
 
+/**
+ * v4.7.4：内置表情 → data URL（渲染层按 id 取，避免相对路径加载失败）
+ * 表情文件就在 assets/emoticons/qq（打包时随 files 白名单分发），
+ * 这里负责找真实文件名（经典 .gif / 魔法 .png）并内联返回。
+ */
+function emoticonDataUrl(id) {
+  const clean = String(id || '').replace(/\D/g, '');
+  if (!clean) return null;
+  for (const ext of ['gif', 'png', 'jpg', 'jpeg']) {
+    const p = path.join(EMOTICONS_DIR, 'qq', `e${clean}.${ext}`);
+    if (!fs.existsSync(p)) continue;
+    try {
+      const buf = fs.readFileSync(p);
+      const mime =
+        ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
+      return `data:${mime};base64,${buf.toString('base64')}`;
+    } catch (e) {
+      console.warn('[emoticons] 读取表情失败', p, e?.message || e);
+      return null;
+    }
+  }
+  return null;
+}
+
 const TASK_PREFIX = 'task-';
+
+/** 表情未命中日志去重（避免同 id 反复刷屏） */
+const emoticonsLogged = new Set();
 
 export function registerBackupIpc() {
   // targetUin（可选，v4.6 他人模式）：缺省/等于登录号 = 备份本人空间，行为与旧版完全一致
@@ -184,9 +240,26 @@ export function registerBackupIpc() {
     const clean = String(uin || '').replace(/\D/g, '');
     if (!clean) return { ok: false, dataUrl: null };
     let dataUrl = avatarStore.getDataUrl(clean);
+    let source = dataUrl ? '本地缓存' : '';
     if (!dataUrl) {
-      await avatarStore.ensure(clean).catch(() => false);
+      // 本地没有（或首次请求）：尝试抓一次再读；失败由 UI 显示昵称首字兜底
+      const ok = await avatarStore.ensure(clean).catch((e) => {
+        console.warn('[avatars] 抓取头像异常', clean, e?.message || e);
+        return false;
+      });
       dataUrl = avatarStore.getDataUrl(clean);
+      source = ok && dataUrl ? '网络抓取' : '失败';
+    }
+    console.info(`[avatars] uin=${clean} → ${dataUrl ? `已返回（${source}）` : '无头像（UI 用首字兜底）'}`);
+    return { ok: !!dataUrl, dataUrl };
+  });
+
+  /** v4.7.4：内置表情图片（data URL）。命中/未命中都打日志，便于排查显示问题。 */
+  ipcMain.handle(Channels.emoticons.get, (event, { id } = {}) => {
+    const dataUrl = emoticonDataUrl(id);
+    if (!dataUrl && !emoticonsLogged.has(String(id))) {
+      emoticonsLogged.add(String(id));
+      console.warn(`[emoticons] id=${id} 未在内置库中找到（界面将回落 CDN 或显示原文）`);
     }
     return { ok: !!dataUrl, dataUrl };
   });

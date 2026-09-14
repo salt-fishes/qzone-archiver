@@ -3,11 +3,13 @@
  * 向导第①步：选择备份目标（v4.6 他人模式）
  * 我的空间 / 好友的空间 两个入口；好友模式 = QQ 号输入 + 好友远程搜索 + 空间可访问性校验
  */
-import { computed, ref } from 'vue';
-import { NInput, NSelect, NButton, NAlert, NAvatar, NSpin } from 'naive-ui';
+import { computed, h, ref } from 'vue';
+import { NInput, NSelect, NButton, NAlert, NSpin } from 'naive-ui';
+import type { SelectOption } from 'naive-ui';
 import { useTargetStore } from '../../stores/target';
 import { useAuthStore } from '../../stores/auth';
 import EmoticonText from '../common/EmoticonText.vue';
+import TargetAvatar from '../common/TargetAvatar.vue';
 
 const target = useTargetStore();
 const { auth } = useAuthStore();
@@ -26,8 +28,22 @@ const friendOptions = computed(() =>
   target.friends.map((f) => ({
     label: `${f.remark || f.nickname || '好友'}（${f.uin}）`,
     value: f.uin,
+    remark: f.remark,
+    nickname: f.nickname,
   }))
 );
+
+/**
+ * 下拉选项里的昵称同样要把 `[em]e123[/em]` 渲染成图片（v4.7.5）：
+ * NSelect 的 options.label 是纯字符串，必须用 render-label 才能塞组件。
+ */
+function renderFriendLabel(option: SelectOption) {
+  const name = String(option.remark || option.nickname || '好友');
+  return [
+    h(EmoticonText, { text: name, size: 15 }),
+    h('span', { class: 'fo-uin' }, `（${String(option.value ?? '')}）`),
+  ];
+}
 
 const friendPlaceholder = computed(() =>
   target.friends.length
@@ -119,6 +135,7 @@ async function doValidate() {
             :loading="target.friendsLoading"
             :value="target.inputUin || null"
             :placeholder="friendPlaceholder"
+            :render-label="renderFriendLabel"
             size="large"
             @update:value="(v: string | null) => v && pick(v)"
           >
@@ -158,14 +175,11 @@ async function doValidate() {
             v-if="target.profile"
             class="profile-card"
           >
-            <NAvatar
-              round
+            <TargetAvatar
+              :uin="target.profile.uin"
+              :label="target.profile.nickname"
               :size="44"
-              :src="target.profile.avatar"
-              style="background: #b45f3d"
-            >
-              {{ (target.profile.nickname || target.profile.uin).slice(0, 1) }}
-            </NAvatar>
+            />
             <div class="pc-info">
               <div class="pc-name">
                 <EmoticonText
@@ -205,14 +219,11 @@ async function doValidate() {
       v-else
       class="profile-card self"
     >
-      <NAvatar
-        round
+      <TargetAvatar
+        :uin="auth.qqNumber"
+        :label="auth.nickname || auth.qqNumber"
         :size="44"
-        :src="auth.avatar"
-        style="background: #b45f3d"
-      >
-        {{ (auth.nickname || auth.qqNumber || '?').slice(0, 1) }}
-      </NAvatar>
+      />
       <div class="pc-info">
         <div class="pc-name">
           <EmoticonText

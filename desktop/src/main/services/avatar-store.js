@@ -16,6 +16,12 @@ const REFERER = 'https://user.qzone.qq.com/';
 const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
+/**
+ * 缓存有效期：头像换过之后不该永远显示旧的，但也不需要每次开界面都重新下载。
+ * 超过该时长再次请求时会重新抓取（抓失败仍沿用旧文件，不把已有头像弄丢）。
+ */
+const AVATAR_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 function avatarDir() {
   return path.join(app.getPath('userData'), 'avatars');
 }
@@ -80,13 +86,26 @@ export const avatarStore = {
   },
 
   /**
-   * 下载并缓存指定 uin 的头像（幂等：已有缓存直接返回）
+   * 下载并缓存指定 uin 的头像
+   * 幂等且带回退：缓存未过期直接用；过期或缺失则重抓，
+   * 重抓失败时**保留旧文件**（总比没有强）。
    * @returns {Promise<boolean>} 是否可用
    */
-  async ensure(uin) {
+  async ensure(uin, { force = false } = {}) {
     const clean = String(uin || '').replace(/\D/g, '');
     if (!clean) return false;
-    if (this.has(clean)) return true;
+
+    const file = avatarFile(clean);
+    const exists = this.has(clean);
+    if (exists && !force) {
+      try {
+        const age = Date.now() - fs.statSync(file).mtimeMs;
+        if (age < AVATAR_TTL_MS) return true;
+        console.info(`[avatar-store] 头像缓存已过期（${Math.round(age / 86400000)} 天），尝试刷新 uin=${clean}`);
+      } catch {
+        /* stat 失败按需重抓 */
+      }
+    }
 
     for (const url of avatarUrls(clean)) {
       try {
@@ -96,12 +115,17 @@ export const avatarStore = {
         // 400/防盗链页面也会是 200 + 少量文本，用图片魔数兜底
         if (buf.length < 64 || !/^\x89PNG|^\xff\xd8|^GIF8|^RIFF/.test(buf.toString('binary'))) continue;
         fs.mkdirSync(avatarDir(), { recursive: true });
-        fs.writeFileSync(avatarFile(clean), buf);
+        fs.writeFileSync(file, buf);
         console.info(`[avatar-store] 已缓存头像 uin=${clean}（${buf.length} 字节）`);
         return true;
       } catch (e) {
         console.warn(`[avatar-store] 下载头像失败 uin=${clean} ${url}`, e?.message || e);
       }
+    }
+    // 抓取失败但本地有旧图：沿用旧图，避免头像凭空消失
+    if (exists) {
+      console.warn(`[avatar-store] 刷新失败，沿用已有头像 uin=${clean}`);
+      return true;
     }
     return false;
   },

@@ -8,6 +8,7 @@ import { NButton, NTag, NAlert } from 'naive-ui';
 import { Motion } from 'motion-v';
 import type { BackupResult } from '../../stores/backup';
 import { MODULE_META } from '../../stores/config';
+import EmoticonText from '../common/EmoticonText.vue';
 
 const props = defineProps<{
   result: BackupResult;
@@ -95,7 +96,13 @@ function fmtElapsed(sec: number) {
 
       <h2>{{ hasErrors ? '备份完成，部分内容失败' : '备份完成' }}</h2>
       <p class="sub">
-        {{ result.target?.nickname ? `${result.target.nickname} 的` : '' }}档案已保存到本地
+        <template v-if="result.target?.nickname">
+          <EmoticonText
+            :text="result.target.nickname"
+            :size="16"
+          /> 的档案已保存到本地
+        </template>
+        <template v-else>档案已保存到本地</template>
       </p>
 
       <div class="stat-row">

@@ -66,6 +66,10 @@ const api = {
   avatars: {
     get: (uin) => invoke(Channels.avatars.get, { uin }),
   },
+  /** v4.7.4：内置表情图片（主进程读 assets/emoticons → data URL） */
+  emoticons: {
+    get: (id) => invoke(Channels.emoticons.get, { id }),
+  },
   viewer: {
     open: (backupPath) => invoke(Channels.viewer.open, { backupPath }),
   },

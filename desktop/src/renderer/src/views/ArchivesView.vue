@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router';
 import { NButton, NTag, NEmpty, NPopconfirm, useMessage } from 'naive-ui';
 import { MODULE_META } from '../stores/config';
 import TargetAvatar from '../components/common/TargetAvatar.vue';
+import EmoticonText from '../components/common/EmoticonText.vue';
 
 type HistoryEntry = {
   taskId?: string | null;
@@ -43,7 +44,10 @@ async function loadHistory() {
 
 /** 按目标 uin 分组（旧记录无 target 字段 → 归入"我的空间"） */
 const groups = computed(() => {
-  const map = new Map<string, { key: string; label: string; uin?: string; items: HistoryEntry[] }>();
+  const map = new Map<
+    string,
+    { key: string; label: string; nickname?: string; uin?: string; items: HistoryEntry[] }
+  >();
   for (const h of history.value) {
     const uin = h.target?.uin;
     const key = uin || 'me';
@@ -51,7 +55,9 @@ const groups = computed(() => {
       map.set(key, {
         key,
         uin,
+        // label 供头像占位/纯文本兜底，nickname 单独留着走 EmoticonText（表情要渲染成图）
         label: uin ? h.target?.nickname || `好友 ${uin}` : '我的空间',
+        nickname: uin ? h.target?.nickname : undefined,
         items: [],
       });
     }
@@ -150,7 +156,14 @@ onBeforeUnmount(() => {
             :label="g.label"
             :size="30"
           />
-          <span class="g-name">{{ g.label }}</span>
+          <span class="g-name">
+            <EmoticonText
+              v-if="g.nickname"
+              :text="g.nickname"
+              :size="16"
+            />
+            <template v-else>{{ g.label }}</template>
+          </span>
           <NTag
             v-if="g.uin"
             size="tiny"

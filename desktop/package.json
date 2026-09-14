@@ -1,6 +1,6 @@
 {
   "name": "qzone-archiver-desktop",
-  "version": "4.7.3",
+  "version": "4.7.5",
   "private": true,
   "description": "QQ空间档案备份桌面版（内嵌登录 → 采集 → 打包 → 内置 SPA 浏览）",
   "type": "module",
@@ -8,15 +8,17 @@
   "scripts": {
     "sync:baseline": "node scripts/sync-baseline.mjs",
     "gen:config": "node scripts/gen-engine-config.mjs && node scripts/gen-ui-schema.mjs",
+    "gen:emoticons": "node scripts/gen-emoticons-manifest.mjs && node scripts/sync-emoticons.mjs",
+    "gen:icon": "node scripts/gen-app-icon.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
     "lint": "eslint .",
     "test": "vitest run",
     "dev": "vite",
-    "build:renderer": "vite build",
+    "build:renderer": "node scripts/sync-emoticons.mjs && vite build",
     "start": "electron .",
     "start:dev": "npm run build:renderer && electron .",
-    "dist": "npm run build:renderer && electron-builder",
-    "dist:win": "npm run build:renderer && electron-builder --win"
+    "dist": "npm run gen:icon && npm run build:renderer && electron-builder",
+    "dist:win": "npm run gen:icon && npm run build:renderer && electron-builder --win"
   },
   "dependencies": {
     "archiver": "^8.0.0",

@@ -12,6 +12,7 @@ import { useConfigStore, MODULE_META, MODULE_KEYS, getPath } from '../stores/con
 import { useBackupStore } from '../stores/backup';
 import { useTargetStore } from '../stores/target';
 import TargetPicker from '../components/task/TargetPicker.vue';
+import EmoticonText from '../components/common/EmoticonText.vue';
 import ContentPicker from '../components/task/ContentPicker.vue';
 import RunningPanel from '../components/task/RunningPanel.vue';
 import ResultPanel from '../components/task/ResultPanel.vue';
@@ -192,7 +193,11 @@ function pickDir() {
               <span class="c-k">备份目标</span>
               <span class="c-v">
                 <template v-if="target.isOtherUser">
-                  好友 {{ target.profile?.nickname || '' }}（{{ target.profile?.uin }}）的公开内容
+                  好友 <EmoticonText
+                    v-if="target.profile?.nickname"
+                    :text="target.profile.nickname"
+                    :size="15"
+                  />（{{ target.profile?.uin }}）的公开内容
                 </template>
                 <template v-else>我的空间（{{ auth.qqNumber || '未登录' }}）</template>
               </span>
