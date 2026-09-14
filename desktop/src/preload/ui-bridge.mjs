@@ -62,6 +62,10 @@ const api = {
   zip: {
     create: (srcDir, destPath) => invoke(Channels.zip.create, { srcDir, destPath }),
   },
+  /** v4.7：备份目标头像（主进程本地缓存 → data URL，离线可用） */
+  avatars: {
+    get: (uin) => invoke(Channels.avatars.get, { uin }),
+  },
   viewer: {
     open: (backupPath) => invoke(Channels.viewer.open, { backupPath }),
   },

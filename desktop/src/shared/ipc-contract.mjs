@@ -63,6 +63,10 @@ export const Channels = {
   zip: {
     create: 'zip:create',
   },
+  /** v4.7 只增：备份目标头像（主进程按 uin 本地缓存，返回 data URL） */
+  avatars: {
+    get: 'avatars:get',
+  },
   viewer: {
     open: 'viewer:open',
   },

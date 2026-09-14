@@ -29,7 +29,8 @@ const userOptions = [
 ];
 
 function onUserAction(key: string) {
-  if (key === 'engine') window.api.auth.showLogin();
+  // 走 store 的 login()：会先给出「打开 QQ 空间前的注意事项」提示（v4.7 反馈 ⑤）
+  if (key === 'engine') auth.login();
   if (key === 'logout') confirmLogout();
 }
 </script>

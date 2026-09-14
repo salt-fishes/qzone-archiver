@@ -57,11 +57,24 @@ const estimates = computed(() => lastSameTarget.value?.moduleCounts || {});
 const lastSize = computed(() => lastSameTarget.value?.size || 0);
 const lastTotal = computed(() => lastSameTarget.value?.total || 0);
 
+/**
+ * 备份方式文案（v4.7 反馈 ④）：优先反映「本次备份方式」的选择，
+ * 未选择（按设置）时回落到各模块自己的增量配置。
+ */
+const MODE_LABEL: Record<string, string> = {
+  Full: '全量备份（本次从头备份）',
+  Last: '只备份新增内容（上次之后）',
+  Custom: '按自定义时间备份',
+};
 const isIncremental = computed(() => {
+  if (cfg.backupMode !== 'default') return cfg.backupMode === 'Last' || cfg.backupMode === 'Custom';
   const first = selectedModules.value.find((m) => MODULE_KEYS.includes(m));
   if (!first) return false;
   return getPath(settings.value[first], 'IncrementType') === 'Last';
 });
+const backupModeLabel = computed(
+  () => MODE_LABEL[cfg.backupMode] || (isIncremental.value ? '只备份新增内容（上次之后）' : '全量备份')
+);
 
 /* ============ 向导状态 ============ */
 const step = ref(1);
@@ -190,7 +203,7 @@ function pickDir() {
             </div>
             <div class="c-row">
               <span class="c-k">备份方式</span>
-              <span class="c-v">{{ isIncremental ? '只备份新增内容（上次之后）' : '全量备份' }}</span>
+              <span class="c-v">{{ backupModeLabel }}</span>
             </div>
             <div
               v-if="lastTotal || lastSize"

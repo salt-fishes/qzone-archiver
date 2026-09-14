@@ -14,6 +14,7 @@ import { engineStorage } from '../services/config-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
+import { avatarStore } from '../services/avatar-store.js';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
@@ -201,15 +202,23 @@ export function registerEngineIpc() {
             // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
             // P3-4：目录统计已异步化，fire-and-forget 不阻塞 completed 推送
             const active = getActiveTaskContext();
-            backupStats
-              .recordBackup({
-                taskId: data.taskId || active?.taskId,
-                targetDir: active?.targetDir,
-                modules: active?.modules || [],
-                results: data.results,
-                errors: data.errors,
-                target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
-              })
+            // v4.7 反馈 ②：先把备份目标的头像抓到本地缓存（带引擎 session，
+            // 避免渲染层 file:// 直连 qlogo 被防盗链拦掉），再落历史记录
+            const targetUin = data.target?.uin || active?.targetUin;
+            const ensureAvatar = targetUin
+              ? avatarStore.ensure(targetUin).catch(() => false)
+              : Promise.resolve(false);
+            ensureAvatar
+              .then(() =>
+                backupStats.recordBackup({
+                  taskId: data.taskId || active?.taskId,
+                  targetDir: active?.targetDir,
+                  modules: active?.modules || [],
+                  results: data.results,
+                  errors: data.errors,
+                  target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
+                })
+              )
               .then((rec) => {
                 if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
               })

@@ -11,6 +11,7 @@ import { stateStore } from '../services/state-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
+import { avatarStore } from '../services/avatar-store.js';
 import { Channels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -35,16 +36,30 @@ export function copyBuiltinEmoticons(targetDir) {
   const outDir = path.join(targetDir, 'Common/images');
   fs.mkdirSync(outDir, { recursive: true });
   let count = 0;
-  for (const eid of manifest.qq || []) {
-    const src = path.join(EMOTICONS_DIR, 'qq', `e${eid}.gif`);
-    if (fs.existsSync(src)) {
-      const dest = path.join(outDir, `e${eid}.gif`);
-      if (!fs.existsSync(dest)) {
-        fs.copyFileSync(src, dest);
-        count++;
-      }
+
+  /**
+   * v4.7.2：按目录实况复制（经典表情是 .gif，魔法表情多为 .png）。
+   * 此前只找 e{id}.gif，导致 224 个 png 表情一个都没复制进备份目录，
+   * 而档案里引用的正是这些文件 —— 导出档案的表情全部显示不出来。
+   */
+  const roster = {};
+  for (const file of fs.readdirSync(path.join(EMOTICONS_DIR, 'qq'))) {
+    const m = /^e(\d+)\.(gif|png|jpe?g)$/i.exec(file);
+    if (m) roster[m[1]] = file;
+  }
+  for (const fileName of Object.values(roster)) {
+    const src = path.join(EMOTICONS_DIR, 'qq', fileName);
+    if (!fs.existsSync(src)) continue;
+    const dest = path.join(outDir, fileName);
+    if (!fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+      count++;
     }
   }
+  if (count > 0) {
+    console.log(`[backup] 内置表情已复制 ${count} 个（含 png 魔法表情）`);
+  }
+
   for (const name of manifest.wx || []) {
     const src = path.join(EMOTICONS_DIR, 'wx', `${name}.png`);
     if (fs.existsSync(src)) {
@@ -159,6 +174,21 @@ export function registerBackupIpc() {
   // 备份历史（概览累计统计/上次备份；由 backup-stats 在备份完成时自动记录）
   ipcMain.handle(Channels.backup.getHistory, () => {
     return { ok: true, history: backupStats.getHistory() };
+  });
+
+  /**
+   * v4.7 反馈 ②：备份目标头像（本地缓存 → data URL）
+   * 未命中缓存时先尝试下载一次（带引擎 session，减少防盗链失败），失败返回 null 由 UI 兜底。
+   */
+  ipcMain.handle(Channels.avatars.get, async (event, { uin } = {}) => {
+    const clean = String(uin || '').replace(/\D/g, '');
+    if (!clean) return { ok: false, dataUrl: null };
+    let dataUrl = avatarStore.getDataUrl(clean);
+    if (!dataUrl) {
+      await avatarStore.ensure(clean).catch(() => false);
+      dataUrl = avatarStore.getDataUrl(clean);
+    }
+    return { ok: !!dataUrl, dataUrl };
   });
 
   ipcMain.handle(Channels.backup.listAlbums, async () => {

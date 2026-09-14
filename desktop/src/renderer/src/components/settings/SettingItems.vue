@@ -61,6 +61,17 @@ function onDatetimeChange(key: string, v: number | null) {
     `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`
   );
 }
+
+/**
+ * 时间类设置 → 时间戳（毫秒）
+ * 历史值可能缺失/格式异常（如旧配置的空串），此时回落到"现在"，
+ * 否则日期选择器会拿到 Invalid Date 而显示为空 —— 用户以为"没法设置"。
+ */
+function datetimeMs(key: string): number {
+  const raw = String(getVal(key) || '');
+  const t = new Date(toLocalTime(raw)).getTime();
+  return Number.isFinite(t) ? t : Date.now();
+}
 </script>
 
 <template>
@@ -142,7 +153,7 @@ function onDatetimeChange(key: string, v: number | null) {
         <!-- 时间 -->
         <NDatePicker
           v-else-if="it.type === 'datetime'"
-          :value="new Date(toLocalTime(String(getVal(it.key) || ''))).getTime() || null"
+          :value="datetimeMs(it.key)"
           type="datetime"
           size="small"
           class="ctl-md"

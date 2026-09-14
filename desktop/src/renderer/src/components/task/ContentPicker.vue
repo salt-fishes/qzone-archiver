@@ -3,8 +3,8 @@
  * 向导第②步：选择备份内容（模块卡片多选）
  * 他人模式下日记/好友/收藏（仅本人可见）自动禁用并说明
  */
-import { computed } from 'vue';
-import { NTooltip } from 'naive-ui';
+import { computed, watch } from 'vue';
+import { NDatePicker, NTooltip } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { MODULES, MODULE_META, MODULE_ICONS } from '../../stores/config';
 import { useConfigStore } from '../../stores/config';
@@ -21,6 +21,26 @@ const target = useTargetStore();
 /** 他人空间不可见的模块（与引擎侧 PRIVATE_MODULES 对应） */
 const PRIVATE = new Set(['Diaries', 'Friends', 'Favorites']);
 
+/**
+ * v4.7 反馈 ③：切到好友模式时，把「仅本人可见」的模块**取消勾选**。
+ * 此前只是置灰，勾选状态仍保留 —— 用户会以为会备份，实际引擎会跳过。
+ * 切回本人时恢复原勾选（记住被自动取消的项，而不是无脑全开）。
+ */
+let restored: string[] = [];
+watch(
+  () => target.isOtherUser,
+  (isOther) => {
+    if (isOther) {
+      restored = [...PRIVATE].filter((m) => cfg.selected[m]);
+      for (const m of PRIVATE) cfg.selected[m] = false;
+    } else if (restored.length) {
+      for (const m of restored) cfg.selected[m] = true;
+      restored = [];
+    }
+  },
+  { immediate: true }
+);
+
 const ITEMS = computed(() =>
   MODULES.filter((m) => m !== 'Statistics').map((m) => ({
     key: m,
@@ -30,6 +50,34 @@ const ITEMS = computed(() =>
     disabled: target.isOtherUser && PRIVATE.has(m),
   }))
 );
+
+/** 本次备份方式选项（仅本次生效，不写回设置） */
+const MODES: { key: 'default' | 'Full' | 'Last' | 'Custom'; label: string }[] = [
+  { key: 'default', label: '按设置' },
+  { key: 'Full', label: '全量' },
+  { key: 'Last', label: '上次之后' },
+  { key: 'Custom', label: '自定义时间' },
+];
+const MODE_HINTS: Record<string, string> = {
+  default: '使用「设置」里每个模块各自的增量配置',
+  Full: '本次从头完整备份，耗时最长、最完整',
+  Last: '本次只采集上次备份之后的新内容，速度快',
+  Custom: '本次从下面指定的时间点开始',
+};
+
+/** 本次自定义时间（毫秒）与写回（引擎格式 yyyy-MM-dd HH:mm:ss） */
+const customTimeMs = computed(() => {
+  const t = new Date(String(cfg.backupCustomTime || '').replace(' ', 'T')).getTime();
+  return Number.isFinite(t) ? t : Date.now();
+});
+function onCustomTimeChange(v: number | null) {
+  if (v == null) return;
+  const d = new Date(v);
+  const p2 = (n: number) => String(n).padStart(2, '0');
+  cfg.backupCustomTime =
+    `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ` +
+    `${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}`;
+}
 
 function toggle(key: string) {
   if (target.isOtherUser && PRIVATE.has(key)) return;
@@ -51,7 +99,7 @@ function selectNone() {
   <div class="content-picker">
     <div class="cp-toolbar">
       <span class="cp-hint">
-        {{ target.isOtherUser ? '好友空间仅可备份公开内容，私密项已自动禁用' : '选择本次要备份的内容类型' }}
+        {{ target.isOtherUser ? '好友空间仅可备份公开内容，私密项已自动取消勾选' : '选择本次要备份的内容类型' }}
       </span>
       <div class="cp-actions">
         <button
@@ -67,6 +115,36 @@ function selectNone() {
           清空
         </button>
       </div>
+    </div>
+
+    <!-- v4.7 反馈 ④：本次备份方式（仅本次生效；设置里逐模块调过增量时不显示） -->
+    <div
+      v-if="!cfg.moduleIncrementCustomized"
+      class="cp-mode"
+    >
+      <span class="cpm-label">本次备份方式</span>
+      <div class="cpm-opts">
+        <button
+          v-for="m in MODES"
+          :key="m.key"
+          class="cpm-btn"
+          :class="{ active: cfg.backupMode === m.key }"
+          @click="cfg.backupMode = m.key"
+        >
+          {{ m.label }}
+        </button>
+      </div>
+      <span class="cpm-hint">{{ MODE_HINTS[cfg.backupMode] }}</span>
+      <!-- 选了「自定义时间」就地给时间选择器，不必再去设置里翻模块配置 -->
+      <NDatePicker
+        v-if="cfg.backupMode === 'Custom'"
+        :value="customTimeMs"
+        type="datetime"
+        size="small"
+        class="cpm-date"
+        :is-date-disabled="(ts: number) => ts > Date.now()"
+        @update:value="onCustomTimeChange"
+      />
     </div>
 
     <div class="cp-grid">
@@ -151,6 +229,52 @@ function selectNone() {
 .cp-actions {
   display: flex;
   gap: 12px;
+}
+.cp-mode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--surface-border);
+}
+.cpm-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+.cpm-opts {
+  display: flex;
+  gap: 6px;
+}
+.cpm-btn {
+  border: 1px solid var(--surface-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+}
+.cpm-btn:hover {
+  border-color: rgba(180, 95, 61, 0.5);
+}
+.cpm-btn.active {
+  border-color: #b45f3d;
+  background: rgba(180, 95, 61, 0.13);
+  color: #b45f3d;
+  font-weight: 600;
+}
+.cpm-hint {
+  font-size: 11.5px;
+  opacity: 0.55;
+}
+.cpm-date {
+  width: 190px;
 }
 .txt-btn {
   border: none;

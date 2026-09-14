@@ -464,16 +464,19 @@ const API_COMMON = {
         }
         // 内置表情库清单（emoticons.js 注入）：命中的表情无需网络下载，
         // 备份时由主进程从内置库直接复制到 Common/images/
-        const manifest = window.__EMOTICONS_MANIFEST || { qq: [], wx: [] };
+        // roster 给出「id → 真实文件名」（经典 .gif / 魔法 .png），
+        // 没有 roster 时回落到旧的 qq 数组判断（兼容旧构建产物）
+        const manifest = window.__EMOTICONS_MANIFEST || { qq: [], wx: [], roster: {} };
+        const roster = manifest.roster || {};
         const qqSet = new Set((manifest.qq || []).map(String));
 
         // 匹配QQ表情地址
         const imageUrls = content.match(/(https|http):\/\/qzonestyle.gtimg.cn\/qzone\/em\/e\d+.gif/g) || [];
         // 遍历，并添加任务
         for (const imageUrl of imageUrls) {
-            // 内置表情：跳过下载
+            // 内置表情：跳过下载（本地已有，主进程会复制进备份目录）
             const em = /e(\d+)\.gif$/.exec(imageUrl);
-            if (em && qqSet.has(em[1])) {
+            if (em && (roster[em[1]] || qqSet.has(em[1]))) {
                 continue;
             }
             let custom_filename = QZone.Common.FILE_URLS.get(imageUrl);
@@ -524,9 +527,12 @@ const API_COMMON = {
             return content;
         }
 
-        // 替换QQ表情地址
+        // 替换QQ表情地址（v4.7.2：按 roster 的真实文件名定位，魔法表情多为 .png；
+        // 此前写死 e{id}.gif，导致备份里 224 个 png 表情全部指向不存在的文件）
+        const roster = (window.__EMOTICONS_MANIFEST || {}).roster || {};
         content = content.replace(/(https|http):\/\/qzonestyle.gtimg.cn\/qzone\/em\/e(\d+).gif/g, function(emoji, protocol, eid) {
-            return API.Common.getMediaPath(emoji, 'Common/images/e{0}.gif'.format(eid), true);
+            const fileName = roster[eid] || `e${eid}.gif`;
+            return API.Common.getMediaPath(emoji, 'Common/images/' + fileName, true);
         });
 
         // 替换微信表情地址

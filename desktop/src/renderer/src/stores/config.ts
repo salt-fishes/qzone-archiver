@@ -210,6 +210,37 @@ export const useConfigStore = defineStore('config', () => {
    * 按 schema 提取设置 → 构造传给引擎的 QZone_Config（仅含 UI 暴露字段，避免覆盖引擎其它配置）
    * 注意：settings 为 Vue reactive proxy，提取值跨 IPC 会 DataCloneError，必须 toPlain 深拷贝
    */
+  /**
+   * 本次备份方式（v4.7 反馈 ④）
+   * - 'default'：不覆盖，使用设置里各模块自己的增量配置
+   * - 'Full' / 'Last' / 'Custom'：仅对**本次**生效，覆盖所有已选模块的 IncrementType
+   *   （不写回 settings，所以不会影响以后的备份与设置页）
+   */
+  const backupMode = ref<'default' | 'Full' | 'Last' | 'Custom'>('default');
+
+  /**
+   * 本次「自定义时间」的起始时间（仅 backupMode === 'Custom' 时生效，不写回设置）
+   * 默认取当前设置里的 IncrementTime（若存在），否则取 30 天前 00:00。
+   */
+  const DEFAULT_CUSTOM_TIME = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    const p2 = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} 00:00:00`;
+  })();
+  const backupCustomTime = ref<string>(DEFAULT_CUSTOM_TIME);
+
+  /**
+   * 用户在设置里逐模块调过增量设置时，隐藏「本次备份方式」选择 ——
+   * 此时以模块设置为准，避免两处冲突。
+   */
+  const moduleIncrementCustomized = computed(() =>
+    MODULE_KEYS.some((m) => {
+      const t = getPath(settings.value[m], 'IncrementType');
+      return t === 'Last' || t === 'Custom';
+    })
+  );
+
   function buildEngineConfig() {
     const cfg: Record<string, any> = {};
     const groups: [string, SettingItem[]][] = [
@@ -229,6 +260,14 @@ export const useConfigStore = defineStore('config', () => {
           continue;
         } else {
           setPath(modCfg, item.key, val);
+        }
+      }
+      // 本次备份方式覆盖（只作用于本次任务，settings 不动）
+      if (backupMode.value !== 'default' && MODULE_KEYS.includes(mod)) {
+        modCfg.IncrementType = backupMode.value;
+        // 本次自定义时间：直接透传本次选择的时间点
+        if (backupMode.value === 'Custom') {
+          modCfg.IncrementTime = backupCustomTime.value;
         }
       }
       if (mod === 'Photos') {
@@ -304,6 +343,8 @@ export const useConfigStore = defineStore('config', () => {
   return {
     // 状态
     selected, targetDir, settings, selectedCount, selectedModules,
+    // 本次备份方式（v4.7 反馈 ④：仅本次生效，不写回设置）
+    backupMode, moduleIncrementCustomized, backupCustomTime,
     // 相册
     albums, albumsLoading, albumError, albumSel, albumClassNames,
     loadAlbums, albumSelAll, albumSelNone,

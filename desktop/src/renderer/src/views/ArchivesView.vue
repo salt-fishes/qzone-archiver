@@ -5,8 +5,9 @@
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { NButton, NTag, NEmpty, NAvatar, NPopconfirm, useMessage } from 'naive-ui';
+import { NButton, NTag, NEmpty, NPopconfirm, useMessage } from 'naive-ui';
 import { MODULE_META } from '../stores/config';
+import TargetAvatar from '../components/common/TargetAvatar.vue';
 
 type HistoryEntry = {
   taskId?: string | null;
@@ -144,14 +145,11 @@ onBeforeUnmount(() => {
         class="group"
       >
         <div class="g-head">
-          <NAvatar
-            round
+          <TargetAvatar
+            :uin="g.uin"
+            :label="g.label"
             :size="30"
-            :src="g.uin ? `https://q1.qlogo.cn/g?b=qq&nk=${g.uin}&s=60` : undefined"
-            style="background: #b45f3d"
-          >
-            {{ (g.label || '?').slice(0, 1) }}
-          </NAvatar>
+          />
           <span class="g-name">{{ g.label }}</span>
           <NTag
             v-if="g.uin"
@@ -171,6 +169,12 @@ onBeforeUnmount(() => {
         >
           <div class="ai-main">
             <div class="ai-time">
+              <!-- v4.7 反馈 ②：每条备份记录显示该目标的头像 -->
+              <TargetAvatar
+                :uin="h.target?.uin"
+                :label="h.target?.nickname || h.name"
+                :size="22"
+              />
               {{ fmtTime(h.completedAt) }}
               <NTag
                 v-if="h.errors?.length"

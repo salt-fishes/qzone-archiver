@@ -9,7 +9,7 @@
  * 用法：node scripts/sync-emoticons.mjs [--check]
  * 幂等：逐文件比对大小，只补缺失/变化的文件。
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -33,6 +33,25 @@ if (!existsSync(SRC)) {
   console.error(`[sync-emoticons] 源目录不存在：${SRC}`);
   process.exit(1);
 }
+
+/**
+ * 生成「表情 id → 实际文件名」映射（v4.7.1）
+ * 必须按真实扩展名，不能猜：经典表情是 .gif，而魔法表情（e327xxx）多为 .png。
+ * 之前组件统一按 .gif 请求，导致 [em]e327806[/em] 这类表情取不到本地文件。
+ */
+function buildRoster() {
+  const dir = join(SRC, 'qq');
+  const roster = {};
+  if (!existsSync(dir)) return roster;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (!e.isFile()) continue;
+    const m = /^e(\d+)\.(gif|png|jpe?g)$/i.exec(e.name);
+    if (m) roster[m[1]] = e.name;
+  }
+  return roster;
+}
+
+const roster = buildRoster();
 
 const srcFiles = filesIn(SRC);
 let copied = 0;
@@ -69,12 +88,25 @@ if (CHECK) {
     console.error('[sync-emoticons] 渲染层清单缺失，请运行 npm run gen:emoticons');
     process.exit(1);
   }
-  console.log(`[sync-emoticons] 渲染层表情与内置库一致（${skipped} 个文件）`);
+  // 渲染层清单必须与本地文件实况一致（否则界面会按错扩展名请求）
+  const uiManifest = JSON.parse(readFileSync(MANIFEST_DEST, 'utf8'));
+  if (JSON.stringify(uiManifest.roster || {}) !== JSON.stringify(roster)) {
+    console.error('[sync-emoticons] 渲染层表情清单与本地文件不一致，请运行 npm run gen:emoticons');
+    process.exit(1);
+  }
+  console.log(
+    `[sync-emoticons] 渲染层表情与内置库一致（${skipped} 个文件，清单 ${Object.keys(roster).length} 项）`
+  );
   process.exit(0);
 }
 
-// 清单同步到渲染层 src（组件按它区分"可离线渲染"与"回落 CDN"）
+// 清单同步到渲染层 src：id → 真实文件名（组件按它取本地文件，不猜扩展名）
 mkdirSync(dirname(MANIFEST_DEST), { recursive: true });
-copyFileSync(MANIFEST_SRC, MANIFEST_DEST);
+const srcManifest = JSON.parse(readFileSync(MANIFEST_SRC, 'utf8'));
+srcManifest.roster = roster;
+writeFileSync(MANIFEST_DEST, JSON.stringify(srcManifest, null, 2) + '\n', 'utf8');
 
-console.log(`[sync-emoticons] 复制 ${copied} 个、跳过 ${skipped} 个 → src/renderer/public/emoticons`);
+console.log(
+  `[sync-emoticons] 复制 ${copied} 个、跳过 ${skipped} 个 → src/renderer/public/emoticons` +
+  `（清单 ${Object.keys(roster).length} 项）`
+);

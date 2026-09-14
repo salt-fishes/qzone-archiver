@@ -71,6 +71,10 @@ declare global {
       zip: {
         create(srcDir: string, destPath: string): Promise<any>;
       };
+      /** v4.7：备份目标头像（主进程本地缓存 → data URL） */
+      avatars: {
+        get(uin: string | number): Promise<{ ok: boolean; dataUrl: string | null }>;
+      };
       viewer: {
         open(backupPath: string): Promise<any>;
       };

@@ -13,8 +13,8 @@
  * 安全性：文本一律先转义，只有我们自己生成的 <img> 参与渲染，避免昵称注入 HTML。
  */
 import { computed } from 'vue';
-// 内置表情清单（由 scripts/sync-emoticons.mjs 从 desktop/assets/emoticons/manifest.json 同步，
-// 组件据此区分「可离线渲染的内置表情」与「回落 CDN 的表情」，避免两处清单漂移）
+// 内置表情清单（由 scripts/sync-emoticons.mjs 生成）：roster 给出「id → 真实文件名」，
+// 必须按真实扩展名取文件 —— 经典表情是 .gif，魔法表情（e327xxx）多为 .png。
 import emoticonManifest from '../../assets/emoticons-manifest.json';
 
 const props = withDefaults(
@@ -27,34 +27,24 @@ const props = withDefaults(
   { text: '', size: 16 }
 );
 
-/** 内置 QQ 表情 id（离线可用，随包分发到 renderer/dist/emoticons） */
-const BUILTIN_QQ_IDS = new Set<number>((emoticonManifest.qq as number[]).map((v) => Number(v)));
-/**
- * 已下载到本地的「魔法表情」id（如 e327806）。
- * 由 scripts/fetch-magic-emoticons.mjs 探测下载后写入 manifest.qqMagic，
- * 未在清单内的 id 走腾讯 CDN 在线加载。
- */
-const MAGIC_QQ_IDS = new Set<number>(((emoticonManifest as { qqMagic?: number[] }).qqMagic || []).map((v) => Number(v)));
+/** id → 本地文件名（离线可用，随包分发到 renderer/dist/emoticons） */
+const ROSTER = (emoticonManifest as { roster?: Record<string, string> }).roster || {};
 
-/** 本地是否可离线渲染该 id */
-function hasLocal(id: number) {
-  return BUILTIN_QQ_IDS.has(id) || MAGIC_QQ_IDS.has(id);
+function localFileName(id: number): string | undefined {
+  return ROSTER[String(id)];
 }
 
 /**
- * 本地内置表情 URL：相对 index.html 解析（vite base 为 './'），
- * 对应 dist/emoticons/qq/e{id}.gif —— 打包进 asar 后同样可用。
+ * 本地表情 URL：相对 index.html 解析（vite base 为 './'），
+ * 对应 dist/emoticons/qq/<真实文件名> —— 打包进 asar 后同样可用。
  */
 function localEmoticonUrl(id: number) {
-  return `./emoticons/qq/e${id}.gif`;
+  const name = localFileName(id);
+  return name ? `./emoticons/qq/${name}` : '';
 }
 
 function cdnEmoticonUrl(id: number) {
   return `https://qzonestyle.gtimg.cn/qzone/em/e${id}.gif`;
-}
-
-function localEmoticonPngUrl(id: number) {
-  return `./emoticons/qq/e${id}.png`;
 }
 
 type Part = { type: 'text'; value: string } | { type: 'em'; id: number; alt: string };
@@ -76,8 +66,8 @@ const parts = computed<Part[]>(() => {
 });
 
 /**
- * 图片加载失败的三级兜底：
- *   本地 .gif → 本地 .png（魔法表情可能是 png）→ 隐藏图片显示原始代码
+ * 图片加载失败的兜底：
+ *   本地文件（真实扩展名）→ 腾讯 CDN → 隐藏图片、显示原始代码（不出现破图）
  */
 function onImgError(e: Event) {
   const img = e.target as HTMLImageElement;
@@ -85,11 +75,6 @@ function onImgError(e: Event) {
   const id = Number(img.dataset.id || '0');
   if (step === '0') {
     img.dataset.step = '1';
-    img.src = localEmoticonPngUrl(id);
-    return;
-  }
-  if (step === '1' && !hasLocal(id)) {
-    img.dataset.step = '2';
     img.src = cdnEmoticonUrl(id);
     return;
   }
@@ -111,7 +96,7 @@ function onImgError(e: Event) {
       <img
         v-else
         class="em-img"
-        :src="hasLocal(p.id) ? localEmoticonUrl(p.id) : cdnEmoticonUrl(p.id)"
+        :src="localEmoticonUrl(p.id) || cdnEmoticonUrl(p.id)"
         :data-alt="p.alt"
         :data-id="p.id"
         data-step="0"

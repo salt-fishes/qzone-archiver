@@ -6,6 +6,7 @@ import { NButton, NTag, NEmpty } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { useAuthStore } from '../stores/auth';
 import EmoticonText from '../components/common/EmoticonText.vue';
+import TargetAvatar from '../components/common/TargetAvatar.vue';
 import appIcon from '../assets/icon.png';
 
 type HistoryEntry = {
@@ -176,6 +177,12 @@ onBeforeUnmount(() => {
           @click="router.push('/archives')"
         >
           <div class="ri-main">
+            <!-- v4.7 反馈 ②：最近备份显示目标头像 -->
+            <TargetAvatar
+              :uin="h.target?.uin"
+              :label="h.target?.nickname || h.name"
+              :size="26"
+            />
             <span class="ri-name">{{ h.target?.nickname ? `${h.target.nickname} 的档案` : h.name || 'QQ 空间档案' }}</span>
             <NTag
               v-if="h.target && h.target.uin"
