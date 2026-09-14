@@ -1,7 +1,9 @@
-# qzone-archiver
+# qzone-archiver · 桌面版
 
-> QQ 空间本地化备份工具：把说说、相册、日志等记忆完整保存到自己的电脑，离线随时浏览。
+> QQ 空间本地化备份工具（Windows 桌面版）：把说说、相册、日志等记忆完整保存到自己的电脑，离线随时浏览。
 > 基于 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 二次开发，遵循 Apache-2.0 协议。
+
+**本分支（`desktop`）只包含桌面版**；Chrome 扩展版见 [`extension`](https://github.com/salt-fishes/qzone-archiver/tree/extension) 分支，双端开发主线见 `main` 分支。
 
 ## 功能
 
@@ -18,8 +20,8 @@
 
 | 形态 | 平台 | 说明 |
 | --- | --- | --- |
-| **桌面版**（推荐） | Windows 10+ x64 | `QZoneArchiver-x.x.x-setup.exe`（安装版）/ `-portable.exe`（免安装版） |
-| Chrome 扩展 | Chrome / Edge | 加载仓库 `src/` 目录，或在 Release 下载扩展包 |
+| **安装版** | Windows 10+ x64 | `QZoneArchiver-x.x.x-setup.exe` |
+| **免安装版** | Windows 10+ x64 | `QZoneArchiver-x.x.x-portable.exe` |
 
 ## 快速上手
 
@@ -28,21 +30,30 @@
 3. **开始备份**——完成后进入「我的档案」离线浏览
 
 > 应用内置了图文教程与分步引导；备份好友空间仅采集对方公开内容，会像普通访问一样留下访客记录，请尊重他人隐私。
+>
+> 媒体文件较多时（如上万张图片），下载会在后台持续进行，界面会显示「媒体下载中 x」。建议按模块分批备份，单轮媒体量控制在几百条以内更稳。
 
 ## 开发
 
+代码位于本仓库 `desktop/` 目录：
+
 ```bash
-# 桌面版（Electron + Vue3 + Naive UI）
 cd desktop
 npm install
 npm run start:dev      # 运行
-npm run dist:win       # 打包 Windows 安装包
-
-# 测试
-npm run test && npm run typecheck
+npm run dist:win       # 打包 Windows 安装包（安装版 + 免安装版）
+npm run test           # 单元测试
+npm run typecheck      # 类型检查（渲染层 + 主进程）
+npm run lint           # 代码检查
 ```
 
-扩展版位于 `src/`（Chrome 扩展 Manifest V3），与桌面版共享同一套采集引擎。
+### 配置单一来源
+
+`src/engine/config-spec.json` 是设置项的唯一定义处，改完需重新生成两端：
+
+```bash
+npm run gen:config     # 生成引擎 config.js 默认值 + 渲染层 schema.ts
+```
 
 ## 许可
 

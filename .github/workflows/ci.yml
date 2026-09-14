@@ -1,13 +1,13 @@
 name: CI
 
-# 质量门禁：push/PR 到 main 时跑配置一致性 + 类型检查 + lint + 单测 + 渲染层构建。
+# 质量门禁：push/PR 到本分支时跑配置一致性 + 类型检查 + lint + 单测 + 渲染层构建。
 # 说明：用 npm install 而非 npm ci——lockfile 在 Windows 端生成，跨平台可选依赖
 # （esbuild/rollup 的平台二进制）会被 npm 裁剪，npm ci 的严格校验在 Linux 上必挂。
 on:
   pull_request:
-    branches: [main]
+    branches: [desktop, main]
   push:
-    branches: [main]
+    branches: [desktop]
 
 jobs:
   gate:
@@ -35,6 +35,5 @@ jobs:
         working-directory: desktop
         run: npm run test
       - name: Build renderer
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: desktop
         run: npm run build:renderer
