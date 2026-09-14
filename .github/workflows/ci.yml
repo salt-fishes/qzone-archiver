@@ -1,13 +1,12 @@
 name: CI
 
-# 质量门禁：push/PR 到 main 时跑配置一致性 + 类型检查 + lint + 单测 + 渲染层构建。
-# 说明：用 npm install 而非 npm ci——lockfile 在 Windows 端生成，跨平台可选依赖
-# （esbuild/rollup 的平台二进制）会被 npm 裁剪，npm ci 的严格校验在 Linux 上必挂。
+# 扩展版质量门禁：Manifest V3 配置校验 + 离线档案浏览器（SPA）构建。
+# 说明：扩展端无单测套件，主体是静态 JS；这里守住「清单合法」与「SPA 可构建」两条底线。
 on:
   pull_request:
-    branches: [main]
+    branches: [extension, main]
   push:
-    branches: [main]
+    branches: [extension]
 
 jobs:
   gate:
@@ -17,24 +16,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: npm
-          cache-dependency-path: desktop/package-lock.json
-      - name: Install
-        working-directory: desktop
+
+      - name: Validate manifest.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const m = JSON.parse(fs.readFileSync('src/manifest.json', 'utf8'));
+            if (m.manifest_version !== 3) throw new Error('manifest_version 必须为 3');
+            if (!m.version) throw new Error('manifest.json 缺少 version');
+            if (!m.background || !m.background.service_worker) throw new Error('缺少 MV3 service_worker');
+            const missing = [...(m.content_scripts || []).flatMap((cs) => [...(cs.js || []), ...(cs.css || [])])]
+              .filter((p) => !fs.existsSync('src/' + p));
+            if (missing.length) throw new Error('content_scripts 引用了不存在的文件:\n' + missing.join('\n'));
+            console.log('manifest.json 校验通过，版本', m.version);
+          "
+
+      - name: Install SPA deps
+        working-directory: src/spa
         run: npm install --no-audit --no-fund
-      - name: Config spec check
-        working-directory: desktop
-        run: node scripts/gen-engine-config.mjs --check
-      - name: Typecheck
-        working-directory: desktop
-        run: npm run typecheck
-      - name: Lint
-        working-directory: desktop
-        run: npm run lint
-      - name: Test
-        working-directory: desktop
-        run: npm run test
-      - name: Build renderer
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        working-directory: desktop
-        run: npm run build:renderer
+
+      - name: Build SPA archive viewer
+        working-directory: src/spa
+        run: npm run build

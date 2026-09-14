@@ -13,7 +13,7 @@ taste-skill-main/
 docs/
 
 # ============ 构建产物 ============
-# SPA 构建输出
+# SPA 构建输出（离线档案浏览器）
 src/export/spa-dist/
 src/spa/dist/
 # 扩展打包发布
@@ -21,17 +21,11 @@ releases/
 *.zip
 *.crx
 *.pem
-# 桌面版构建产物
-desktop/dist/
-desktop/release/
-desktop/src/renderer/dist/
 
 # ============ 依赖 ============
 node_modules/
 package-lock.json
 yarn.lock
-# 桌面端锁文件入库：CI 的 npm ci 与 setup-node 缓存依赖它（b694cdc 发布后首次跑 CI 发现）
-!desktop/package-lock.json
 
 # ============ SPA 测试数据（含真实隐私，本地保留）============
 # 开发时放入测试数据，不入库；保留目录结构通过 .gitkeep
@@ -47,14 +41,14 @@ src/spa/public/Friends/data/*.js
 src/spa/public/Shares/data/*.js
 src/spa/public/Boards/data/*.js
 
-# ============ 临时文件 =============
+# ============ 临时文件 ============
 _tmp_*
 *.tmp
 *.log
 feed2测试.txt
 方案.txt
 
-# ============ 编辑器/系统文件 =============
+# ============ 编辑器/系统文件 ============
 .vscode/
 .idea/
 *.swp
@@ -64,16 +58,14 @@ feed2测试.txt
 Thumbs.db
 desktop.ini
 
-# ============ 截图/测试输出 =============
+# ============ 截图/测试输出 ============
 test-screenshots/
 *.png
 !src/img/**/*.png
 !src/export/images/**/*.png
 !src/spa/src/**/*.png
-!desktop/src/main/icon.png
-!desktop/src/renderer/src/assets/*.png
 
-# ============ 环境配置 =============
+# ============ 环境配置 ============
 .env
 .env.local
 .env.*.local
