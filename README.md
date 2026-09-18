@@ -1,3 +1,6 @@
+> ⚠️ **本分支已废弃（2026-09-18）。** 本仓库的扩展端 fork 停留在上游 V2 时代的代码结构，而 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 已在其 V2 结构基础上更新到 **V3.0**（Manifest V3，WXT + TypeScript，含直写目录、断点续传与全新离线查看器），功能与维护状态均优于本仓库归档版本 —— **请改用上游扩展**。
+> 本仓库（QZoneArchiver）此后只维护 **Windows 桌面端**；本分支与 tag `archive/extension-v4.8.0` 仅供追溯，不再接收任何更新。
+
 # qzone-archiver
 
 > QQ 空间本地化备份工具：把说说、相册、日志等记忆完整保存到自己的电脑，离线随时浏览。
