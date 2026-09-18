@@ -23,7 +23,7 @@ type HistoryEntry = {
 };
 
 const router = useRouter();
-const { auth, refresh: refreshAuth, login, initAuth } = useAuthStore();
+const { auth, refresh: refreshAuth, login, initAuth, ensureProfile } = useAuthStore();
 
 const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
@@ -81,6 +81,8 @@ let unsub: (() => void) | null = null;
 onMounted(async () => {
   initAuth();
   refreshAuth();
+  // §A：已登录但昵称缺失（引擎注入完成前）时后台重试补齐，补上后问候语/顶栏/向导自动更新
+  ensureProfile();
   await loadHistory();
   unsub = window.api.on('backup:history-changed', () => loadHistory());
 });
@@ -105,11 +107,13 @@ onBeforeUnmount(() => {
         :src="appIcon"
         alt=""
       >
+      <!-- §A：有昵称显示昵称；无昵称显示「你好，QQ 12345」，不再只留一个孤零零的「你好」 -->
       <h1 v-if="auth.loggedIn">
         你好<template v-if="auth.nickname">，<EmoticonText
           :text="auth.nickname"
           :size="22"
         /></template>
+        <template v-else-if="auth.qqNumber">，QQ {{ auth.qqNumber }}</template>
       </h1>
       <h1 v-else>
         备份你的 QQ 空间

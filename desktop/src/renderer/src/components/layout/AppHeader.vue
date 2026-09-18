@@ -115,7 +115,10 @@ function onUserAction(key: string) {
           trigger="click"
           @select="onUserAction"
         >
-          <button class="user-chip">
+          <button
+            class="user-chip"
+            :title="auth.auth.qqNumber ? `QQ ${auth.auth.qqNumber}` : ''"
+          >
             <!-- v4.7.5：头像统一走 TargetAvatar（主进程本地缓存 → data URL）。
                  直连 qlogo 外链会被 CSP 拦掉且离线不可用；文字占位也不能放 NAvatar
                  默认插槽（会覆盖 src，导致永远只显示文字头像）。 -->

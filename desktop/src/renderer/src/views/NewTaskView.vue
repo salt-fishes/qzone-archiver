@@ -18,7 +18,7 @@ import RunningPanel from '../components/task/RunningPanel.vue';
 import ResultPanel from '../components/task/ResultPanel.vue';
 
 const router = useRouter();
-const { auth, login } = useAuthStore();
+const { auth, login, ensureProfile } = useAuthStore();
 const cfg = useConfigStore();
 const { selectedCount, selectedModules, targetDir, settings } = storeToRefs(cfg);
 const bk = useBackupStore();
@@ -35,6 +35,8 @@ type HistoryEntryLite = {
 };
 const history = ref<HistoryEntryLite[]>([]);
 onMounted(async () => {
+  // §A：已登录但昵称缺失时后台重试补齐（本人卡片/问候语自动更新）
+  ensureProfile();
   try {
     const r = await window.api.backup.getHistory();
     history.value = r?.history || [];

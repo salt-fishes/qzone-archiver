@@ -214,7 +214,7 @@ async function doValidate() {
       </div>
     </template>
 
-    <!-- 本人模式：显示登录账号卡片 -->
+    <!-- 本人模式：显示登录账号卡片（§A：无昵称时主行 QQ 号、副行只写「已登录」，不再两行 QQ 号） -->
     <div
       v-else
       class="profile-card self"
@@ -231,10 +231,13 @@ async function doValidate() {
             :text="auth.nickname"
             :size="16"
           />
-          <template v-else>{{ auth.qqNumber || '未登录' }}</template>
+          <template v-else-if="auth.loggedIn">
+            QQ {{ auth.qqNumber || '—' }}
+          </template>
+          <template v-else>未登录</template>
         </div>
         <div class="pc-uin">
-          {{ auth.loggedIn ? `QQ ${auth.qqNumber}` : '请先在顶栏扫码登录' }}
+          {{ !auth.loggedIn ? '请先在顶栏扫码登录' : auth.nickname ? `QQ ${auth.qqNumber} · 已登录` : '已登录' }}
         </div>
       </div>
     </div>

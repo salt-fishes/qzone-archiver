@@ -25,7 +25,12 @@ export const useAuthStore = defineStore('auth', () => {
   async function refresh() {
     try {
       const s = await window.api.auth.getStatus();
-      Object.assign(auth, s || {});
+      // §A：过滤 undefined——主进程降级分支可能不带 nickname/avatar，避免旧值被空值覆盖
+      const clean: Partial<AuthState> = {};
+      for (const [k, v] of Object.entries(s || {})) {
+        if (v !== undefined) (clean as Record<string, unknown>)[k] = v;
+      }
+      Object.assign(auth, clean);
     } catch (e) {
       console.warn('获取登录态失败', e);
     }
@@ -59,9 +64,34 @@ export const useAuthStore = defineStore('auth', () => {
     if (inited) return;
     inited = true;
     window.api.on('auth:status-changed', (p) => {
-      Object.assign(auth, p || {});
+      // §A：过滤 undefined（同 refresh）——推送载荷缺字段时不覆盖已有昵称/头像
+      const clean: Partial<AuthState> = {};
+      for (const [k, v] of Object.entries(p || {})) {
+        if (v !== undefined) (clean as Record<string, unknown>)[k] = v;
+      }
+      Object.assign(auth, clean);
     });
   }
 
-  return { auth, refresh, login, logout, initAuth, clearLoginJustSucceeded };
+  let ensuring = false;
+  /**
+   * §A：昵称兜底重试（渲染层第三层）——已登录但无昵称（引擎注入完成前）时
+   * 按 1s 间隔最多重试 10 次 refresh()；拿到昵称、登出或超限即停。
+   * 首页 / 新建任务挂载时调用。
+   */
+  async function ensureProfile() {
+    if (ensuring || !auth.loggedIn || auth.nickname) return;
+    ensuring = true;
+    try {
+      for (let i = 0; i < 10 && auth.loggedIn && !auth.nickname; i++) {
+        await new Promise((r) => setTimeout(r, 1000));
+        if (!auth.loggedIn) break;
+        await refresh();
+      }
+    } finally {
+      ensuring = false;
+    }
+  }
+
+  return { auth, refresh, login, logout, initAuth, ensureProfile, clearLoginJustSucceeded };
 });
