@@ -19,7 +19,7 @@
 | 形态 | 平台 | 说明 |
 | --- | --- | --- |
 | **桌面版**（推荐） | Windows 10+ x64 | `QZoneArchiver-x.x.x-setup.exe`（安装版）/ `-portable.exe`（免安装版） |
-| Chrome 扩展 | Chrome / Edge | 加载仓库 `src/` 目录，或在 Release 下载扩展包 |
+| ~~Chrome 扩展~~ | — | **已停止维护**（v4.9 起归档）：历史源码在 `extension` 分支，请改用上游 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) V3.0 |
 
 > 💡 免安装版为单文件自解压，首次启动需解压、耗时明显长于安装版（启动后有品牌 splash 提示）——日常使用推荐安装版。
 
@@ -44,7 +44,8 @@ npm run dist:win       # 打包 Windows 安装包
 npm run test && npm run typecheck
 ```
 
-扩展版位于 `src/`（Chrome 扩展 Manifest V3），与桌面版共享同一套采集引擎。
+> **扩展端已停止维护。** 本仓库的扩展端 fork 停留在上游 V2 时代的代码结构，而 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 已在其 V2 结构基础上更新到 **V3.0**（Manifest V3，WXT + TypeScript，含直写目录、断点续传与全新离线查看器），功能与维护状态均优于本仓库归档版本 —— **请改用上游扩展**。
+> 本仓库此后只维护 **Windows 桌面端**；历史扩展源码保存在 `extension` 分支（tag：`archive/extension-v4.8.0`），仅供追溯。
 
 ## 许可
 

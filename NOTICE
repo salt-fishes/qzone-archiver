@@ -1,0 +1,27 @@
+QZoneArchiver
+Copyright 2026 qzone-archiver contributors
+
+This product includes software developed as a fork of ShunCai/QZoneExport
+(https://github.com/ShunCai/QZoneExport), licensed under the Apache License,
+Version 2.0.
+
+Based on the upstream V2-era code structure (Chrome extension, vanilla JS +
+jQuery/lodash + compiled templates). The upstream project has since evolved
+separately to V3.0 (Manifest V3, WXT + TypeScript + Vue3); the two codebases
+are no longer the same code and do not depend on each other. Archived source
+of our extension-era code lives on the `extension` branch and the
+`archive/extension-v4.8.0` tag of this repository, kept for reference only.
+
+Major modifications compared to the upstream V2 baseline (summary):
+  - Windows desktop application (Electron) wrapping the collection engine as
+    `desktop/src/engine`, with a Vue 3 renderer, task state machine,
+    resumable download manager, and per-task checkpoint persistence
+  - Prebuilt offline archive viewer bundled at
+    `desktop/src/engine/export-resources/spa-dist/`
+  - Retrieval-layer split (api/collectors/repos/exporters/packagers/tasks),
+    IPC contract hardening (source guard, channel whitelist), structured
+    dual-track logging, and removal of the experimental deleted-messages
+    recovery feature (v4.9)
+
+This product relies on QQ Zone's internal web APIs; it is for personal
+backup of your own data only. Use at your own risk.

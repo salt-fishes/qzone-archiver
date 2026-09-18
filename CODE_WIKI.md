@@ -4,7 +4,9 @@
 > 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
 > 版本：v4.8.0（Manifest V3 + SPA 档案浏览器 + Windows 桌面版）
 >
-> 分支说明：`main` 为双端开发主线；`desktop` / `extension` 为单端发布分支（各自只保留对应端代码）。
+> 分支说明：`main` 为桌面端主线；扩展端已退役归档至 `extension` 分支（tag：`archive/extension-v4.8.0`），`desktop` 分支已删除。
+>
+> ⚠️ **v4.9 起本仓库只维护 Windows 桌面端**：上游 [ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport) 已在其 V2 结构基础上重写为 V3.0（WXT + TypeScript + Vue3，Manifest V3），与本仓库归档的扩展代码**不同源**、互不依赖。本文档第 2~9 章中涉及仓库根 `src/`（扩展端）与 `src/spa`（归档 SPA 源码）的章节仅对 `extension` 分支有效，main 上已不存在对应目录；桌面端实态以 `desktop/` 为准（全面重写排 v5.1）。
 
 ---
 

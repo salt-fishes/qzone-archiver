@@ -130,5 +130,6 @@
     "repos",
     "exporters",
     "packagers"
-  ]
+  ],
+  "archivedNote": "v4.9 R5：扩展端已退役归档——来源仓库根 src/ 已从 main 删除，完整源码保存在 extension 分支与 tag archive/extension-v4.8.0，仅供追溯。本清单保留作历史凭证。"
 }

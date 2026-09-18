@@ -6,8 +6,7 @@
   "type": "module",
   "main": "src/main/index.js",
   "scripts": {
-    "sync:baseline": "node scripts/sync-baseline.mjs",
-    "gen:config": "node scripts/gen-engine-config.mjs && node scripts/gen-ui-schema.mjs",
+       "gen:config": "node scripts/gen-engine-config.mjs && node scripts/gen-ui-schema.mjs",
     "gen:emoticons": "node scripts/gen-emoticons-manifest.mjs && node scripts/sync-emoticons.mjs",
     "gen:icon": "node scripts/gen-app-icon.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.main.json",
