@@ -8,6 +8,7 @@ import { NInput, NSelect, NButton, NAlert, NSpin } from 'naive-ui';
 import type { SelectOption } from 'naive-ui';
 import { useTargetStore } from '../../stores/target';
 import { useAuthStore } from '../../stores/auth';
+import { VALIDATE_HELP_TEXT, BACKUP_ACCESS_NOTICE } from '../../utils/access-copy';
 import EmoticonText from '../common/EmoticonText.vue';
 import TargetAvatar from '../common/TargetAvatar.vue';
 
@@ -127,6 +128,9 @@ async function doValidate() {
           </NButton>
         </div>
 
+        <!-- §G：判定依据与留痕口径常驻可见（单一来源 access-copy.ts，经代码事实核对、未实测不承诺） -->
+        <p class="validate-help">{{ VALIDATE_HELP_TEXT }}</p>
+
         <div class="form-row">
           <NSelect
             filterable
@@ -200,6 +204,12 @@ async function doValidate() {
               <div class="pc-uin">
                 QQ {{ target.profile.uin }} · 空间可访问
               </div>
+              <div
+                v-if="target.profile.notice"
+                class="pc-notice"
+              >
+                {{ target.profile.notice }}
+              </div>
             </div>
           </div>
         </NSpin>
@@ -209,7 +219,7 @@ async function doValidate() {
           :show-icon="true"
           class="val-alert"
         >
-          将以普通访客身份访问对方公开内容，会留下访客记录；日记、收藏等私密内容无法备份。
+          {{ BACKUP_ACCESS_NOTICE }}
         </NAlert>
       </div>
     </template>
@@ -333,6 +343,12 @@ async function doValidate() {
 .val-alert {
   --n-padding: 10px 14px;
 }
+.validate-help {
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  opacity: 0.55;
+}
 .profile-card {
   display: flex;
   align-items: center;
@@ -355,5 +371,10 @@ async function doValidate() {
   margin-top: 2px;
   font-size: 12px;
   opacity: 0.55;
+}
+.pc-notice {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #f0a020;
 }
 </style>

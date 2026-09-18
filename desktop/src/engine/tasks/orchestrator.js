@@ -369,16 +369,25 @@
         const data = await API.Friends.getQZoneUserInfo();
         const d = data && (data.data || data);
         const info = d && (d.userinfo || d.UserInfo || d);
+        // §G：判定口径透明化——返回原始 code 供 UI 区分提示
         // code=-4009 无权限 / code<0 异常：对方空间对登录者不可见或接口拒绝
         if (data && data.code && data.code < 0) {
-          return { ok: false, error: data.code === -4009 ? '对方空间不公开，或你无权限访问' : `探测失败（code ${data.code}）` };
+          return {
+            ok: false,
+            code: data.code,
+            error: data.code === -4009 ? '对方空间不公开，或你无权限访问' : `探测失败（code ${data.code}）`,
+          };
         }
+        const nickname = (info && (info.nickname || info.nick)) || '';
         return {
           ok: true,
           isOwner: false,
           uin: clean,
-          nickname: (info && (info.nickname || info.nick)) || '',
+          code: data ? data.code : undefined,
+          nickname,
           avatar: (info && info.avatar) || `https://q1.qlogo.cn/g?b=qq&nk=${clean}&s=100`,
+          // §G：接口通但公开资料读不到（如对方关闭资料展示）——允许继续，提示昵称将回退 QQ 号
+          ...(nickname ? {} : { notice: '空间可访问，但未读到对方公开资料（昵称将显示为 QQ 号）' }),
         };
       } catch (e) {
         return { ok: false, error: `探测失败：${(e && e.message) || e}` };

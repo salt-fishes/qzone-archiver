@@ -21,6 +21,8 @@ export type TargetProfile = {
   nickname?: string;
   avatar?: string;
   isOwner: boolean;
+  /** §G：空间可访问但公开资料未读到时的提示（昵称将回退 QQ 号） */
+  notice?: string;
 };
 
 export const useTargetStore = defineStore('target', () => {
@@ -102,6 +104,7 @@ export const useTargetStore = defineStore('target', () => {
           nickname: r.nickname,
           avatar: r.avatar,
           isOwner: !!r.isOwner,
+          notice: r.notice,
         };
         return true;
       }

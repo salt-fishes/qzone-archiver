@@ -52,7 +52,7 @@ declare global {
         }>;
         listAlbums(): Promise<{ ok: boolean; albums?: { id: string | number; name: string; classid?: string | number; className?: string; total?: number; desc?: string }[]; error?: string }>;
         listFriends(): Promise<{ ok: boolean; friends?: { uin: string; nickname?: string; remark?: string; avatar?: string }[]; error?: string }>;
-        validateTarget(uin: string): Promise<{ ok: boolean; isOwner?: boolean; uin?: string; nickname?: string; avatar?: string; error?: string }>;
+        validateTarget(uin: string): Promise<{ ok: boolean; isOwner?: boolean; uin?: string; nickname?: string; avatar?: string; code?: number; notice?: string; error?: string }>;
         engineInject(): Promise<{ ok: boolean; error?: string }>;
       };
       download: {

@@ -11,6 +11,7 @@ import { useAuthStore } from '../stores/auth';
 import { useConfigStore, MODULE_META, MODULE_KEYS, getPath } from '../stores/config';
 import { useBackupStore } from '../stores/backup';
 import { useTargetStore } from '../stores/target';
+import { BACKUP_ACCESS_NOTICE } from '../utils/access-copy';
 import TargetPicker from '../components/task/TargetPicker.vue';
 import EmoticonText from '../components/common/EmoticonText.vue';
 import ContentPicker from '../components/task/ContentPicker.vue';
@@ -231,7 +232,7 @@ function pickDir() {
             type="warning"
             :show-icon="true"
           >
-            将访问好友 {{ target.profile?.uin }} 的公开内容，会留下访客记录；私密内容（日记、收藏等）无法备份。
+            备份目标：他人空间（QQ {{ target.profile?.uin }}）的公开内容。{{ BACKUP_ACCESS_NOTICE }}
           </NAlert>
 
           <NAlert
