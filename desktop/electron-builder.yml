@@ -46,6 +46,9 @@ nsis:
 # 免安装版（单文件自解压，解压即用）
 portable:
   artifactName: ${productName}-${version}-portable.${ext}
+  # §R2：启动 splash（build/splash.bmp 由 gen-app-icon.mjs 生成，24 位 BMP）——
+  # 自解压外壳耗时 5.8~14.6s，有 splash 用户不再面对"点了没反应"
+  splashImage: build/splash.bmp
 
 # 中国镜像，避免 electron 二进制下载超时
 electronDownload:

@@ -243,7 +243,7 @@ onBeforeUnmount(() => {
 .hero-icon {
   width: 58px;
   height: 58px;
-  border-radius: 14px;
+  /* §F：圆角已由资源本身携带（gen-app-icon --write-source 写回 128 圆角版），不再二次圆角 */
   margin-bottom: 18px;
   box-shadow: 0 4px 16px rgba(153, 79, 49, 0.25);
 }

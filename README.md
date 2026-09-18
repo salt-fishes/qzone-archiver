@@ -21,6 +21,8 @@
 | **桌面版**（推荐） | Windows 10+ x64 | `QZoneArchiver-x.x.x-setup.exe`（安装版）/ `-portable.exe`（免安装版） |
 | Chrome 扩展 | Chrome / Edge | 加载仓库 `src/` 目录，或在 Release 下载扩展包 |
 
+> 💡 免安装版为单文件自解压，首次启动需解压、耗时明显长于安装版（启动后有品牌 splash 提示）——日常使用推荐安装版。
+
 ## 快速上手
 
 1. **扫码登录**——启动应用，点右上角「扫码登录」，用手机 QQ 扫码

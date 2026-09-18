@@ -162,6 +162,98 @@ export function resizeBilinear(img, targetW, targetH) {
   return { width: targetW, height: targetH, data: dst };
 }
 
+/**
+ * §F：Win11 图标圆角分档——<32px→2px、32px→4px、>32px→8px（用户拍板，非单一比例）。
+ * Windows 的做法是同一张图在不同尺寸下圆角半径不同，故按输出尺寸查表。
+ * @param {number} size 输出图标的边长（px）
+ */
+export function radiusForSize(size) {
+  return size < 32 ? 2 : size === 32 ? 4 : 8;
+}
+
+/**
+ * §F：圆角掩膜——alpha 乘以圆角覆盖率，4×4 超采样抗锯齿（纯 JS，小尺寸下圆角仍平滑）。
+ * @param {{width:number,height:number,data:Buffer}} img RGBA 位图
+ * @param {number} radiusPx 圆角半径（绝对像素，> 半边长时收敛到半边长）
+ */
+export function roundCorners(img, radiusPx) {
+  const { width, height, data } = img;
+  const out = Buffer.from(data);
+  const r = Math.max(0, Math.min(radiusPx, Math.floor(Math.min(width, height) / 2)));
+  if (r <= 0) return { width, height, data: out };
+  const w = width;
+  const h = height;
+  const S = 4; // 每像素 4×4 超采样
+
+  /** 点 (px,py) 是否在圆角矩形内部：四角按圆心距离判定，其余恒在内部 */
+  function inside(px, py) {
+    let cx = null;
+    let cy = null;
+    if (px < r && py < r) { cx = r; cy = r; }
+    else if (px >= w - r && py < r) { cx = w - r; cy = r; }
+    else if (px < r && py >= h - r) { cx = r; cy = h - r; }
+    else if (px >= w - r && py >= h - r) { cx = w - r; cy = h - r; }
+    if (cx === null) return true;
+    const dx = px - cx;
+    const dy = py - cy;
+    return dx * dx + dy * dy <= r * r;
+  }
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let count = 0;
+      for (let sy = 0; sy < S; sy++) {
+        const py = y + (sy + 0.5) / S;
+        for (let sx = 0; sx < S; sx++) {
+          if (inside(x + (sx + 0.5) / S, py)) count++;
+        }
+      }
+      if (count === S * S) continue; // 完全在内部：保留原 alpha
+      const di = (y * w + x) * 4 + 3;
+      out[di] = Math.round(data[di] * (count / (S * S)));
+    }
+  }
+  return { width, height, data: out };
+}
+
+/**
+ * §F/R2：编码 24 位 BMP（electron-builder portable.splashImage 只接受 BMP）。
+ * 自底向上行序 + 行宽按 4 字节对齐；alpha 丢弃（splash 自身为不透明底色合成图）。
+ * @param {{width:number,height:number,data:Buffer}} img RGBA 位图
+ */
+export function encodeBmp24(img) {
+  const { width, height, data } = img;
+  const rowSize = Math.ceil((width * 3) / 4) * 4;
+  const pixelArraySize = rowSize * height;
+  const dataOffset = 54;
+  const buf = Buffer.alloc(dataOffset + pixelArraySize);
+  // BITMAPFILEHEADER（14 字节）
+  buf.write('BM', 0, 'ascii');
+  buf.writeUInt32LE(buf.length, 2);
+  buf.writeUInt32LE(dataOffset, 10);
+  // BITMAPINFOHEADER（40 字节）
+  buf.writeUInt32LE(40, 14);
+  buf.writeInt32LE(width, 18);
+  buf.writeInt32LE(height, 22); // 正数 = 自底向上
+  buf.writeUInt16LE(1, 26); // planes
+  buf.writeUInt16LE(24, 28); // bits per pixel
+  buf.writeUInt32LE(0, 30); // BI_RGB 不压缩
+  buf.writeUInt32LE(pixelArraySize, 34);
+  buf.writeInt32LE(2835, 38); // 72 dpi（水平）
+  buf.writeInt32LE(2835, 42); // 72 dpi（垂直）
+  for (let y = 0; y < height; y++) {
+    const srcY = height - 1 - y;
+    for (let x = 0; x < width; x++) {
+      const si = (srcY * width + x) * 4;
+      const di = dataOffset + y * rowSize + x * 3;
+      buf[di] = data[si + 2]; // B
+      buf[di + 1] = data[si + 1]; // G
+      buf[di + 2] = data[si]; // R
+    }
+  }
+  return buf;
+}
+
 /** 编码 RGBA 位图为 PNG（颜色类型 6，位深 8） */
 export function encodePng(img) {
   const { width, height, data } = img;
