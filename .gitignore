@@ -85,3 +85,4 @@ test-screenshots/
 .env
 .env.local
 .env.*.local
+.clean-checkout-parking/
