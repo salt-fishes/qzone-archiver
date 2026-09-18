@@ -9,6 +9,7 @@
  */
 import { stateStore } from './state-store.js';
 import { sendToUi } from './engine-bridge.js';
+import { logger } from './logger.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
 
 export const TASK_STATES = [
@@ -45,6 +46,15 @@ export function createTaskMachine(deps = {}) {
   const persist = deps.persist || ((taskId, data) => stateStore.saveCheckpoint(taskId, data));
   const clear = deps.clear || ((taskId) => stateStore.clearCheckpoint(taskId));
   const push = deps.push || ((payload) => sendToUi(PushChannels.backupStateChanged, payload));
+  // §K4：状态机每次迁移写一行任务日志（事件流水，与 checkpoint 快照分工）。
+  // 单测可注入 stub（默认实现会写 backup-<taskId>.log 文件）
+  const log = deps.log || ((taskId, msg, level = 'info') => {
+    try {
+      logger.task(taskId).log(level, msg);
+    } catch {
+      /* 日志失败不影响状态机 */
+    }
+  });
 
   let snap = {
     taskId: null,
@@ -103,6 +113,7 @@ export function createTaskMachine(deps = {}) {
       };
     }
 
+    const fromState = snap.state;
     snap = { ...snap, state: rule.to };
     switch (event) {
       case 'prepare':
@@ -144,6 +155,24 @@ export function createTaskMachine(deps = {}) {
         break;
     }
     emit();
+    // §K4：迁移流水 + 终态结论写任务日志（checkpoint 已在上方同步落盘，最后一行日志
+    // 总能对应到最近一次 checkpoint——任务中途被杀时日志末行即定位点）
+    try {
+      if (snap.taskId) {
+        if (event === 'complete' || event === 'cancel' || event === 'fail') {
+          const durSec = snap.startedAt ? Math.round((snap.completedAt - snap.startedAt) / 1000) : null;
+          const dur = durSec !== null ? `，耗时 ${durSec}s` : '';
+          if (event === 'fail') log(snap.taskId, `任务结束：失败${dur}（${snap.error}）`, 'error');
+          else if (event === 'cancel') log(snap.taskId, `任务结束：已取消${dur}`, 'warn');
+          else log(snap.taskId, `任务结束：完成${dur}，失败明细 ${snap.errors.length} 条`);
+          logger.disposeTask(snap.taskId);
+        } else {
+          log(snap.taskId, `状态迁移 ${event}：${fromState} → ${snap.state}（checkpoint 已落盘）`);
+        }
+      }
+    } catch {
+      /* 日志失败不影响状态机 */
+    }
     return { ok: true, snapshot: getSnapshot() };
   }
 

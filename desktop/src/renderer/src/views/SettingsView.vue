@@ -57,6 +57,11 @@ function openUpdatePage() {
   if (updateInfo.value?.url) window.api.app.openExternal(updateInfo.value.url);
 }
 
+/* -------- 日志（v4.9 §K） -------- */
+function openLogsDir() {
+  window.api.app.openLogs();
+}
+
 /* -------- 相册选择 -------- */
 const albumOptions = ref<{ type: string; label: string; children?: { label: string; value: string }[] }[]>([]);
 const albumSelectLoading = ref(false);
@@ -298,6 +303,20 @@ async function exportConfig() {
                 @click="bk.retryEngine()"
               >
                 重新连接
+              </NButton>
+            </div>
+          </div>
+          <div class="st-block">
+            <h4>日志</h4>
+            <p class="st-tip">
+              应用日志 main.log 与每次备份的任务日志 backup-*.log 都在这里；反馈备份问题时可直接提供对应任务的那个文件。
+            </p>
+            <div class="st-actions">
+              <NButton
+                size="small"
+                @click="openLogsDir"
+              >
+                打开日志目录
               </NButton>
             </div>
           </div>

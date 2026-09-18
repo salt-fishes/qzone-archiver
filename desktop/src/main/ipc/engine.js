@@ -15,6 +15,7 @@ import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
+import { logger } from '../services/logger.js';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
@@ -185,9 +186,18 @@ export function registerEngineIpc() {
       case 'progress':
         sendToUi(PushChannels.backupProgress, data);
         break;
-      case 'log':
-        sendToUi(PushChannels.backupLog, { level: data?.level || 'info', time: Date.now(), message: data?.message || '' });
+      case 'log': {
+        const level = data?.level || 'info';
+        const message = data?.message || '';
+        sendToUi(PushChannels.backupLog, { level, time: Date.now(), message });
+        // §K4：引擎结构化日志 → 任务日志主轨道（不依赖 console 透传、不依赖窗口生命周期）。
+        // 模块开始/结束、任务启动等引擎流水在此落盘 backup-<taskId>.log
+        const logTaskId = getActiveTaskContext()?.taskId;
+        if (logTaskId && message) {
+          logger.task(logTaskId).log(level, message);
+        }
         break;
+      }
       case 'state': {
         // P3-1：引擎状态事件 → 状态机裁决（非法转移拒绝、同态幂等、统一推送 backup:state-changed）
         const ev = {
@@ -230,9 +240,15 @@ export function registerEngineIpc() {
         }
         break;
       }
-      case 'module-done':
+      case 'module-done': {
         sendToUi(PushChannels.backupModuleDone, data);
+        // §K4：模块结束 → 任务日志（模块粒度的时间点；与"模块完成"日志行共同给出模块耗时）
+        const doneTaskId = getActiveTaskContext()?.taskId;
+        if (doneTaskId) {
+          logger.task(doneTaskId).info(`模块结束：${data?.module ?? '?'}`);
+        }
         break;
+      }
       default:
         break;
     }

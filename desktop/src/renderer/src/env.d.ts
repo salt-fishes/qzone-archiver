@@ -12,6 +12,8 @@ declare global {
         getInfo(): Promise<{ version: string; platform: string; arch: string }>;
         openExternal(url: string): Promise<void>;
         checkUpdate(): Promise<{ ok: boolean; current?: string; latest?: string; hasUpdate?: boolean; url?: string; notes?: string; publishedAt?: string; error?: string }>;
+        /** v4.9：打开日志目录（main.log + backup-<taskId>.log） */
+        openLogs(): Promise<void>;
       };
       auth: {
         getStatus(): Promise<{ loggedIn: boolean; qqNumber?: string; nickname?: string; avatar?: string }>;

@@ -24,6 +24,7 @@ import { pipeline } from 'node:stream/promises';
 import { getActiveTaskContext, sendToUi } from './engine-bridge.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
 import { stateStore } from './state-store.js';
+import { logger } from './logger.js';
 
 const DEFAULT_THREAD = 10;
 const MAX_THREAD = 20; // 并发上限（防止配置误填打爆 CDN）
@@ -114,6 +115,13 @@ function persist() {
   stateStore.saveDownloads(queue);
 }
 
+/** §K4：下载事件写任务日志（重试/放弃须含 URL 与原因）；无活跃任务落 main.log */
+function downloadLog(level, msg) {
+  const taskId = getActiveTaskContext()?.taskId;
+  if (taskId) logger.task(taskId).log(level, msg);
+  else logger.log(level, `[download-manager] ${msg}`);
+}
+
 function toHttps(url) {
   return String(url || '').replace(/^http:\/\//i, 'https://');
 }
@@ -177,6 +185,11 @@ export const downloadManager = {
           } else {
             candidate.state = 'failed';
             candidate.error = e.message;
+            // §K4：最终放弃必须落任务日志（URL + 原因）——这正是卡死排查时最需要的一行
+            downloadLog(
+              'error',
+              `媒体下载最终放弃（已重试 ${MAX_RETRY} 次）：${candidate.url}（${e.message}）→ ${resolveTarget(candidate)}`
+            );
             sendToUi(PushChannels.downloadItemFailed, { taskId: candidate.id, url: candidate.url, error: e.message, module: candidate.module, media: candidate.media });
           }
           persist();
@@ -219,7 +232,7 @@ export const downloadManager = {
     // 最小状态断言（P0-1）：当前任务处于暂停态时入队，新任务将排队直至恢复；
     // 若并非用户主动暂停（backup:pause），说明存在暂停位残留，需排查状态机
     if (pausedTaskId && pausedTaskId === pauseKey()) {
-      console.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
+      logger.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
     }
     queue.push(record);
     persist();
@@ -248,9 +261,10 @@ export const downloadManager = {
         }
         record.retries = attempt;
         const delay = RETRY_BASE_DELAY * 2 ** (attempt - 1);
-        console.warn(
-          '[download-manager] 下载失败，%d/%d 次重试，%dms 后重试：%s %s',
-          attempt, MAX_RETRY, delay, record.url, e && e.message
+        // §K4：接口/媒体重试流水（含 URL 与错误原因）
+        downloadLog(
+          'warn',
+          `媒体下载重试 ${attempt}/${MAX_RETRY}：${record.url}（${e && e.message}），${delay}ms 后重试`
         );
         sendToUi(PushChannels.downloadStateChanged, {
           taskId: record.id, state: 'pending', module: record.module, media: record.media, retry: attempt,

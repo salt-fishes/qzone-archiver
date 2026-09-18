@@ -17,6 +17,8 @@ const api = {
     openExternal: (url) => invoke(Channels.app.openExternal, { url }),
     // v4.6：GitHub Releases 检查更新
     checkUpdate: () => invoke(Channels.app.checkUpdate),
+    // v4.9 §K：打开日志目录（main.log + backup-<taskId>.log）
+    openLogs: () => invoke(Channels.app.openLogs),
   },
   auth: {
     getStatus: () => invoke(Channels.auth.getStatus),

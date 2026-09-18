@@ -12,6 +12,7 @@ import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
+import { logger } from '../services/logger.js';
 import { Channels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -38,14 +39,14 @@ export function copyBuiltinEmoticons(targetDir) {
   const manifestPath = path.join(EMOTICONS_DIR, 'manifest.json');
   if (!fs.existsSync(manifestPath)) {
     // 曾经这里是静默 return 0，导致"表情没复制"这类问题很难查（v4.7.5 改为显式告警）
-    console.warn(`[backup] 内置表情库缺失，跳过复制：${manifestPath}`);
+    logger.warn(`[backup] 内置表情库缺失，跳过复制：${manifestPath}`);
     return 0;
   }
   let manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
   } catch (e) {
-    console.warn('[backup] 读取内置表情清单失败', e);
+    logger.warn(`[backup] 读取内置表情清单失败：${e?.message || e}`);
     return 0;
   }
   const outDir = path.join(targetDir, 'Common/images');
@@ -86,7 +87,7 @@ export function copyBuiltinEmoticons(targetDir) {
     }
   }
   if (count > 0) {
-    console.log(`[backup] 内置表情已复制 ${count} 个（含 png 魔法表情及其 .gif 别名）`);
+    logger.info(`[backup] 内置表情已复制 ${count} 个（含 png 魔法表情及其 .gif 别名）`);
   }
 
   for (const name of manifest.wx || []) {
@@ -119,7 +120,7 @@ function emoticonDataUrl(id) {
         ext === 'png' ? 'image/png' : ext === 'gif' ? 'image/gif' : 'image/jpeg';
       return `data:${mime};base64,${buf.toString('base64')}`;
     } catch (e) {
-      console.warn('[emoticons] 读取表情失败', p, e?.message || e);
+      logger.warn(`[emoticons] 读取表情失败 ${p}: ${e?.message || e}`);
       return null;
     }
   }
@@ -134,47 +135,58 @@ const emoticonsLogged = new Set();
 export function registerBackupIpc() {
   // targetUin（可选，v4.6 他人模式）：缺省/等于登录号 = 备份本人空间，行为与旧版完全一致
   ipcMain.handle(Channels.backup.start, async (event, { taskId, modules, config, targetDir, targetUin }) => {
-    console.log('[backup:start] 进入', { taskId, modules, targetDir, targetUin: targetUin || undefined });
+    logger.info(
+      `[backup] 收到备份启动请求 taskId=${taskId || '（自动生成）'} modules=[${(modules || []).join(',') || '无'}] targetDir=${targetDir || '（未选）'}${targetUin ? ` target=${targetUin}` : ''}`
+    );
     if (!engineBridge.ready) {
-      console.log('[backup:start] 引擎未就绪');
+      logger.warn('[backup] 启动被拒：引擎未就绪');
       return { ok: false, error: '引擎未就绪' };
     }
     if (!targetDir) {
+      logger.warn('[backup] 启动被拒：未选择目标目录');
       return { ok: false, error: '请先选择备份目标目录' };
     }
     const id = taskId || `${TASK_PREFIX}${Date.now()}`;
+    // §K4：任务日志轨道起点——此后到终态的全流程事件流水写入 backup-<id>.log
+    const tl = logger.task(id);
+    tl.info(
+      `任务开始 modules=[${(modules || []).join(',') || '无'}] targetDir=${targetDir}` +
+        (targetUin ? ` target=${targetUin}` : '（本人空间）')
+    );
     const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir, targetUin: targetUin ? String(targetUin) : undefined };
     // P3-1：状态机裁决——上一任务未终态时拒绝并发启动
     const pre = taskMachine.dispatch('prepare', ctx);
     if (!pre.ok) {
+      tl.warn(`启动被拒：${pre.error}`);
       return { ok: false, error: `已有备份任务${pre.snapshot.state === 'paused' ? '处于暂停' : '进行中'}，请先完成或取消` };
     }
     registerTaskContext(ctx);
     // 内置表情库复制到目标目录（表情无需网络下载）
     try {
       const n = copyBuiltinEmoticons(targetDir);
-      console.log(`[backup:start] 已复制内置表情 ${n} 个`);
+      tl.info(`内置表情复制完成：${n} 个`);
     } catch (e) {
-      console.warn('[backup:start] 复制内置表情失败（不影响备份）', e);
+      tl.warn(`复制内置表情失败（不影响备份）：${e?.message || e}`);
     }
-    // P3-1：preparing → running 由状态机统一持久化 checkpoint 并推送 UI
+    // P3-1：preparing → running 由状态机统一持久化 checkpoint 并推送 UI（迁移流水由状态机写任务日志）
     taskMachine.dispatch('start', ctx);
-    console.log('[backup:start] running 已推送，调用引擎 start');
 
     // P3-2：触发一次下载调度（幂等）——恢复上一任务遗留的 pending 队列；
     // 旧暂停位已绑定旧 taskId，新任务启动后由 pump 自动失效（P0-1 根因消除）
     try {
       await downloadManager.resume();
+      tl.info('下载调度已恢复（幂等触发）');
     } catch (e) {
-      console.warn('[backup:start] 恢复下载调度失败（不阻塞备份）', e);
+      tl.warn(`恢复下载调度失败（不阻塞备份）：${e?.message || e}`);
     }
 
     try {
       await engineBridge.start(ctx);
-      console.log('[backup:start] 引擎 start 返回');
+      tl.info('引擎 start 调用已返回');
       return { ok: true, taskId: id };
     } catch (e) {
-      console.error('[backup:start] 引擎 start 失败', e);
+      logger.error(`[backup] 引擎 start 失败：${e?.stack || e}`);
+      tl.error(`引擎 start 调用失败：${e.message}`);
       taskMachine.dispatch('fail', { taskId: id, error: e.message });
       dropTaskContext(id); // P5.2：终态清理任务上下文
       return { ok: false, error: e.message };
@@ -189,8 +201,10 @@ export function registerBackupIpc() {
       await engineBridge.pause();
       // 联动下载管理器：停止调度 + 中断运行中任务（.part 保留断点）——否则引擎挂起后下载仍继续，CPU/网络持续占用
       await downloadManager.pause();
+      logger.task(taskMachine.getSnapshot().taskId).info('暂停已下发：引擎挂起 + 下载中断（.part 保留断点）');
       return { ok: true };
     } catch (e) {
+      logger.task(taskMachine.getSnapshot().taskId).error(`暂停下发失败：${e.message}`);
       return { ok: false, error: e.message };
     }
   });
@@ -201,8 +215,10 @@ export function registerBackupIpc() {
     try {
       await engineBridge.resume();
       await downloadManager.resume();
+      logger.task(taskMachine.getSnapshot().taskId).info('恢复已下发：引擎继续 + 下载续传');
       return { ok: true };
     } catch (e) {
+      logger.task(taskMachine.getSnapshot().taskId).error(`恢复下发失败：${e.message}`);
       return { ok: false, error: e.message };
     }
   });
@@ -213,9 +229,11 @@ export function registerBackupIpc() {
     try {
       await engineBridge.cancel();
       await downloadManager.cancel();
+      logger.task(taskMachine.getSnapshot().taskId).info('取消已下发：引擎中止 + 下载清空 pending');
       dropTaskContext(taskMachine.getSnapshot().taskId); // P5.2：终态清理任务上下文
       return { ok: true };
     } catch (e) {
+      logger.task(taskMachine.getSnapshot().taskId).error(`取消下发失败：${e.message}`);
       return { ok: false, error: e.message };
     }
   });
@@ -244,13 +262,13 @@ export function registerBackupIpc() {
     if (!dataUrl) {
       // 本地没有（或首次请求）：尝试抓一次再读；失败由 UI 显示昵称首字兜底
       const ok = await avatarStore.ensure(clean).catch((e) => {
-        console.warn('[avatars] 抓取头像异常', clean, e?.message || e);
+        logger.warn(`[avatars] 抓取头像异常 uin=${clean}: ${e?.message || e}`);
         return false;
       });
       dataUrl = avatarStore.getDataUrl(clean);
       source = ok && dataUrl ? '网络抓取' : '失败';
     }
-    console.info(`[avatars] uin=${clean} → ${dataUrl ? `已返回（${source}）` : '无头像（UI 用首字兜底）'}`);
+    logger.info(`[avatars] uin=${clean} → ${dataUrl ? `已返回（${source}）` : '无头像（UI 用首字兜底）'}`);
     return { ok: !!dataUrl, dataUrl };
   });
 
@@ -259,7 +277,7 @@ export function registerBackupIpc() {
     const dataUrl = emoticonDataUrl(id);
     if (!dataUrl && !emoticonsLogged.has(String(id))) {
       emoticonsLogged.add(String(id));
-      console.warn(`[emoticons] id=${id} 未在内置库中找到（界面将回落 CDN 或显示原文）`);
+      logger.warn(`[emoticons] id=${id} 未在内置库中找到（界面将回落 CDN 或显示原文）`);
     }
     return { ok: !!dataUrl, dataUrl };
   });
@@ -278,10 +296,13 @@ export function registerBackupIpc() {
 
   // 引擎加载失败后的重试入口：重新注入全部引擎脚本（幂等）
   ipcMain.handle(Channels.backup.engineInject, async () => {
+    logger.info('[backup] 手动重试引擎注入');
     try {
       await engineBridge.inject();
+      logger.info('[backup] 手动重试注入完成');
       return { ok: true };
     } catch (e) {
+      logger.error(`[backup] 手动重试注入失败：${e.message || e}`);
       return { ok: false, error: e.message || String(e) };
     }
   });

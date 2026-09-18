@@ -2,6 +2,7 @@
  * app IPC：版本信息 / 打开外链 / 检查更新（v4.6 只增）
  */
 import { app, shell, ipcMain, net } from 'electron';
+import { logger } from '../services/logger.js';
 import { Channels } from '../../shared/ipc-contract.mjs';
 
 /** 更新源：GitHub Releases（仅查询，不自动下载安装） */
@@ -32,6 +33,12 @@ export function registerAppIpc() {
     if (typeof url === 'string' && /^https?:\/\//.test(url)) {
       shell.openExternal(url);
     }
+    return null;
+  });
+
+  // §K7：打开日志目录（应用日志 main.log + 任务日志 backup-<taskId>.log），便于用户反馈问题时自助取证
+  ipcMain.handle(Channels.app.openLogs, async () => {
+    await shell.openPath(logger.dir);
     return null;
   });
 

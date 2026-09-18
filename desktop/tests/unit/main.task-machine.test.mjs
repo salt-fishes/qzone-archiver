@@ -18,12 +18,15 @@ function makeMachine() {
   const persisted = [];
   const cleared = [];
   const pushed = [];
+  const logged = [];
   const m = createTaskMachine({
     persist: (id, data) => persisted.push({ id, data }),
     clear: (id) => cleared.push(id),
     push: (p) => pushed.push(p),
+    // §K4：任务日志写入 stub（默认实现会写 backup-<taskId>.log 文件，测试不触碰磁盘）
+    log: (id, msg, level) => logged.push({ id, msg, level }),
   });
-  return { m, persisted, cleared, pushed };
+  return { m, persisted, cleared, pushed, logged };
 }
 
 const CTX = { taskId: 'task-1', targetDir: 'D:/bk', modules: ['Blogs'], config: { a: 1 } };
@@ -151,5 +154,37 @@ describe('失败明细与错误记录', () => {
     expect(snap.state).toBe('failed');
     expect(snap.error).toBe('引擎未就绪');
     expect(cleared).toContain('task-1');
+  });
+});
+
+describe('§K4 任务日志流水', () => {
+  it('每次迁移写一行；终态带结论（耗时/失败原因）', () => {
+    const { m, logged } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('pause');
+    m.dispatch('fail', { taskId: 'task-1', error: '网络中断' });
+
+    const transitions = logged.filter((l) => l.msg.startsWith('状态迁移'));
+    expect(transitions.map((l) => l.id)).toEqual(['task-1', 'task-1', 'task-1']);
+    expect(transitions[0].msg).toContain('prepare');
+    expect(transitions[0].msg).toContain('idle → preparing');
+    expect(transitions[1].msg).toContain('checkpoint 已落盘');
+
+    const end = logged.at(-1);
+    expect(end.id).toBe('task-1');
+    expect(end.level).toBe('error');
+    expect(end.msg).toContain('任务结束：失败');
+    expect(end.msg).toContain('网络中断');
+  });
+
+  it('complete 终态写完成结论且不再有后续日志行', () => {
+    const { m, logged } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('complete', { errors: [{ module: 'Photos', message: 'x' }] });
+    const end = logged.at(-1);
+    expect(end.msg).toContain('任务结束：完成');
+    expect(end.msg).toContain('失败明细 1 条');
   });
 });

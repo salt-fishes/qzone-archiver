@@ -18,6 +18,8 @@ export const Channels = {
     openExternal: 'app:open-external',
     /** v4.6 只增：GitHub Releases 检查更新 */
     checkUpdate: 'app:check-update',
+    /** v4.9 §K 只增：打开日志目录（main.log + backup-<taskId>.log，用户自助取证） */
+    openLogs: 'app:open-logs',
   },
   auth: {
     getStatus: 'auth:get-status',
