@@ -8,8 +8,17 @@ import { useAuthStore } from '../stores/auth';
 import { useTargetStore } from '../stores/target';
 import { archiveTargetTag } from '../utils/labels';
 import EmoticonText from '../components/common/EmoticonText.vue';
+import TypewriterText from '../components/common/TypewriterText.vue';
 import TargetAvatar from '../components/common/TargetAvatar.vue';
 import appIcon from '../assets/icon.png';
+
+/** §H：未登录首页打字机循环文案（C 端语气；reduced-motion 时静态显示第一条） */
+const LOGIN_PHRASES = [
+  '把 QQ 空间的青春搬回自己硬盘',
+  '说说、相册、日志，一次备份',
+  '离线也能翻看十年前的那条说说',
+  '数据只存在你自己的电脑上',
+];
 
 type HistoryEntry = {
   taskId?: string | null;
@@ -120,8 +129,12 @@ onBeforeUnmount(() => {
         /></template>
         <template v-else-if="auth.qqNumber">，QQ {{ auth.qqNumber }}</template>
       </h1>
-      <h1 v-else>
-        备份你的 QQ 空间
+      <!-- §H：未登录标题用打字机循环文案（reduced-motion 时组件内静态显示第一条） -->
+      <h1
+        v-else
+        class="hero-title-tw"
+      >
+        <TypewriterText :phrases="LOGIN_PHRASES" />
       </h1>
       <p class="hero-sub">
         {{ auth.loggedIn ? '把空间记忆完整保存到本地，随时离线浏览。' : '扫码登录后，一键保存说说、相册、日志到本机。' }}
