@@ -2,7 +2,7 @@
 
 > 项目仓库：[https://github.com/salt-fishes/qzone-archiver](https://github.com/salt-fishes/qzone-archiver)
 > 原项目：[ShunCai/QZoneExport](https://github.com/ShunCai/QZoneExport)
-> 版本：v4.8.0（Manifest V3 + SPA 档案浏览器 + Windows 桌面版）
+> 版本：v4.9.0（Windows 桌面版；扩展端已归档至 extension 分支）
 >
 > 分支说明：`main` 为桌面端主线；扩展端已退役归档至 `extension` 分支（tag：`archive/extension-v4.8.0`），`desktop` 分支已删除。
 >

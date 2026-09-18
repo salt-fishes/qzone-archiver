@@ -16,12 +16,14 @@
  * 用法：node scripts/check-clean-checkout.mjs
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, renameSync, rmSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const PARKING = path.join(ROOT, '.clean-checkout-parking');
+// 停车位放系统临时目录：放 desktop/ 内会被 eslint . 扫到 minified 产物导致门禁误红
+const PARKING = mkdtempSync(path.join(os.tmpdir(), 'clean-checkout-'));
 
 const GENERATED = ['build', path.join('src', 'renderer', 'public'), path.join('src', 'renderer', 'dist')];
 

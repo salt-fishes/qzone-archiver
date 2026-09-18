@@ -18,35 +18,6 @@ import path from 'node:path';
 
 let tmpGlobal;
 
-/** 极简 EventEmitter（vi.hoisted 内无法 await node:events） */
-class FakeEmitter {
-  constructor() {
-    this._ls = {};
-  }
-  on(ev, fn) {
-    (this._ls[ev] = this._ls[ev] || []).push(fn);
-    return this;
-  }
-  once(ev, fn) {
-    const g = (...a) => {
-      this.off(ev, g);
-      fn(...a);
-    };
-    return this.on(ev, g);
-  }
-  off(ev, fn) {
-    const a = this._ls[ev];
-    const i = a ? a.indexOf(fn) : -1;
-    if (i >= 0) a.splice(i, 1);
-  }
-  removeListener(ev, fn) {
-    return this.off(ev, fn);
-  }
-  emit(ev, ...args) {
-    (this._ls[ev] || []).slice().forEach((fn) => fn(...args));
-  }
-}
-
 const { FakeWindow, ipcHandlers, engineInjectMock, sendToUiMock } = vi.hoisted(() => {
   class FakeEmitter2 {
     constructor() {
@@ -168,7 +139,6 @@ const { windows, createEngineWindow, waitForEngineLoad, isEngineDismissed } = aw
 const { registerBackupIpc } = await import('../../src/main/ipc/backup.js');
 const { registerAuthIpc } = await import('../../src/main/ipc/auth.js');
 const { taskMachine } = await import('../../src/main/services/task-machine.js');
-const { logger } = await import('../../src/main/services/logger.js');
 
 let tmpDir;
 

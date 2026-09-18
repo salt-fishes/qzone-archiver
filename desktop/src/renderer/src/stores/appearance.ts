@@ -47,8 +47,8 @@ export const useAppearanceStore = defineStore('appearance', () => {
       systemDark.value = e.matches;
     };
     const anyMql = mql as unknown as {
-      addEventListener?: Function;
-      addListener?: Function;
+      addEventListener?: (type: string, listener: (e: { matches: boolean }) => void) => void;
+      addListener?: (listener: (e: { matches: boolean }) => void) => void;
     };
     if (typeof anyMql.addEventListener === 'function') {
       anyMql.addEventListener('change', onChange);
@@ -61,8 +61,8 @@ export const useAppearanceStore = defineStore('appearance', () => {
   function unbindSystemTheme() {
     if (!mql || !onChange) return;
     const anyMql = mql as unknown as {
-      removeEventListener?: Function;
-      removeListener?: Function;
+      removeEventListener?: (type: string, listener: (e: { matches: boolean }) => void) => void;
+      removeListener?: (listener: (e: { matches: boolean }) => void) => void;
     };
     if (typeof anyMql.removeEventListener === 'function') {
       anyMql.removeEventListener('change', onChange);
