@@ -11,12 +11,10 @@ export type AuthState = {
   qqNumber?: string;
   nickname?: string;
   avatar?: string;
-  /** v4.7 反馈 ④：本次是"刚扫码登录成功"（主进程置位，用于提示 + 倒计时后跳转） */
+  /** v4.7 反馈 ④：本次是"刚扫码登录成功"（主进程置位，用于倒计时后跳转） */
   loginJustSucceeded?: boolean;
   /** 主进程将在多少秒后最小化引擎窗口 */
   minimizeInSec?: number;
-  /** v4.7 反馈 ⑤：正在打开 QQ 空间窗口（用于跳转前预告注意事项） */
-  loginPending?: boolean;
 };
 
 export const useAuthStore = defineStore('auth', () => {
@@ -37,16 +35,8 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function login() {
-    // 反馈 ⑤：先提示"即将打开 QQ 空间"及注意事项，再真正打开窗口
-    auth.loginPending = true;
-    try {
-      await window.api.auth.showLogin();
-    } finally {
-      // 短延时后清除，避免同一会话内重复弹提示
-      window.setTimeout(() => {
-        auth.loginPending = false;
-      }, 1000);
-    }
+    // §E：扫码前注意事项已改为主进程弹在 QQ 空间窗口上的合并模态（不再经主窗口 toast）
+    await window.api.auth.showLogin();
   }
 
   /** §B⑤：退出登录——主进程在备份进行中会拒绝并返回 {error}，由调用方提示 */

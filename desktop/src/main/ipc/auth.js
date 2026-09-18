@@ -8,7 +8,7 @@
  *     昵称补齐后签名变化会再推一次（旧实现只看 loggedIn 布尔值，昵称永远补不上）
  *  ③ 登录成功且昵称仍为空时短间隔重试拉取（1.5s × 8），拿到即推送一次
  */
-import { ipcMain, session } from 'electron';
+import { ipcMain, dialog, session } from 'electron';
 import { engineBridge, sendToUi } from '../services/engine-bridge.js';
 import { showEngineWindow, windows, createEngineWindow, isEngineDismissed } from '../windows.js';
 import { configStore } from '../services/config-store.js';
@@ -21,6 +21,25 @@ const LOGIN_MINIMIZE_DELAY_SEC = 3;
 /** §A③：昵称补齐重试参数（扫码后引擎窗跳回 qzone 并完成注入才有昵称，1.5s × 8 ≈ 12s） */
 const NICK_RETRY_INTERVAL_MS = 1500;
 const NICK_RETRY_MAX = 8;
+
+/**
+ * §E：扫码前合并提示（用户拍板）——原本是两条被引擎窗盖住的 toast：
+ *  ① 会自动最小化 ② 请勿切换页面/手动刷新。合并为一个原生模态、
+ * 挂在 QQ 空间窗口正上方（居中、置前、必须点掉），用户确认后再扫码。
+ * 文案单一来源在本文件，由 main.login-notice.test.mjs 守护两条信息齐备。
+ */
+const BEFORE_LOGIN_NOTICE = {
+  title: '扫码前请注意',
+  message:
+    '即将打开 QQ 空间窗口扫码登录：\n\n' +
+    '1. 登录成功后会自动最小化 QQ 空间窗口并进入备份流程；\n' +
+    '2. 请勿在该窗口切换页面或手动刷新 —— 引擎脚本注入在空间页面上，' +
+    '页面一旦变更多半需要重新注入，可能导致备份失败。',
+  buttons: ['我知道了'],
+};
+
+/** §E：登录成功并最小化引擎窗后，主窗口再弹出提示（此时不再被引擎窗遮挡） */
+const LOGIN_MINIMIZED_NOTICE = '登录成功，QQ 空间窗口已最小化，可以开始备份了';
 
 /** 去掉值为 undefined 的键（IPC 结构化克隆会保留 undefined 属性，防旧值被空值覆盖） */
 function stripUndefined(obj) {
@@ -179,6 +198,8 @@ export function watchAuthStatus(intervalMs = 5000) {
             windows.engine.minimize();
             logger.info('[auth] 登录成功，已自动最小化 QQ 空间窗口');
           }
+          // §E：提示改在引擎窗最小化之后弹（此前 3 秒 toast 被引擎窗整个盖住）
+          sendToUi(PushChannels.authLoginNotice, { message: LOGIN_MINIMIZED_NOTICE });
         }, LOGIN_MINIMIZE_DELAY_SEC * 1000);
         // §A③：昵称仍为空 → 启动补齐重试
         if (!status.nickname) scheduleNicknameRetry();
@@ -208,8 +229,21 @@ export function stopWatchAuthStatus() {
 export function registerAuthIpc() {
   ipcMain.handle(Channels.auth.getStatus, () => getAuthStatus());
 
-  ipcMain.handle(Channels.auth.showLogin, () => {
-    showEngineWindow();
+  ipcMain.handle(Channels.auth.showLogin, async () => {
+    // §E：先把引擎窗置前，再在其上弹「扫码前请注意」合并模态（点掉才开始扫码）
+    const engine = showEngineWindow();
+    try {
+      await dialog.showMessageBox(engine, {
+        type: 'warning',
+        title: BEFORE_LOGIN_NOTICE.title,
+        message: BEFORE_LOGIN_NOTICE.message,
+        buttons: BEFORE_LOGIN_NOTICE.buttons,
+        noLink: true,
+      });
+    } catch (e) {
+      // 弹窗失败不阻塞登录（旧 toast 文案已废弃，不再回退）
+      logger.warn(`[auth] 扫码前提示显示失败：${e?.message || e}`);
+    }
     return null;
   });
 

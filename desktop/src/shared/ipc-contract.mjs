@@ -104,6 +104,8 @@ export const Channels = {
 /** main → UI 推送通道（sendToUi；ui-bridge 白名单的唯一来源） */
 export const PushChannels = {
   authStatusChanged: 'auth:status-changed',
+  /** v4.9 §E 只增：引擎窗最小化后的登录成功提示（主窗 toast 此时不再被引擎窗遮挡） */
+  authLoginNotice: 'auth:login-notice',
 
   backupProgress: 'backup:progress',
   backupLog: 'backup:log',
