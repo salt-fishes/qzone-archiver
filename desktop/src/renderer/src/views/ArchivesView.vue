@@ -1,12 +1,16 @@
 <script setup lang="ts">
 /**
- * 我的档案（v4.6）：历史备份按采集目标分组展示（本人 / 各好友）
+ * 档案列表（v4.6）：历史备份按采集目标分组展示（本人 / 各目标）
  * 操作：浏览（viewer）/ 打开文件夹 / 压缩
+ * §C：分组名不再拼「好友」、标签按事实显示（好友 / 他人空间）
  */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import { NButton, NTag, NEmpty, NPopconfirm, useMessage } from 'naive-ui';
 import { MODULE_META } from '../stores/config';
+import { useTargetStore } from '../stores/target';
+import { useAuthStore } from '../stores/auth';
+import { archiveTargetLabel, archiveTargetTag } from '../utils/labels';
 import TargetAvatar from '../components/common/TargetAvatar.vue';
 import EmoticonText from '../components/common/EmoticonText.vue';
 
@@ -26,6 +30,8 @@ type HistoryEntry = {
 
 const router = useRouter();
 const message = useMessage();
+const target = useTargetStore();
+const { auth } = useAuthStore();
 
 const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
@@ -55,8 +61,9 @@ const groups = computed(() => {
       map.set(key, {
         key,
         uin,
-        // label 供头像占位/纯文本兜底，nickname 单独留着走 EmoticonText（表情要渲染成图）
-        label: uin ? h.target?.nickname || `好友 ${uin}` : '我的空间',
+        // §C：label 供头像占位/纯文本兜底，无昵称时显示 QQ 号（不再拼「好友」）；
+        // nickname 单独留着走 EmoticonText（表情要渲染成图）
+        label: archiveTargetLabel({ uin, nickname: h.target?.nickname }),
         nickname: uin ? h.target?.nickname : undefined,
         items: [],
       });
@@ -107,6 +114,8 @@ function moduleLabels(h: HistoryEntry) {
 
 let unsub: (() => void) | null = null;
 onMounted(async () => {
+  // §C：已登录时预取好友列表（事实标签判定用；未登录不请求）
+  if (auth.loggedIn) target.loadFriends();
   await loadHistory();
   unsub = window.api.on('backup:history-changed', () => loadHistory());
 });
@@ -118,7 +127,7 @@ onBeforeUnmount(() => {
 <template>
   <section class="archives">
     <div class="ar-head">
-      <h2>我的档案</h2>
+      <h2>档案列表</h2>
       <p>每一次备份都会生成可直接打开的离线档案</p>
     </div>
 
@@ -170,7 +179,7 @@ onBeforeUnmount(() => {
             round
             :bordered="false"
           >
-            好友
+            {{ archiveTargetTag({ uin: g.uin, isFriend: target.isFriendUin(g.uin) }) }}
           </NTag>
           <span class="g-count">{{ g.items.length }} 次备份</span>
         </div>

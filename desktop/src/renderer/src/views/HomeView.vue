@@ -5,6 +5,8 @@ import { useRouter } from 'vue-router';
 import { NButton, NTag, NEmpty } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { useAuthStore } from '../stores/auth';
+import { useTargetStore } from '../stores/target';
+import { archiveTargetTag } from '../utils/labels';
 import EmoticonText from '../components/common/EmoticonText.vue';
 import TargetAvatar from '../components/common/TargetAvatar.vue';
 import appIcon from '../assets/icon.png';
@@ -24,6 +26,7 @@ type HistoryEntry = {
 
 const router = useRouter();
 const { auth, refresh: refreshAuth, login, initAuth, ensureProfile } = useAuthStore();
+const target = useTargetStore();
 
 const history = ref<HistoryEntry[]>([]);
 const loading = ref(true);
@@ -83,6 +86,8 @@ onMounted(async () => {
   refreshAuth();
   // §A：已登录但昵称缺失（引擎注入完成前）时后台重试补齐，补上后问候语/顶栏/向导自动更新
   ensureProfile();
+  // §C：已登录时预取好友列表（最近任务的事实标签判定用；未登录不请求）
+  if (auth.loggedIn) target.loadFriends();
   await loadHistory();
   unsub = window.api.on('backup:history-changed', () => loadHistory());
 });
@@ -203,7 +208,7 @@ onBeforeUnmount(() => {
               round
               :bordered="false"
             >
-              好友
+              {{ archiveTargetTag({ uin: h.target.uin, isFriend: target.isFriendUin(h.target.uin) }) }}
             </NTag>
           </div>
           <div class="ri-meta">

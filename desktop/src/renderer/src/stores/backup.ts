@@ -340,7 +340,7 @@ export const useBackupStore = defineStore('backup', () => {
     logs.value = [];
     // 生成本次备份任务 ID：主进程检查点/状态推送均以 taskId 关联，缺失会导致日志显示 undefined 且无法精确追踪
     const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const targetLabel = targetUin ? `好友 ${targetUin} 的公开内容` : '我的空间';
+    const targetLabel = targetUin ? `他人空间 ${targetUin} 的公开内容` : '我的空间';
     pushLog('info', `开始备份：${targetLabel} · ${modules.map((m) => MODULE_META[m]?.label || m).join('、')} → ${cfg.targetDir}`);
     try {
       // v4.6：targetUin 为可选他人模式参数，缺省 undefined 时引擎行为与旧版一致

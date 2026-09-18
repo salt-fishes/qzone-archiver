@@ -145,10 +145,19 @@ export const useTargetStore = defineStore('target', () => {
   /** 是否处于他人模式（校验通过且确非本人） */
   const isOtherUser = computed(() => !!effectiveUin.value);
 
+  /**
+   * §C：uin 是否在登录者的好友列表中（好友列表已加载时准确；未加载/未登录 → false=未知）。
+   * 档案列表/首页的事实标签（好友 / 他人空间）据此判定，不再无条件写「好友」。
+   */
+  function isFriendUin(uin?: string | number | null) {
+    if (!uin) return false;
+    return friends.value.some((f) => String(f.uin) === String(uin));
+  }
+
   return {
     mode, inputUin, profile, validating, validateError,
     friends, friendsLoading, friendsLoaded, friendsError,
     loadFriends, filterFriends, validate, setMode, pickFriend, reset,
-    effectiveUin, isOtherUser,
+    effectiveUin, isOtherUser, isFriendUin,
   };
 });

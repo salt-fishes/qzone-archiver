@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * 向导第①步：选择备份目标（v4.6 他人模式）
- * 我的空间 / 好友的空间 两个入口；好友模式 = QQ 号输入 + 好友远程搜索 + 空间可访问性校验
+ * 我的空间 / 访问空间 两个入口；他人模式 = QQ 号输入 + 好友远程搜索 + 空间可访问性校验
  */
 import { computed, h, ref } from 'vue';
 import { NInput, NSelect, NButton, NAlert, NSpin } from 'naive-ui';
@@ -19,7 +19,7 @@ const TYPE_OTHER = 'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M3 20c0-3 2.7-5 6-5s6 2 6
 
 const OPTIONS = [
   { key: 'self', title: '我的空间', desc: '备份登录账号的全部内容，包括日记、收藏等私密内容', icon: TYPE_SELF },
-  { key: 'other', title: '好友的空间', desc: '输入好友 QQ 号，备份其公开的说说、相册、日志等内容', icon: TYPE_OTHER },
+  { key: 'other', title: '访问空间', desc: '输入任意 QQ 号（好友可从列表选择），备份其公开的说说、相册、日志等内容；非好友仅能备份公开内容', icon: TYPE_OTHER },
 ] as const;
 
 const manualUin = ref('');

@@ -195,11 +195,11 @@ function pickDir() {
               <span class="c-k">备份目标</span>
               <span class="c-v">
                 <template v-if="target.isOtherUser">
-                  好友 <EmoticonText
+                  他人空间（<EmoticonText
                     v-if="target.profile?.nickname"
                     :text="target.profile.nickname"
                     :size="15"
-                  />（{{ target.profile?.uin }}）的公开内容
+                  />{{ target.profile?.nickname ? ' · ' : '' }}QQ {{ target.profile?.uin }}）的公开内容
                 </template>
                 <template v-else>我的空间（{{ auth.qqNumber || '未登录' }}）</template>
               </span>

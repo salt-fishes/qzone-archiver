@@ -13,7 +13,7 @@ const STEPS = [
   {
     sel: '.nav',
     title: '功能导航',
-    desc: '新建任务、我的档案、设置都在左侧，备份相关的所有操作从这里开始。',
+    desc: '新建任务、档案列表、设置都在左侧，备份相关的所有操作从这里开始。',
   },
   {
     sel: '.header-right',
@@ -27,7 +27,7 @@ const STEPS = [
   },
   {
     sel: '.nav-item[href="#/archives"]',
-    title: '我的档案',
+    title: '档案列表',
     desc: '备份完成后生成离线档案，在这里可以随时打开浏览或压缩分享。',
   },
 ];
