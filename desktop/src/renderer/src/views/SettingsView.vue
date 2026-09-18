@@ -21,6 +21,7 @@ const dialog = useDialog();
 const message = useMessage();
 
 const themeOptions = [
+  { label: '跟随系统（自动切换深浅色）', value: 'auto' },
   { label: '浅色', value: 'light' },
   { label: '深色', value: 'dark' },
 ];
@@ -146,7 +147,7 @@ async function exportConfig() {
               :options="themeOptions"
               size="small"
               class="ctl"
-              @update:value="(v) => (appearance.theme = (v as 'light' | 'dark'))"
+              @update:value="(v) => appearance.setTheme(v as 'auto' | 'light' | 'dark')"
             />
           </div>
           <div class="st-block">

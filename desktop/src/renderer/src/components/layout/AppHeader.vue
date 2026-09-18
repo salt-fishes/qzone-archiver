@@ -1,5 +1,6 @@
 <script setup lang="ts">
 /** 应用顶栏（v4.6）：引擎连接状态 + 主题切换 + 登录态（头像下拉） */
+import { computed } from 'vue';
 import { NTag, NButton, NDropdown, useDialog, useMessage } from 'naive-ui';
 import { useAuthStore } from '../../stores/auth';
 import { useAppearanceStore } from '../../stores/appearance';
@@ -14,6 +15,18 @@ const appearance = useAppearanceStore();
 const bk = useBackupStore();
 const dialog = useDialog();
 const message = useMessage();
+
+/** §D：三选主题下拉，当前项打勾 */
+const themeOptions = computed(() => [
+  { label: `${appearance.theme === 'auto' ? '✓ ' : ''}跟随系统`, key: 'auto' },
+  { label: `${appearance.theme === 'light' ? '✓ ' : ''}浅色`, key: 'light' },
+  { label: `${appearance.theme === 'dark' ? '✓ ' : ''}深色`, key: 'dark' },
+]);
+const themeTitle = computed(() =>
+  appearance.theme === 'auto'
+    ? `当前：跟随系统（${appearance.resolvedTheme === 'dark' ? '深色' : '浅色'}）`
+    : `当前：${appearance.resolvedTheme === 'dark' ? '深色' : '浅色'}`
+);
 
 function confirmLogout() {
   dialog.warning({
@@ -76,45 +89,52 @@ function onUserAction(key: string) {
 
     <div class="header-right">
       <span class="ver">v{{ version }}</span>
-      <NButton
-        quaternary
-        circle
+      <!-- §D：三选下拉（浅色/深色/跟随系统），当前项打勾；图标按实际生效主题显示 -->
+      <NDropdown
+        :options="themeOptions"
+        trigger="click"
         size="small"
-        :title="appearance.theme === 'light' ? '切换深色' : '切换浅色'"
-        @click="appearance.toggleTheme()"
+        @select="appearance.setTheme($event as any)"
       >
-        <template #icon>
-          <svg
-            v-if="appearance.theme === 'light'"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            width="17"
-            height="17"
-          >
-            <path d="M20 13.5A8.5 8.5 0 0 1 10.5 4 7.5 7.5 0 1 0 20 13.5Z" />
-          </svg>
-          <svg
-            v-else
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            width="17"
-            height="17"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="4"
-            />
-            <path d="M12 2.5v2.5 M12 19v2.5 M2.5 12H5 M19 12h2.5 M5 5l1.8 1.8 M17.2 17.2 19 19 M19 5l-1.8 1.8 M6.8 17.2 5 19" />
-          </svg>
-        </template>
-      </NButton>
+        <NButton
+          quaternary
+          circle
+          size="small"
+          :title="themeTitle"
+        >
+          <template #icon>
+            <svg
+              v-if="appearance.resolvedTheme === 'light'"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              width="17"
+              height="17"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="4"
+              />
+              <path d="M12 2.5v2.5 M12 19v2.5 M2.5 12H5 M19 12h2.5 M5 5l1.8 1.8 M17.2 17.2 19 19 M19 5l-1.8 1.8 M6.8 17.2 5 19" />
+            </svg>
+            <svg
+              v-else
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              width="17"
+              height="17"
+            >
+              <path d="M20 13.5A8.5 8.5 0 0 1 10.5 4 7.5 7.5 0 1 0 20 13.5Z" />
+            </svg>
+          </template>
+        </NButton>
+      </NDropdown>
 
       <template v-if="auth.auth.loggedIn">
         <NDropdown

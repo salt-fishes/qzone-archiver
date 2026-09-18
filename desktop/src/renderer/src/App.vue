@@ -34,12 +34,13 @@ const showWelcome = ref(false);
 const showHelp = ref(false);
 const showTour = ref(false);
 
-const naiveTheme = computed<GlobalTheme | null>(() => (appearance.theme === 'dark' ? darkTheme : null));
-const themeOverrides = computed(() => (appearance.theme === 'dark' ? darkThemeOverrides : lightThemeOverrides));
+// §D：三态（auto/light/dark）统一收敛到 resolvedTheme，Naive 主题/覆盖/自定义面板不再各判一次
+const naiveTheme = computed<GlobalTheme | null>(() => (appearance.resolvedTheme === 'dark' ? darkTheme : null));
+const themeOverrides = computed(() => (appearance.resolvedTheme === 'dark' ? darkThemeOverrides : lightThemeOverrides));
 
 // 自定义面板（非 Naive 组件）通过 tokens.scss 的 --surface 变量跟随主题，html.dark 为其切换开关
 watchEffect(() => {
-  document.documentElement.classList.toggle('dark', appearance.theme === 'dark');
+  document.documentElement.classList.toggle('dark', appearance.resolvedTheme === 'dark');
 });
 
 /** 引擎加载超时兜底：20s 仍未就绪 → 提示连接失败并允许重试 */
