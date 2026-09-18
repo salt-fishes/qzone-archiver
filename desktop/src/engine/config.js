@@ -120,17 +120,6 @@ const Default_Config = {
                 max: 2
             }
         },
-        // [实验性] 恢复已删除说说：通过好友互动消息列表（feeds2_html_pav_all）拉取已删除说说的通知
-        // 与现有说说列表按 tid 去重，剩余的作为已删除说说单独导出
-        // 注：只能恢复有互动（评论/点赞）的说说；私密说说无通知故无法恢复
-        RecoverDeleted: false,
-        Feeds: {
-            pageSize: 30,        // 互动消息每页数量
-            randomSeconds: {     // 请求间隔（参照 Python main.py 3 秒间隔）
-                min: 3,
-                max: 5
-            }
-        }
     },
     // 日志模块
     Blogs: {

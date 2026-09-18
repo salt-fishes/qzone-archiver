@@ -136,7 +136,7 @@ onBeforeUnmount(() => {
           </tr>
         </thead>
         <tbody>
-          <tr><td>说说</td><td>含配图、评论、点赞；可恢复部分已删除说说</td></tr>
+          <tr><td>说说</td><td>含配图、评论、点赞</td></tr>
           <tr><td>日志</td><td>长文与插图</td></tr>
           <tr><td>日记</td><td>仅本人可见（好友空间不可备份）</td></tr>
           <tr><td>相册</td><td>原图 + 预览图，可按相册挑选</td></tr>

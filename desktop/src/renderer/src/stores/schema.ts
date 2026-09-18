@@ -71,7 +71,6 @@ export const MODULE_SCHEMA: Record<string, SettingItem[]> = {
     { key: 'isFull', label: '获取说说全文', type: 'checkbox', help: '长说说默认只显示一部分，开启后抓取完整内容' },
     { key: 'isShowMore', label: '默认展开全文', type: 'checkbox', help: '备份页面里长说说默认展开，不用点「全文」' },
     { key: 'hasThatYearToday', label: '生成那年今日', type: 'checkbox', help: '在备份页面生成「那年今日」回顾，按日期翻老说说' },
-    { key: 'RecoverDeleted', label: '恢复已删除说说', type: 'checkbox', help: '实验性：尝试从评论、点赞等互动记录找回已删除的说说' },
     { key: 'isFilterKeyword', label: '过滤广告关键词', type: 'checkbox', help: '遇到带广告的说说自动跳过' },
     { key: 'Comments.isFull', label: '获取全部评论', type: 'checkbox', help: '默认只抓一页评论，开启后抓全部（会多花些时间）' },
     { key: 'Like.isGet', label: '获取赞列表', type: 'checkbox', help: '记录每条内容下谁点过赞' },
@@ -163,7 +162,6 @@ export function defaultSettings() {
       "isFull": true,
       "isShowMore": false,
       "hasThatYearToday": true,
-      "RecoverDeleted": false,
       "isFilterKeyword": false,
       "Comments": {
         "isFull": true

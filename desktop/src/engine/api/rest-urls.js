@@ -85,7 +85,6 @@ const REST_URLS = {
     LIKE_LIST_URL: 'https://user.qzone.qq.com/proxy/domain/users.qzone.qq.com/cgi-bin/likes/get_like_list_app',
 
     /** 好友互动消息列表URL（含已删除说说的通知，用于恢复已删除说说） */
-    FEEDS_LIST_URL: 'https://user.qzone.qq.com/proxy/domain/ic2.qzone.qq.com/cgi-bin/feeds/feeds2_html_pav_all',
 
     /** 说说、日志浏览记录列表 */
     VISITOR_SINGLE_LIST_URL: 'https://user.qzone.qq.com/proxy/domain/g.qzone.qq.com/cgi-bin/friendshow/cgi_get_visitor_single',

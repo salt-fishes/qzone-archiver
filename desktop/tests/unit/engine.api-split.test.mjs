@@ -60,18 +60,27 @@ const P23_REMOVED = { Shares: ['convert'], Favorites: ['convert'] };
 
 /**
  * v4.7 计划内行为变更（登记在此，逐字比对对这些方法放行源码全等，但仍校验其存在与类型）：
- * - Messages.getFeedsCount：探测全失败时抛错，不再静默返回 0（修「恢复已删除说说」假成功）
  * - Utils.get：加入连续 5xx/无响应熔断（避免风控期间持续重试打接口）
  * - Common.addEmoticonDowanloadTask / Common.formatEmoticonPath：按 roster 真实文件名处理
  *   表情（经典 .gif / 魔法 .png），修导出档案里 png 表情指向不存在文件的问题
+ * v4.9 §J 计划内删除（issue #5 承诺下线「已删除说说恢复」，连同其专属接口一并移除）：
+ * - Messages.getFeeds / getFeedsCount / parseFeedHtml：仅服务于已删除说说恢复（逐字比对放行键集合）
+ * - REST_URLS.FEEDS_LIST_URL（feeds2_html_pav_all，issue #2 的 501 报错 URL）随功能删除
  * 新增方法不适用本表：API.Utils 由多个 METHOD 对象 Object.assign 合并，
  * 基线键集合是拆分产物的子集，故 Utils 只要求「基线键全部保留且源码一致」，允许新增。
  */
 const V47_CHANGED = {
-  Messages: ['getFeedsCount'],
   Utils: ['get'],
   Common: ['addEmoticonDowanloadTask', 'formatEmoticonPath'],
 };
+
+/** v4.9 §J 计划内删除的方法（基线有、拆分产物没有，属计划内变化） */
+const V49_REMOVED = {
+  Messages: ['getFeeds', 'getFeedsCount', 'parseFeedHtml'],
+};
+
+/** v4.9 §J 计划内删除的 REST_URLS 键 */
+const V49_REMOVED_URLS = ['FEEDS_LIST_URL'];
 
 /** 允许新增方法（拆分层合并而来）的命名空间 */
 const ADDITIVE_NAMESPACES = new Set(['Utils']);
@@ -85,7 +94,10 @@ describe('P2-1 api.js 拆分逐字搬迁证明', () => {
     it(`API.${ns} 方法名集合与函数源码全等`, () => {
       const a = grab(origCtx, `API.${ns}`);
       const b = grab(newCtx, `API.${ns}`);
-      const aKeys = Object.keys(a).filter((k) => !(P23_REMOVED[ns] || []).includes(k)).sort();
+      const aKeys = Object.keys(a)
+        .filter((k) => !(P23_REMOVED[ns] || []).includes(k))
+        .filter((k) => !(V49_REMOVED[ns] || []).includes(k))
+        .sort();
       const bKeys = Object.keys(b).sort();
       if (ADDITIVE_NAMESPACES.has(ns)) {
         // 合并式命名空间：允许新增，但基线方法一个都不能少
@@ -103,8 +115,13 @@ describe('P2-1 api.js 拆分逐字搬迁证明', () => {
     });
   }
 
-  it('REST_URLS 值全等', () => {
-    expect(grab(newCtx, 'JSON.stringify(REST_URLS)')).toBe(grab(origCtx, 'JSON.stringify(REST_URLS)'));
+  it('REST_URLS 值全等（§J 删除的 FEEDS_LIST_URL 除外，且确认其已不存在）', () => {
+    const a = { ...grab(origCtx, 'REST_URLS') };
+    for (const k of V49_REMOVED_URLS) delete a[k];
+    expect(grab(newCtx, 'JSON.stringify(REST_URLS)')).toBe(JSON.stringify(a));
+    for (const k of V49_REMOVED_URLS) {
+      expect(grab(newCtx, `REST_URLS.${k}`), `${k} 应已删除`).toBeUndefined();
+    }
   });
 
   it('parseEmoji 函数源码全等', () => {

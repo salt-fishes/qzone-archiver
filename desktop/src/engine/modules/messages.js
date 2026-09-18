@@ -90,9 +90,6 @@ API.Messages.exportToJson = QZoneExporters.Messages.exportToJson;
 /** 导出说说到 SPA（P2：委托 exporters/Messages，数据策略说明见 exporters/messages.js） */
 API.Messages.exportToSpa = QZoneExporters.Messages.exportToSpa;
 
-/** [实验性] 恢复已删除说说（P2：委托 collectors/Messages，策略说明见 collectors/messages.js） */
-API.Messages.getDeletedMessages = QZoneCollectors.Messages.getDeletedMessages;
-
 /** 获取说说的MD内容（P2：委托 exporters/Messages） */
 API.Messages.getMarkdown = QZoneExporters.Messages.getMarkdown;
 

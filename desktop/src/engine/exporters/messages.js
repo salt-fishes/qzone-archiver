@@ -240,36 +240,7 @@ QZoneExporters.Messages = {
             console.info('生成 SPA 说说年份分片完成', { year, count: yearItems.length });
         }
 
-        // 3. [实验性] 恢复已删除说说：从好友互动消息列表拉取通知，按 tid 与现有说说去重
-        let deletedItems = [];
-        if (QZone_Config.Messages.RecoverDeleted) {
-            try {
-                deletedItems = await API.Messages.getDeletedMessages(messages);
-                if (deletedItems.length > 0) {
-                    await API.Common.writeJsonToJs(
-                        'messagesDeleted',
-                        deletedItems,
-                        `${dataFolder}/messages-deleted.js`
-                    );
-                    console.info('生成 SPA 已删除说说完成', { count: deletedItems.length });
-                } else {
-                    console.info('未发现已删除说说');
-                }
-            } catch (e) {
-                // 取消：向上传播中止整个备份流程
-                if (e && e.__exportCancelled) throw e;
-                // v4.7：恢复已删除说说失败必须上抛 —— 此前只 console.error 吞掉，
-                // 结果接口 501 时该功能一条没恢复，备份报告却显示"成功"。
-                console.error('恢复已删除说说异常', e);
-                throw new ModuleError({
-                    module: 'Messages',
-                    phase: 'recover-deleted',
-                    cause: e,
-                });
-            }
-        }
-
-        console.info('导出说说到 SPA 完成', { total: messages.length, years: yearMaps.size, deleted: deletedItems.length });
+        console.info('导出说说到 SPA 完成', { total: messages.length, years: yearMaps.size });
 
     } catch (error) {
         console.error('导出说说到 SPA 异常', error, messages);
