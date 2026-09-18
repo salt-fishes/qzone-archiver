@@ -48,8 +48,9 @@ describe('§K 主进程日志埋点下限', () => {
     expect(code).toMatch(/logger\.sessionStart\(\)/);
   });
 
-  it('引擎 console 中转支持写入任务日志附录（task(...).engine 路由存在）', () => {
-    const code = readFileSync(join(MAIN_DIR, 'index.js'), 'utf8');
+  it('引擎 console 中转支持写入任务日志附录（task(...).engine 路由存在，随 §B 收口在 windows.js）', () => {
+    const code = readFileSync(join(MAIN_DIR, 'windows.js'), 'utf8');
     expect(code).toMatch(/logger\.task\(/);
+    expect(code).toMatch(/attachEngineLifecycle/);
   });
 });

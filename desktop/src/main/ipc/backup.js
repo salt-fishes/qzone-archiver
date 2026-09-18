@@ -6,7 +6,8 @@ import { ipcMain } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineBridge, registerTaskContext, dropTaskContext } from '../services/engine-bridge.js';
+import { engineBridge, registerTaskContext, dropTaskContext, pushEngineStatus } from '../services/engine-bridge.js';
+import { createEngineWindow, waitForEngineLoad } from '../windows.js';
 import { stateStore } from '../services/state-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { backupStats } from '../services/backup-stats.js';
@@ -294,15 +295,20 @@ export function registerBackupIpc() {
     }
   });
 
-  // 引擎加载失败后的重试入口：重新注入全部引擎脚本（幂等）
+  // 引擎加载失败/窗口被关后的重试入口（§B④）：重连 = 重建——
+  // 窗口不存在时先拉起引擎窗 → 等页面加载完成 → 重新注入全部引擎脚本（幂等）
   ipcMain.handle(Channels.backup.engineInject, async () => {
-    logger.info('[backup] 手动重试引擎注入');
+    logger.info('[backup] 手动重试引擎连接');
     try {
+      const engine = createEngineWindow();
+      await waitForEngineLoad(engine, 15000);
       await engineBridge.inject();
-      logger.info('[backup] 手动重试注入完成');
+      pushEngineStatus('ready');
+      logger.info('[backup] 手动重试连接完成');
       return { ok: true };
     } catch (e) {
-      logger.error(`[backup] 手动重试注入失败：${e.message || e}`);
+      logger.error(`[backup] 手动重试连接失败：${e.message || e}`);
+      pushEngineStatus('crashed', e.message || String(e));
       return { ok: false, error: e.message || String(e) };
     }
   });

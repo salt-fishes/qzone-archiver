@@ -116,6 +116,9 @@ export const PushChannels = {
   downloadItemFailed: 'download:item-failed',
   downloadStateChanged: 'download:state-changed',
 
+  /** v4.9 §B 只增：引擎窗口状态广播（payload {state: loading|ready|closed|crashed, reason?}） */
+  engineStatusChanged: 'engine:status-changed',
+
   zipProgress: 'zip:progress',
 };
 

@@ -26,7 +26,29 @@ const { engineBridgeMock, sendToUiMock } = vi.hoisted(() => ({
 
 vi.mock('electron', () => ({
   app: { getPath: vi.fn(() => tmpGlobal) },
-  BrowserWindow: class {},
+  // §B：登录态轮询会按需 createEngineWindow——提供可构造的最小 BrowserWindow
+  BrowserWindow: class {
+    constructor() {
+      this.webContents = {
+        on: () => {},
+        setWindowOpenHandler: () => {},
+        getURL: () => 'https://user.qzone.qq.com/',
+        isLoading: () => false,
+        session: {},
+      };
+    }
+    loadURL() {}
+    loadFile() {}
+    on() {}
+    setWindowOpenHandler() {}
+    isDestroyed() {
+      return false;
+    }
+    show() {}
+    focus() {}
+    close() {}
+    minimize() {}
+  },
   shell: { openExternal: async () => {} },
 }));
 

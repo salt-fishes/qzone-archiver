@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** 应用顶栏（v4.6）：引擎连接状态 + 主题切换 + 登录态（头像下拉） */
-import { NTag, NButton, NDropdown, useDialog } from 'naive-ui';
+import { NTag, NButton, NDropdown, useDialog, useMessage } from 'naive-ui';
 import { useAuthStore } from '../../stores/auth';
 import { useAppearanceStore } from '../../stores/appearance';
 import { useBackupStore } from '../../stores/backup';
@@ -13,6 +13,7 @@ const auth = useAuthStore();
 const appearance = useAppearanceStore();
 const bk = useBackupStore();
 const dialog = useDialog();
+const message = useMessage();
 
 function confirmLogout() {
   dialog.warning({
@@ -20,7 +21,11 @@ function confirmLogout() {
     content: '退出后需重新扫码才能备份；本地已备份的数据不受影响。',
     positiveText: '退出登录',
     negativeText: '再想想',
-    onPositiveClick: () => auth.logout(),
+    onPositiveClick: async () => {
+      // §B⑤：备份进行中主进程拒绝退出并给出原因
+      const r = await auth.logout();
+      if (r?.error) message.warning(r.error);
+    },
   });
 }
 
@@ -39,6 +44,7 @@ function onUserAction(key: string) {
 <template>
   <header class="app-header">
     <div class="header-left">
+      <!-- §B：引擎状态由主进程 engine:status-changed 驱动，区分「窗口已关闭」与「连接失败」 -->
       <NTag
         v-if="bk.engineFailed"
         size="small"
@@ -46,9 +52,10 @@ function onUserAction(key: string) {
         round
         :bordered="false"
         style="cursor: pointer"
+        :title="bk.engineStateReason || (bk.engineState === 'closed' ? 'QQ 空间窗口已关闭' : '引擎连接失败')"
         @click="bk.retryEngine()"
       >
-        连接失败 · 点击重试
+        {{ bk.engineState === 'closed' ? '未连接 · 点击重试' : '连接失败 · 点击重试' }}
       </NTag>
       <NTag
         v-else

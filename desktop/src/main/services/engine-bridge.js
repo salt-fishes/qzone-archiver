@@ -7,10 +7,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { session } from 'electron';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { stateStore } from './state-store.js';
 import { assertWithin } from './path-guard.js';
+import { logger } from './logger.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -170,7 +172,6 @@ export function resolveEnginePath(rawPath) {
 
 export const engineBridge = {
   ready: false,
-
   /** 注入全部引擎脚本到引擎窗口 */
   async inject() {
     const wc = windows.engine?.webContents;
@@ -231,12 +232,24 @@ export const engineBridge = {
   /** 读取引擎窗口 session cookie（httpOnly 也可读） */
   async getCookie(name) {
     const wc = windows.engine?.webContents;
-    if (!wc || wc.isDestroyed()) return '';
-    const cookies = await wc.session.cookies.get({
-      url: 'https://user.qzone.qq.com',
-      name,
-    });
-    return cookies[0]?.value || '';
+    if (wc && !wc.isDestroyed()) {
+      const cookies = await wc.session.cookies.get({
+        url: 'https://user.qzone.qq.com',
+        name,
+      });
+      return cookies[0]?.value || '';
+    }
+    // §B/R2 按需创建：引擎窗不存在时直接读持久化 partition——
+    // 登录态检测不依赖窗口生命周期（冷启动未建窗也能发现已登录）
+    try {
+      const cookies = await session.fromPartition('persist:qzone').cookies.get({
+        url: 'https://user.qzone.qq.com',
+        name,
+      });
+      return cookies[0]?.value || '';
+    } catch {
+      return '';
+    }
   },
 };
 
@@ -246,6 +259,22 @@ export function sendToUi(channel, payload) {
   if (main && !main.isDestroyed()) {
     main.webContents.send(channel, payload);
   }
+}
+
+/**
+ * §B：引擎状态统一广播——窗口 closed/崩溃/加载失败/注入成功都走这里，
+ * 同时归位 engineBridge.ready（可观测主路径不依赖任何窗口的事件监听时机）。
+ * @param {'loading'|'ready'|'closed'|'crashed'} state
+ * @param {string} [reason] 失败/断开原因（UI 展示与日志定位用）
+ */
+export function pushEngineStatus(state, reason) {
+  if (state === 'ready') {
+    engineBridge.ready = true;
+  } else {
+    engineBridge.ready = false;
+  }
+  sendToUi(PushChannels.engineStatusChanged, { state, ...(reason ? { reason } : {}) });
+  logger.info(`[engine] 引擎状态：${state}${reason ? `（${reason}）` : ''}`);
 }
 
 /** 检查点持久化（供 backup IPC 调用） */

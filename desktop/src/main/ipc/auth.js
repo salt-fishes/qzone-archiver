@@ -8,11 +8,12 @@
  *     昵称补齐后签名变化会再推一次（旧实现只看 loggedIn 布尔值，昵称永远补不上）
  *  ③ 登录成功且昵称仍为空时短间隔重试拉取（1.5s × 8），拿到即推送一次
  */
-import { ipcMain } from 'electron';
+import { ipcMain, session } from 'electron';
 import { engineBridge, sendToUi } from '../services/engine-bridge.js';
-import { showEngineWindow, windows } from '../windows.js';
+import { showEngineWindow, windows, createEngineWindow, isEngineDismissed } from '../windows.js';
 import { configStore } from '../services/config-store.js';
 import { logger } from '../services/logger.js';
+import { taskMachine } from '../services/task-machine.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
 /** 登录成功后延迟最小化引擎窗口的秒数（对齐 UI 提示文案，v4.7 反馈 ④） */
@@ -182,6 +183,12 @@ export function watchAuthStatus(intervalMs = 5000) {
         // §A③：昵称仍为空 → 启动补齐重试
         if (!status.nickname) scheduleNicknameRetry();
       }
+      // §B/R2 按需创建：检测到登录态（含持久化 session 的冷启动场景）但引擎窗不存在
+      // → 自动拉起并注入。用户手动关窗（isEngineDismissed）时不自动重开，尊重操作。
+      if (loggedIn && !isEngineDismissed() && (!windows.engine || windows.engine.isDestroyed())) {
+        logger.info('[auth] 检测到登录态且引擎窗不存在，按需创建引擎窗口');
+        createEngineWindow();
+      }
     } catch {
       // 引擎窗口未就绪等瞬时错误忽略，下轮重试
     }
@@ -212,20 +219,32 @@ export function registerAuthIpc() {
   });
 
   ipcMain.handle(Channels.auth.logout, async () => {
+    // §B⑤：备份进行中先拒绝退出——关引擎窗会打断采集
+    const st = taskMachine.getSnapshot().state;
+    if (st === 'preparing' || st === 'running' || st === 'paused') {
+      logger.warn(`[auth] 退出登录被拒：任务状态 ${st}`);
+      return { error: '当前有备份任务进行中，请先取消备份再退出登录' };
+    }
     stopNicknameRetry();
-    const wc = windows.engine?.webContents;
-    if (wc) {
-      await wc.session.clearStorageData();
-      await wc.session.clearCache();
+    // cookie 清理不依赖引擎窗存在（session 持久化于 partition，窗已关也能清干净）
+    const sess =
+      windows.engine && !windows.engine.isDestroyed()
+        ? windows.engine.webContents.session
+        : session.fromPartition('persist:qzone');
+    try {
+      await sess.clearStorageData();
+      await sess.clearCache();
       // 清除全部会话 cookie（登录凭证 p_skey/skey 等散落在 .qq.com 各子域，须全量清除）
-      try {
-        const cookies = await wc.session.cookies.get({});
-        for (const c of cookies) {
-          await wc.session.cookies.remove(c.url, c.name).catch(() => {});
-        }
-      } catch (e) {
-        logger.warn(`[auth] 清除 cookie 失败：${e?.message || e}`);
+      const cookies = await sess.cookies.get({});
+      for (const c of cookies) {
+        await sess.cookies.remove(c.url, c.name).catch(() => {});
       }
+    } catch (e) {
+      logger.warn(`[auth] 清除 cookie 失败：${e?.message || e}`);
+    }
+    // §B⑤：关闭引擎窗（closed 事件统一广播 engine:status-changed{closed} 并归位 ready）
+    if (windows.engine && !windows.engine.isDestroyed()) {
+      windows.engine.close();
     }
     // 同步自动监听基准，避免下轮检测 p_skey 残留而重新推回登录态
     lastSignature = '0|';

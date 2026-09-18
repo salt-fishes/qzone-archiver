@@ -62,10 +62,31 @@ export const useBackupStore = defineStore('backup', () => {
   const engineReady = ref(false);
   /** 引擎加载超时/失败标记（顶栏提示「连接失败」并可重试） */
   const engineFailed = ref(false);
+  /**
+   * §B：引擎窗状态（主进程 engine:status-changed 驱动，窗口关闭/崩溃自动更新）。
+   * ready=已连接；loading=连接中；closed=窗口已关闭；crashed=连接失败（注入失败/崩溃/加载失败）
+   */
+  const engineState = ref<'loading' | 'ready' | 'closed' | 'crashed'>('loading');
+  const engineStateReason = ref('');
 
-  /** 重试引擎连接：重新注入全部引擎脚本 */
+  function applyEngineStatus(p: { state?: string; reason?: string }) {
+    if (!p?.state) return;
+    engineState.value = p.state as typeof engineState.value;
+    engineStateReason.value = p.reason || '';
+    if (p.state === 'ready') {
+      engineReady.value = true;
+      engineFailed.value = false;
+    } else {
+      engineReady.value = false;
+      engineFailed.value = p.state === 'closed' || p.state === 'crashed';
+    }
+  }
+
+  /** 重试引擎连接：窗口不存在时主进程会重建引擎窗并重新注入（§B④ 重连=重建） */
   async function retryEngine() {
     engineFailed.value = false;
+    engineState.value = 'loading';
+    engineStateReason.value = '';
     try {
       const r = await window.api.backup.engineInject();
       if (r?.ok) {
@@ -73,10 +94,14 @@ export const useBackupStore = defineStore('backup', () => {
         return true;
       }
       engineFailed.value = true;
+      engineState.value = 'crashed';
+      engineStateReason.value = r?.error || '';
       pushLog('error', `引擎重连失败：${r?.error || '未知错误'}`);
       return false;
     } catch (e: any) {
       engineFailed.value = true;
+      engineState.value = 'crashed';
+      engineStateReason.value = e?.message || String(e);
       pushLog('error', `引擎重连异常：${e?.message || e}`);
       return false;
     }
@@ -372,7 +397,8 @@ export const useBackupStore = defineStore('backup', () => {
     unsubs.push(
       window.api.on('backup:state-changed', (p) => {
         if (p.state === 'engine-ready') {
-          engineReady.value = true;
+          // §B：保留旧推送路径兼容（真实状态以 engine:status-changed 为准）
+          applyEngineStatus({ state: 'ready' });
           pushLog('success', '引擎注入完成，五层采集链路就绪');
           return;
         }
@@ -384,6 +410,18 @@ export const useBackupStore = defineStore('backup', () => {
         }
         if (p.state === 'paused') {
           pushLog('warn', '已暂停，可点击「恢复」继续');
+        }
+      }),
+      // §B：引擎窗状态广播——关窗/崩溃/重连成功自动更新，无需手动刷新
+      window.api.on('engine:status-changed', (p) => {
+        const prev = engineState.value;
+        applyEngineStatus(p || {});
+        if (engineState.value === prev) return;
+        if (engineState.value === 'ready') {
+          pushLog('success', '引擎已连接');
+        } else if (engineFailed.value) {
+          const label = engineState.value === 'closed' ? '引擎窗口已关闭' : '引擎连接失败';
+          pushLog('warn', engineStateReason.value ? `${label}：${engineStateReason.value}` : label);
         }
       }),
       window.api.on('backup:progress', (p) => {
@@ -486,7 +524,7 @@ export const useBackupStore = defineStore('backup', () => {
 
   return {
     // 状态
-    taskState, busy, paused, engineReady, engineFailed, progress, elapsedSec, logs, downloads,
+    taskState, busy, paused, engineReady, engineFailed, engineState, engineStateReason, progress, elapsedSec, logs, downloads,
     lastResult, resetResult, doneModules,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,

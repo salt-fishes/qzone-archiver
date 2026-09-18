@@ -16,10 +16,10 @@ declare global {
         openLogs(): Promise<void>;
       };
       auth: {
-        getStatus(): Promise<{ loggedIn: boolean; qqNumber?: string; nickname?: string; avatar?: string }>;
+        getStatus(): Promise<{ loggedIn: boolean; qqNumber?: string; nickname?: string; avatar?: string; fromCache?: boolean }>;
         showLogin(): Promise<void>;
         getOverview(): Promise<any>;
-        logout(): Promise<void>;
+        logout(): Promise<{ error?: string } | null>;
       };
       config: {
         get(): Promise<any>;

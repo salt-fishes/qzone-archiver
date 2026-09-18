@@ -49,8 +49,13 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** §B⑤：退出登录——主进程在备份进行中会拒绝并返回 {error}，由调用方提示 */
   async function logout() {
-    await window.api.auth.logout();
+    try {
+      return (await window.api.auth.logout()) || null;
+    } catch (e: any) {
+      return { error: e?.message || String(e) };
+    }
   }
 
   /** 提示已展示完毕：清掉一次性标记，避免刷新又弹一次 */
