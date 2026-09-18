@@ -9,6 +9,7 @@ import { useTargetStore } from '../stores/target';
 import { archiveTargetTag } from '../utils/labels';
 import EmoticonText from '../components/common/EmoticonText.vue';
 import TypewriterText from '../components/common/TypewriterText.vue';
+import HomeBackdrop from '../components/home/HomeBackdrop.vue';
 import TargetAvatar from '../components/common/TargetAvatar.vue';
 import appIcon from '../assets/icon.png';
 
@@ -116,6 +117,8 @@ onBeforeUnmount(() => {
       :animate="{ opacity: 1, y: 0 }"
       :transition="{ duration: 0.35 }"
     >
+      <!-- §I：动态背景（色斑漂移 + 鼠标轻微视差；reduced-motion 静态） -->
+      <HomeBackdrop />
       <img
         class="hero-icon"
         :src="appIcon"
@@ -242,6 +245,7 @@ onBeforeUnmount(() => {
   gap: 26px;
 }
 .hero {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -252,6 +256,12 @@ onBeforeUnmount(() => {
     radial-gradient(90% 130% at 50% -10%, rgba(180, 95, 61, 0.12), transparent 60%),
     var(--surface);
   border: 1px solid var(--surface-border);
+  overflow: hidden; /* §I：裁剪背景色斑 */
+}
+/* §I：内容浮于背景色斑之上 */
+.hero > :not(.home-backdrop) {
+  position: relative;
+  z-index: 1;
 }
 .hero-icon {
   width: 58px;
