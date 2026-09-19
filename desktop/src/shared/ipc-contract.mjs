@@ -46,6 +46,8 @@ export const Channels = {
     /** 他人模式（v4.6 只增）：好友列表（目标选择器数据源）与目标空间可访问性探测 */
     listFriends: 'backup:list-friends',
     validateTarget: 'backup:validate-target',
+    /** v4.9.1 只增：删除一条备份历史记录（档案列表/最近备份的删除按钮） */
+    deleteHistory: 'backup:delete-history',
   },
   download: {
     pause: 'download:pause',

@@ -4,7 +4,7 @@
  * 他人模式下日记/好友/收藏（仅本人可见）自动禁用并说明
  */
 import { computed, watch } from 'vue';
-import { NDatePicker, NTooltip } from 'naive-ui';
+import { NDatePicker, NTooltip, NSelect, NButton, NAlert } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { MODULES, MODULE_META, MODULE_ICONS } from '../../stores/config';
 import { useConfigStore } from '../../stores/config';
@@ -17,6 +17,19 @@ const props = defineProps<{
 
 const cfg = useConfigStore();
 const target = useTargetStore();
+
+/** v4.9.1：向导内相册选择（勾选「相册」时展示；复用 store 的 albumSel → settings.Photos.albumSelect 链路） */
+const albumOptions = computed(() =>
+  cfg.albumClassNames.map((g) => ({
+    type: 'group' as const,
+    label: g.cls,
+    key: g.cls,
+    children: g.items.map((a) => ({
+      label: `${a.name}${a.total != null ? `（${a.total}）` : ''}`,
+      value: String(a.id),
+    })),
+  }))
+);
 
 /** 他人空间不可见的模块（与引擎侧 PRIVATE_MODULES 对应） */
 const PRIVATE = new Set(['Diaries', 'Friends', 'Favorites']);
@@ -208,6 +221,58 @@ function selectNone() {
         </NTooltip>
       </Motion>
     </div>
+
+    <!-- v4.9.1：勾选「相册」时可在向导内直接选择要备份哪些相册。
+         仅本人模式：他人模式的相册 ID 与登录者不一致，向导期 Target 又未就位，不做选择（备份全部）。 -->
+    <div
+      v-if="cfg.selected.Photos && !target.isOtherUser"
+      class="cp-albums"
+    >
+      <div class="ca-head">
+        <span class="ca-title">要备份哪些相册？</span>
+        <span class="ca-actions">
+          <NButton
+            size="tiny"
+            quaternary
+            @click="cfg.albumSelAll()"
+          >
+            全选
+          </NButton>
+          <NButton
+            size="tiny"
+            quaternary
+            @click="cfg.albumSelNone()"
+          >
+            清空
+          </NButton>
+        </span>
+      </div>
+      <NAlert
+        v-if="cfg.albumError"
+        type="warning"
+        :show-icon="true"
+        class="ca-note"
+      >
+        {{ cfg.albumError }}（需要登录且引擎已就绪；不影响备份，将备份全部相册）
+      </NAlert>
+      <p
+        v-else
+        class="ca-tip"
+      >
+        已选 {{ cfg.albumSel.length }} / {{ cfg.albums.length }} 个相册；不选择任何相册时备份全部。
+      </p>
+      <NSelect
+        v-model:value="cfg.albumSel"
+        multiple
+        filterable
+        clearable
+        :options="albumOptions"
+        :loading="cfg.albumsLoading"
+        placeholder="选择要备份的相册（可按名称搜索）"
+        size="small"
+        :max-tag-count="6"
+      />
+    </div>
   </div>
 </template>
 
@@ -373,5 +438,32 @@ function selectNone() {
 .mc-meta {
   font-size: 11px;
   opacity: 0.5;
+}
+.cp-albums {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--surface-border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ca-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ca-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.ca-actions {
+  display: flex;
+  gap: 4px;
+}
+.ca-note,
+.ca-tip {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.6;
 }
 </style>

@@ -2,7 +2,7 @@
 /** 首页（v4.6 简化版）：居中主视觉（图标+主 CTA）+ 一行统计 + 最近任务，其余全部让位给主要内容 */
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
-import { NButton, NTag, NEmpty } from 'naive-ui';
+import { NButton, NTag, NEmpty, NPopconfirm } from 'naive-ui';
 import { Motion } from 'motion-v';
 import { useAuthStore } from '../stores/auth';
 import { useTargetStore } from '../stores/target';
@@ -26,6 +26,8 @@ type HistoryEntry = {
   completedAt: number;
   targetDir: string;
   name: string;
+  /** v4.9.1：目标目录是否仍存在（加载时由主进程检查） */
+  exists?: boolean;
   modules: string[];
   total: number;
   moduleCounts: Record<string, number>;
@@ -73,6 +75,11 @@ function onStart() {
     return;
   }
   router.push('/new');
+}
+
+/** v4.9.1：删除一条备份历史记录（只删记录不动文件） */
+async function removeHistory(h: HistoryEntry) {
+  await window.api.backup.deleteHistory(String(h.taskId || ''));
 }
 
 function fmtSize(n: number) {
@@ -226,6 +233,32 @@ onBeforeUnmount(() => {
             >
               {{ archiveTargetTag({ uin: h.target.uin, isFriend: target.isFriendUin(h.target.uin) }) }}
             </NTag>
+            <NTag
+              v-if="h.exists === false"
+              size="tiny"
+              type="error"
+              round
+              :bordered="false"
+            >
+              目录已不存在
+            </NTag>
+            <!-- v4.9.1：删除记录（阻止触发整行的跳转） -->
+            <NPopconfirm
+              @positive-click="removeHistory(h)"
+            >
+              <template #trigger>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  round
+                  type="error"
+                  @click.stop
+                >
+                  删除
+                </NButton>
+              </template>
+              从最近备份中移除这条记录？不会删除磁盘上的档案文件。
+            </NPopconfirm>
           </div>
           <div class="ri-meta">
             <span>{{ fmtTime(h.completedAt) }}</span>

@@ -150,6 +150,25 @@ export const downloadManager = {
     }
   },
 
+  /**
+   * v4.9.1：新备份启动时清理历史任务的终态记录（done/failed）。
+   * 此前下载队列跨任务累积且持久化，每次增量备份的下载列表都会把
+   * 之前所有任务的媒体再显示一遍（实际并未重新下载，但用户无从分辨）。
+   * 只清终态：pending/running 保留（属于上一任务暂停后的断点续传）。
+   */
+  purgeFinished() {
+    const before = queue.length;
+    queue = queue.filter((q) => {
+      if (q.state !== 'done' && q.state !== 'failed') return true;
+      return !!q.taskId && q.taskId === getActiveTaskContext()?.taskId;
+    });
+    if (queue.length !== before) {
+      persist();
+      sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
+      logger.info(`[download-manager] 已清理历史任务终态记录 ${before - queue.length} 条`);
+    }
+  },
+
   /** 并发调度：并发数与批间间隔来自本次备份配置；暂停时不调度新任务 */
   pump() {
     // P3-2：暂停位只对发起暂停时的活跃任务有效；任务已切换则自动失效并恢复调度
@@ -219,6 +238,8 @@ export const downloadManager = {
       dir: task.dir,
       module: task.module,
       targetDir: active.targetDir || task.targetDir || null,
+      // v4.9.1：归属任务（新备份启动时据此清理历史任务的已完成/失败记录）
+      taskId: active.taskId || null,
       state: 'pending',
       createdAt: Date.now(),
       totalBytes: task.totalBytes || 0,

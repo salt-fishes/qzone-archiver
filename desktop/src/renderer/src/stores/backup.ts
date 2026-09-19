@@ -404,6 +404,8 @@ export const useBackupStore = defineStore('backup', () => {
   /* -------- 事件订阅（App.vue onMounted 调 init，onBeforeUnmount 调 dispose） -------- */
 
   let unsubs: (() => void)[] = [];
+  /** v4.9.1：最近一次进入 running 的任务（区分新任务与同任务 resume，用于清下载列表） */
+  let lastDownloadTaskId = '';
 
   function initBackup() {
     if (unsubs.length) return;
@@ -420,6 +422,14 @@ export const useBackupStore = defineStore('backup', () => {
         if (p.state === 'running') {
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
           pushLog('info', '开始备份');
+          // v4.9.1：新任务的 running（区别于同任务 resume）→ 清空下载列表，
+          // 上一任务的媒体不再出现在本次列表里（主进程已同步清理终态记录）
+          if (p.taskId && p.taskId !== lastDownloadTaskId) {
+            lastDownloadTaskId = p.taskId;
+            flushDownloadsNow();
+            downloads.value = {};
+            downloadSummary.value = null;
+          }
         }
         if (p.state === 'paused') {
           pushLog('warn', '已暂停，可点击「恢复」继续');

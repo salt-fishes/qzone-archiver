@@ -26,6 +26,8 @@ type HistoryEntry = {
   files: number;
   errors?: unknown[];
   target?: { uin: string; nickname?: string };
+  /** v4.9.1：目标目录是否仍存在（加载时由主进程检查） */
+  exists?: boolean;
 };
 
 const router = useRouter();
@@ -91,6 +93,12 @@ async function zip(h: HistoryEntry) {
   } finally {
     zipping.value = null;
   }
+}
+
+/** v4.9.1：删除一条备份历史记录（只删记录不动文件；列表经 history-changed 自动刷新） */
+async function removeHistory(h: HistoryEntry) {
+  const r = await window.api.backup.deleteHistory(String(h.taskId || ''));
+  if (!r?.ok) message.error(r?.error || '删除失败');
 }
 
 function fmtSize(n: number) {
@@ -216,7 +224,17 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="ai-actions">
+            <NTag
+              v-if="h.exists === false"
+              size="tiny"
+              type="error"
+              round
+              :bordered="false"
+            >
+              目录已不存在
+            </NTag>
             <NButton
+              v-if="h.exists !== false"
               size="tiny"
               type="primary"
               round
@@ -225,6 +243,7 @@ onBeforeUnmount(() => {
               浏览
             </NButton>
             <NButton
+              v-if="h.exists !== false"
               size="tiny"
               quaternary
               round
@@ -232,7 +251,10 @@ onBeforeUnmount(() => {
             >
               文件夹
             </NButton>
-            <NPopconfirm @positive-click="zip(h)">
+            <NPopconfirm
+              v-if="h.exists !== false"
+              @positive-click="zip(h)"
+            >
               <template #trigger>
                 <NButton
                   size="tiny"
@@ -244,6 +266,19 @@ onBeforeUnmount(() => {
                 </NButton>
               </template>
               在档案同级目录生成 .zip 压缩包？
+            </NPopconfirm>
+            <NPopconfirm @positive-click="removeHistory(h)">
+              <template #trigger>
+                <NButton
+                  size="tiny"
+                  quaternary
+                  round
+                  type="error"
+                >
+                  删除
+                </NButton>
+              </template>
+              从列表中移除这条备份记录？不会删除磁盘上的档案文件。
             </NPopconfirm>
           </div>
         </div>

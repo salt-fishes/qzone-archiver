@@ -88,10 +88,18 @@ export async function countFiles(dir, count = 0, limit = 20000, sinceMs = 0) {
 }
 
 export const backupStats = {
-  /** 全部历史记录（最新在前） */
+  /** 全部历史记录（最新在前）；v4.9.1：标注目标目录是否仍存在（用户手工删除文件夹后 UI 可提示） */
   loadHistory() {
     const list = readJson(historyFile(), []);
-    return Array.isArray(list) ? list : [];
+    if (!Array.isArray(list)) return [];
+    for (const e of list) {
+      try {
+        e.exists = !e.targetDir || fs.existsSync(e.targetDir);
+      } catch {
+        e.exists = true;
+      }
+    }
+    return list;
   },
 
   getHistory() {
@@ -155,5 +163,19 @@ export const backupStats = {
     list.unshift(entry);
     writeJson(historyFile(), list);
     return entry;
+  },
+
+  /**
+   * v4.9.1：删除一条历史记录（档案列表/最近备份的删除按钮）。
+   * 只删记录不动文件——用户手工删目录后可清掉失效条目；要删文件请自行到文件夹操作。
+   */
+  deleteHistory(taskId) {
+    const id = String(taskId || '');
+    if (!id) return { ok: false, error: '缺少 taskId' };
+    const list = this.loadHistory();
+    const next = list.filter((x) => String(x.taskId || '') !== id);
+    if (next.length === list.length) return { ok: false, error: '记录不存在或已删除' };
+    writeJson(historyFile(), next);
+    return { ok: true, removed: list.length - next.length };
   },
 };

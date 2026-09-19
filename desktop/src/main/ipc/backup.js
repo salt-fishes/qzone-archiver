@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineBridge, registerTaskContext, dropTaskContext, pushEngineStatus } from '../services/engine-bridge.js';
+import { engineBridge, registerTaskContext, dropTaskContext, pushEngineStatus, sendToUi } from '../services/engine-bridge.js';
 import { createEngineWindow, waitForEngineLoad } from '../windows.js';
 import { stateStore } from '../services/state-store.js';
 import { taskMachine } from '../services/task-machine.js';
@@ -14,7 +14,7 @@ import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
 import { logger } from '../services/logger.js';
-import { Channels } from '../../shared/ipc-contract.mjs';
+import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /**
@@ -172,6 +172,12 @@ export function registerBackupIpc() {
     // P3-1：preparing → running 由状态机统一持久化 checkpoint 并推送 UI（迁移流水由状态机写任务日志）
     taskMachine.dispatch('start', ctx);
 
+    // v4.9.1：清理历史任务的已完成/失败下载记录（下载列表不再重现旧任务的媒体）
+    try {
+      downloadManager.purgeFinished();
+    } catch (e) {
+      tl.warn(`清理历史下载记录失败（不阻塞备份）：${e?.message || e}`);
+    }
     // P3-2：触发一次下载调度（幂等）——恢复上一任务遗留的 pending 队列；
     // 旧暂停位已绑定旧 taskId，新任务启动后由 pump 自动失效（P0-1 根因消除）
     try {
@@ -249,6 +255,18 @@ export function registerBackupIpc() {
   // 备份历史（概览累计统计/上次备份；由 backup-stats 在备份完成时自动记录）
   ipcMain.handle(Channels.backup.getHistory, () => {
     return { ok: true, history: backupStats.getHistory() };
+  });
+
+  // v4.9.1：删除一条备份历史记录（只删记录不动文件；删除后推 history-changed 刷新列表）
+  ipcMain.handle(Channels.backup.deleteHistory, (event, { taskId } = {}) => {
+    const r = backupStats.deleteHistory(taskId);
+    if (r.ok) {
+      logger.info(`[backup] 已删除历史记录 taskId=${taskId}`);
+      sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
+    } else {
+      logger.warn(`[backup] 删除历史记录失败：${r.error}`);
+    }
+    return r;
   });
 
   /**
