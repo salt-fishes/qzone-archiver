@@ -229,6 +229,15 @@ describe('§K2 console 中转随引擎窗重建仍生效', () => {
     b.webContents.emit('console-message', { message: '[e:error] 重建后的日志', level: 3 });
     expect(errorSpy).toHaveBeenCalledWith('[error] [engine] 重建后的日志');
   });
+
+  it('超长 console 消息兜底截断（v4.9.2：整包 dump 大对象不灌爆日志）', () => {
+    const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const w = createEngineWindow();
+    w.webContents.emit('console-message', { message: `[e:info] ${'x'.repeat(3000)}`, level: 1 });
+    const arg = infoSpy.mock.calls[infoSpy.mock.calls.length - 1][0];
+    expect(arg).toContain('（日志截断，原始长度 3000 字符）');
+    expect(arg.length).toBeLessThan(2200);
+  });
 });
 
 describe('§B③ 重连=重建', () => {

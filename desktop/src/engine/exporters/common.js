@@ -330,12 +330,13 @@ QZoneExporters.Common = {
 
         const path = API.Common.getModuleRoot('Common') + '/json';
 
-        console.info('生成助手配置JSON开始', QZone_Config);
+        // v4.9.2：完整 QZone_Config 不再打进日志（含全量 SourceType 等长表）
+        console.info('生成助手配置JSON开始');
         // 创建JSON文件夹
         await API.Utils.createFolder(path);
         // 写入JOSN
         const jsonFile = await API.Common.writeJsonToJs('QZone_Config', QZone_Config, API.Common.getModuleRoot('Common') + '/json/config.js');
-        console.info('生成助手配置JSON结束', jsonFile, QZone_Config);
+        console.info('生成助手配置JSON结束', jsonFile);
 
         // 完成
         indicator.complete();

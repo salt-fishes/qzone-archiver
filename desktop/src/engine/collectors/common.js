@@ -27,11 +27,12 @@ QZoneCollectors.Common = {
         // 获取所有的QQ好友
         await API.Common.getUserInfos().then((userInfo) => {
             userInfo = API.Utils.toJson(userInfo, /^_Callback\(/);
-            console.info("获取用户信息完成", userInfo);
+            // v4.9.2：只落关键字段——完整 userInfo 会整包打进任务日志（噪音）
+            console.info("获取用户信息完成", { uin: userInfo.uin, nickname: userInfo.nickname, spacename: userInfo.spacename });
 
             if (userInfo.code < 0) {
                 // 获取异常
-                console.warn('初始化用户信息异常：', userInfo);
+                console.warn('初始化用户信息异常：', { code: userInfo.code, message: userInfo.message });
             }
             userInfo = userInfo.data || {};
 

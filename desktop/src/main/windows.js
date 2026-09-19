@@ -13,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engineBridge, pushEngineStatus, getActiveTaskContext } from './services/engine-bridge.js';
 import { logger } from './services/logger.js';
+import { capLog } from '../shared/log-cap.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -143,7 +144,8 @@ function attachEngineLifecycle(engine) {
     if (!msg) return;
     const m = /^\[e:(debug|info|warn|error)\]\s?/.exec(msg);
     if (!m) return;
-    const line = msg.slice(m[0].length);
+    // v4.9.2：兜底截断——引擎脚本万一整包 dump 大对象，不能灌爆任务日志/UI 日志流
+    const line = capLog(msg.slice(m[0].length));
     const loc = ev?.sourceId
       ? `${String(ev.sourceId).split(/[\\/]/).pop()}:${ev.lineNumber ?? '?'}`
       : '';

@@ -19,6 +19,7 @@ import { logger } from '../services/logger.js';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
+import { capLog } from '../../shared/log-cap.mjs';
 
 const REFERER = 'https://user.qzone.qq.com/';
 const UA =
@@ -188,7 +189,9 @@ export function registerEngineIpc() {
         break;
       case 'log': {
         const level = data?.level || 'info';
-        const message = data?.message || '';
+        // v4.9.2：兜底截断（与 windows.js console 透传同阈值）——
+        // 引擎整包 dump 大对象时不能灌爆 UI 日志流与任务日志
+        const message = capLog(data?.message);
         sendToUi(PushChannels.backupLog, { level, time: Date.now(), message });
         // §K4：引擎结构化日志 → 任务日志主轨道（不依赖 console 透传、不依赖窗口生命周期）。
         // 模块开始/结束、任务启动等引擎流水在此落盘 backup-<taskId>.log

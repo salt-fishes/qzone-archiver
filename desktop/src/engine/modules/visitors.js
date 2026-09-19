@@ -13,7 +13,8 @@ API.Visitors.export = async() => {
 
         // 获取所有的访客列表
         const visitorInfo = await API.Visitors.getAllList();
-        console.info('访客列表获取完成', visitorInfo);
+        // v4.9.2：只落条数——完整 items 整包打进任务日志（一条 1KB+，噪音）
+        console.info('访客列表获取完成', { total: visitorInfo && visitorInfo.total, pageItems: visitorInfo && visitorInfo.items ? visitorInfo.items.length : 0 });
 
         // 添加多媒体下载任务
         await API.Visitors.addMediaToTasks(visitorInfo);

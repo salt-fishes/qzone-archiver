@@ -109,3 +109,49 @@ describe('P3-2 任务级暂停位（§5.2）', () => {
     expect(stateById()['t4-dl']).toBe('running');
   });
 });
+
+describe('v4.9.2 槽位记账与队列清理', () => {
+  it('大文件下载完成后归还常规槽位（slotBig 派发时记账；isBig 翻转不再泄漏 running）', async () => {
+    // 复现实机冻结根因：入队时 totalBytes=0（常规槽位），_attempt 下载中更新为
+    // 真实大小 >50MB；若 finally 按 isBig 重新判定，会漏还常规槽位——
+    // 10 个大文件下完后 running 永久占满，队列静默冻结。
+    const spy = vi.spyOn(downloadManager, '_attempt').mockImplementation(async (record) => {
+      record.totalBytes = 60 * 1024 * 1024;
+      record.state = 'done'; // 真实 _attempt 完成时自行置 done，stub 同样置态
+    });
+    try {
+      mocks.activeCtx = { taskId: 'task-big', targetDir: tmpDir };
+      for (let i = 0; i < 10; i++) await enqueueTask(`big-${i}`);
+      await vi.waitFor(() => expect(stateById()['big-9']).toBe('done'));
+      // 泄漏场景下 running 恒为 10，此条将永远 pending；修复后应被派发（stub 同步完成 → done）
+      await enqueueTask('after-big');
+      await vi.waitFor(() => expect(stateById()['after-big']).toBe('done'));
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('新任务启动清除其他任务的全部记录（终态与 pending 一并清，v4.9.2）', async () => {
+    mocks.activeCtx = { taskId: 'task-old', targetDir: tmpDir };
+    await enqueueTask('old-done');
+    await enqueueTask('old-pending');
+    // 人工置态（mock net.fetch 抛错走重试，直接改状态避免等待退避）
+    const q = downloadManager.getState().queue;
+    q.find((x) => x.id === 'old-done').state = 'done';
+    q.find((x) => x.id === 'old-pending').state = 'pending';
+
+    // 新备份启动（activeCtx 已切换）→ 旧任务记录（含 pending）全部清除
+    mocks.activeCtx = { taskId: 'task-new', targetDir: tmpDir };
+    downloadManager.purgeFinished();
+    const st = stateById();
+    expect(st['old-done']).toBeUndefined();
+    expect(st['old-pending']).toBeUndefined();
+  });
+
+  it('当前任务自己的记录不受 purgeFinished 影响', async () => {
+    mocks.activeCtx = { taskId: 'task-cur', targetDir: tmpDir };
+    await enqueueTask('cur-a');
+    downloadManager.purgeFinished();
+    expect(stateById()['cur-a']).toBeDefined();
+  });
+});

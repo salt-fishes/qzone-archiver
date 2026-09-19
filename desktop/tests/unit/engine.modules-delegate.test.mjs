@@ -181,11 +181,31 @@ describe('P2-4 批次 3c（common）逐字搬迁证明', () => {
     'isPreBackupPos', 'removeNewItems', 'isNewExport', 'resetQZoneBackupItems', 'isOnlyFileExport',
   ];
 
+  // v4.9.2 有意偏差：日志瘦身（完整对象不再整包打进任务日志）。
+  // 这些函数不再逐字比对，改为校验偏差内容仍在（防止偏差被无意抹掉或扩大）。
+  const DEVIATIONS = {
+    initUserInfo: [
+      'console.info("获取用户信息完成", { uin: userInfo.uin, nickname: userInfo.nickname, spacename: userInfo.spacename })',
+      "console.warn('初始化用户信息异常：', { code: userInfo.code, message: userInfo.message })",
+    ],
+    exportConfigToJson: [
+      "console.info('生成助手配置JSON开始')",
+      "console.info('生成助手配置JSON结束', jsonFile)",
+    ],
+  };
+
   for (const fn of SAMPLES) {
     it(`API.Common.${fn} 函数体与迁移基线逐字一致`, () => {
       const a = grab(origSandbox, `API.Common.${fn}`);
       const b = grab(fullSandbox, `API.Common.${fn}`);
       expect(typeof b).toBe('function');
+      if (DEVIATIONS[fn]) {
+        for (const marker of DEVIATIONS[fn]) {
+          expect(fnBody(b), `${fn} 应含 v4.9.2 日志瘦身偏差：${marker}`).toContain(marker);
+        }
+        expect(fnBody(b), `${fn} 的偏差未登记，请更新 DEVIATIONS`).not.toBe(fnBody(a));
+        return;
+      }
       expect(fnBody(b)).toBe(fnBody(a));
     });
   }

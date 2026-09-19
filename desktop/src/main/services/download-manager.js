@@ -151,21 +151,20 @@ export const downloadManager = {
   },
 
   /**
-   * v4.9.1：新备份启动时清理历史任务的终态记录（done/failed）。
-   * 此前下载队列跨任务累积且持久化，每次增量备份的下载列表都会把
-   * 之前所有任务的媒体再显示一遍（实际并未重新下载，但用户无从分辨）。
-   * 只清终态：pending/running 保留（属于上一任务暂停后的断点续传）。
+   * v4.9.2：新备份启动时清除**所有非当前任务**的下载记录（终态与 pending/running 一并清）。
+   * v4.9.1 只清 done/failed，保留了旧任务遗留的 pending —— 但那些 pending 指向的
+   * 是已过期的 psc 直链和旧目标目录，续传毫无意义，还会因 FIFO 先于当前任务的
+   * 媒体被调度（实机：新备份前 2 分钟全在补下旧任务 1790 条，当前任务的 1077 条
+   * 一条没轮到），下载列表也被灌成几千条。
    */
   purgeFinished() {
+    const currentTaskId = getActiveTaskContext()?.taskId;
     const before = queue.length;
-    queue = queue.filter((q) => {
-      if (q.state !== 'done' && q.state !== 'failed') return true;
-      return !!q.taskId && q.taskId === getActiveTaskContext()?.taskId;
-    });
+    queue = queue.filter((q) => !!q.taskId && q.taskId === currentTaskId);
     if (queue.length !== before) {
       persist();
       sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
-      logger.info(`[download-manager] 已清理历史任务终态记录 ${before - queue.length} 条`);
+      logger.info(`[download-manager] 已清理历史任务下载记录 ${before - queue.length} 条`);
     }
   },
 
@@ -187,7 +186,12 @@ export const downloadManager = {
         (reg && queue.find((q) => q.state === 'pending' && !isBig(q)));
       if (!candidate) break;
       candidate.state = 'running';
-      if (isBig(candidate)) bigRunning += 1;
+      // 槽位归属按「派发时」的大小判定并记账（v4.9.2）：_attempt 下载中会把
+      // record.totalBytes 更新为真实大小，若 finally 再按 isBig 重新判定，
+      // 首次发现是大文件的记录会去归还大文件槽位而漏还常规槽位——
+      // 10 个大文件下完后 running 永久占满，队列静默冻结（实机 11:13 冻结根因）。
+      candidate.slotBig = isBig(candidate);
+      if (candidate.slotBig) bigRunning += 1;
       else running += 1;
       dispatched += 1;
       persist();
@@ -214,7 +218,7 @@ export const downloadManager = {
           persist();
         })
         .finally(() => {
-          if (isBig(candidate)) bigRunning = Math.max(0, bigRunning - 1);
+          if (candidate.slotBig) bigRunning = Math.max(0, bigRunning - 1);
           else running = Math.max(0, running - 1);
           pushSummary();
           this.pump();

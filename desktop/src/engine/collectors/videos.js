@@ -207,8 +207,8 @@ QZoneCollectors.Videos = {
                 // 去掉函数，保留json
                 data = API.Utils.toJson(data, /^_Callback\(/);
                 if (data.code && data.code != 0) {
-                    // 获取异常
-                    console.warn('获取视频评论异常：', data);
+                    // 获取异常（v4.9.2：只落错误码与消息，不整包打印响应）
+                    console.warn('获取视频评论异常：', { code: data.code, msg: data.msg || data.message });
                 }
                 data = data.data || {};
                 data.comments = data.comments || [];
