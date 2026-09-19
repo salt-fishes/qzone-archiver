@@ -27,6 +27,26 @@ const PARKING = mkdtempSync(path.join(os.tmpdir(), 'clean-checkout-'));
 
 const GENERATED = ['build', path.join('src', 'renderer', 'public'), path.join('src', 'renderer', 'dist')];
 
+/**
+ * Windows 上目录 rename 偶发 EPERM（杀毒/索引/编辑器句柄短暂占用）。
+ * v4.9.0 发版实踩：rename 失败会卡在还原阶段且产物滞留 temp 目录。
+ * 对 EPERM/EACCES/EBUSY 退避重试，其余错误立即上抛。
+ */
+function renameWithRetry(src, dest, attempts = 5) {
+  for (let i = 1; ; i++) {
+    try {
+      renameSync(src, dest);
+      return;
+    } catch (e) {
+      const retryable = ['EPERM', 'EACCES', 'EBUSY'].includes(e.code);
+      if (!retryable || i >= attempts) throw e;
+      const waitMs = 500 * i;
+      console.warn(`[check-clean-checkout] rename 被占用（${e.code}），${waitMs}ms 后重试 ${i}/${attempts - 1}`);
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
+    }
+  }
+}
+
 const STEPS = [
   ['引擎配置一致性', 'node', ['scripts/gen-engine-config.mjs', '--check']],
   ['类型检查', 'npm', ['run', 'typecheck']],
@@ -54,7 +74,7 @@ function main() {
     if (!existsSync(src)) continue;
     const dest = path.join(PARKING, rel.replace(/[\\/]/g, '_'));
     if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
-    renameSync(src, dest);
+    renameWithRetry(src, dest);
     moved.push([src, dest]);
     console.log(`[check-clean-checkout] 已移出 ${rel}`);
   }
@@ -74,9 +94,22 @@ function main() {
   } finally {
     // ---- 3. 恢复产物（无论门禁成败） ----
     for (const [src, dest] of moved) {
-      mkdirSync(path.dirname(src), { recursive: true });
-      renameSync(dest, src);
-      console.log(`[check-clean-checkout] 已恢复 ${path.relative(ROOT, src)}`);
+      try {
+        if (existsSync(src)) {
+          // 门禁期间被重新生成的（build:renderer 的 sync-emoticons 会重建
+          // src/renderer/public）→ 目标已存在，Windows rename 必 EPERM。
+          // 内容同源生成，保留新副本、丢弃停放副本即可。
+          rmSync(dest, { recursive: true, force: true });
+          console.log(`[check-clean-checkout] 门禁期间已重新生成 ${path.relative(ROOT, src)}，保留新副本`);
+        } else {
+          mkdirSync(path.dirname(src), { recursive: true });
+          renameWithRetry(dest, src);
+          console.log(`[check-clean-checkout] 已恢复 ${path.relative(ROOT, src)}`);
+        }
+      } catch (e) {
+        console.error(`[check-clean-checkout] 还原 ${path.relative(ROOT, src)} 失败：${e.message}（停放副本在 ${dest}）`);
+        process.exitCode = 1;
+      }
     }
     try {
       rmSync(PARKING, { recursive: true, force: true });
