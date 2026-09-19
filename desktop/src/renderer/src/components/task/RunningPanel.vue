@@ -15,17 +15,18 @@ const cfg = useConfigStore();
 const dialog = useDialog();
 
 const paused = computed(() => bk.paused);
-/** 当前模块进度（0-100） */
+/** 当前阶段进度（0-100，阶段内原始百分比，子条显示用） */
 const modulePercent = computed(() => bk.progress?.percent ?? 0);
 /**
- * 总体进度：已完成模块数 + 当前模块的百分比，按所选模块总数折算
- * （引擎逐模块推进，当前模块百分比来自其内部采集进度）
+ * 总体进度：已完成模块数 + 当前模块加权进度（v4.9.1：阶段内单调不回退），
+ * 按所选模块总数折算。此前直接用当前阶段百分比——列表取完进入全文阶段时
+ * 阶段百分比回 0，总进度跟着倒退。
  */
 const overallPercent = computed(() => {
   const total = cfg.selectedModules.length;
   if (!total) return modulePercent.value;
   const done = bk.doneModules.length;
-  const frac = Math.min(100, Math.max(0, modulePercent.value)) / 100;
+  const frac = Math.min(100, Math.max(0, bk.moduleOverall)) / 100;
   return Math.min(99, Math.round(((done + frac) / total) * 100));
 });
 const currentLabel = computed(() => {

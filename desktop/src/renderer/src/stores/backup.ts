@@ -7,6 +7,7 @@
 import { ref, computed, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { useConfigStore, MODULE_META } from './config';
+import { weightedModulePercent } from '../utils/phase-progress';
 
 /* ============ 运行状态 ============
  * P3-1：主进程任务状态机为唯一事实源（backup:state-changed 派生），
@@ -110,6 +111,15 @@ export const useBackupStore = defineStore('backup', () => {
     module?: string; phase?: string; tip?: string; percent?: number;
     extra?: { success?: number; failed?: number; skip?: number; elapsed?: number };
   }>({});
+  /**
+   * v4.9.1：模块加权进度（0-100，阶段内单调不回退）——总进度用这个，
+   * 修复"列表取完进入全文阶段，总进度从 ~30% 跳回 0%"的倒退。
+   * bk.progress.percent 保留原始阶段百分比（当前模块子条显示用）。
+   */
+  const moduleOverall = ref(0);
+  /** 同一模块内的单调基准（模块切换时清零重计） */
+  let moduleOverallBase = 0;
+  let moduleOverallFor = '';
 
   /* -------- 用时计时器 --------
    * 放在 store 而非组件内：备份跨路由/跨组件实例时计时不中断；
@@ -336,6 +346,9 @@ export const useBackupStore = defineStore('backup', () => {
     // P3-1：不再乐观置位 busy——状态由主进程 backup:state-changed 派生
     progress.value = { module: modules[0] || '', phase: '启动', percent: 0 };
     doneModules.value = [];
+    moduleOverall.value = 0;
+    moduleOverallBase = 0;
+    moduleOverallFor = '';
     // 新任务清空上一轮日志，避免看起来"日志没在更新"
     logs.value = [];
     // 生成本次备份任务 ID：主进程检查点/状态推送均以 taskId 关联，缺失会导致日志显示 undefined 且无法精确追踪
@@ -426,6 +439,19 @@ export const useBackupStore = defineStore('backup', () => {
       }),
       window.api.on('backup:progress', (p) => {
         progress.value = p;
+        // v4.9.1：模块加权进度（阶段切换时原始 percent 回 0，这里按阶段表加权 + 单调钳制）
+        const mod = String(p?.module || '');
+        if (mod !== moduleOverallFor) {
+          moduleOverallFor = mod;
+          moduleOverallBase = 0;
+        }
+        moduleOverallBase = weightedModulePercent(
+          mod,
+          p?.phase,
+          Number(p?.percent) || 0,
+          moduleOverallBase
+        );
+        moduleOverall.value = moduleOverallBase;
       }),
       window.api.on('backup:log', (p) => {
         pushLog(p.level || 'info', p.message || '');
@@ -447,10 +473,21 @@ export const useBackupStore = defineStore('backup', () => {
         if (cfg.targetDir) {
           pushLog('info', `入口文件：${cfg.targetDir}\\index.html（双击浏览备份）`);
         }
-        // 拉取最新一条备份记录作为成功页数据（主进程已落盘 backup-history.json）
+        // v4.9.1 修复：主进程把 completed 推送移到落库之后并携带本次记录（p.record），
+        // 成功页直接用它——此前先推完成、这里回查历史，拿到的是【上一次】备份的记录，
+        // 导致备份好友 A 时完成页显示上一次备份 B 的数据。
+        if (p?.record) {
+          lastResult.value = {
+            ...p.record,
+            errors: errs,
+            // 目标以引擎完成事件为准（record.target 与其同源，兜底更稳）
+            target: p.record.target || p?.target,
+          };
+          return;
+        }
+        // 兜底：旧版主进程无 record 时回查历史（保持兼容）
         try {
           const r = await window.api.backup.getHistory();
-          // v4.6：target 取完成事件附带的采集目标（历史记录亦已落 target 字段）
           lastResult.value = { ...((r?.history && r.history[0]) || { targetDir: cfg.targetDir }), errors: errs, target: p?.target };
         } catch (e) {
           console.warn('读取备份结果失败', e);
@@ -524,7 +561,7 @@ export const useBackupStore = defineStore('backup', () => {
 
   return {
     // 状态
-    taskState, busy, paused, engineReady, engineFailed, engineState, engineStateReason, progress, elapsedSec, logs, downloads,
+    taskState, busy, paused, engineReady, engineFailed, engineState, engineStateReason, progress, moduleOverall, elapsedSec, logs, downloads,
     lastResult, resetResult, doneModules,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,

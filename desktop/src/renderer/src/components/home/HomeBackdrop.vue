@@ -59,16 +59,20 @@ function onVisibility() {
 onMounted(() => {
   const node = el.value;
   if (!node || reducedMotion) return;
-  node.addEventListener('pointermove', onPointerMove, { passive: true });
-  node.addEventListener('pointerleave', onPointerLeave);
+  // v4.9.1 修复：背景层是 pointer-events:none 的纯装饰，自己永远收不到鼠标事件——
+  // 监听挂在宿主容器（hero）上，色斑照样能动
+  const host = node.parentElement || node;
+  host.addEventListener('pointermove', onPointerMove, { passive: true });
+  host.addEventListener('pointerleave', onPointerLeave);
   document.addEventListener('visibilitychange', onVisibility);
 });
 
 onBeforeUnmount(() => {
   const node = el.value;
   if (node) {
-    node.removeEventListener('pointermove', onPointerMove);
-    node.removeEventListener('pointerleave', onPointerLeave);
+    const host = node.parentElement || node;
+    host.removeEventListener('pointermove', onPointerMove);
+    host.removeEventListener('pointerleave', onPointerLeave);
   }
   document.removeEventListener('visibilitychange', onVisibility);
   if (rafId) cancelAnimationFrame(rafId);
@@ -84,25 +88,25 @@ onBeforeUnmount(() => {
   >
     <span
       class="blob-wrap"
-      style="--px: 10px; --dur: 26s; --dx: -6%; --dy: -10%"
+      style="--px: 16px; --dur: 26s; --dx: -6%; --dy: -10%"
     >
       <span class="blob blob-a" />
     </span>
     <span
       class="blob-wrap"
-      style="--px: -8px; --dur: 34s; --dx: 30%; --dy: 6%"
+      style="--px: -13px; --dur: 34s; --dx: 30%; --dy: 6%"
     >
       <span class="blob blob-b" />
     </span>
     <span
       class="blob-wrap"
-      style="--px: 6px; --dur: 40s; --dx: -24%; --dy: 24%"
+      style="--px: 10px; --dur: 40s; --dx: -24%; --dy: 24%"
     >
       <span class="blob blob-c" />
     </span>
     <span
       class="blob-wrap"
-      style="--px: -5px; --dur: 22s; --dx: 16%; --dy: -22%"
+      style="--px: -8px; --dur: 22s; --dx: 16%; --dy: -22%"
     >
       <span class="blob blob-d" />
     </span>
@@ -123,7 +127,7 @@ onBeforeUnmount(() => {
   left: calc(50% + var(--dx, 0%));
   top: calc(50% + var(--dy, 0%));
   transform: translate3d(calc(var(--mx, 0) * var(--px, 0px)), calc(var(--my, 0) * var(--py, var(--px, 0px))), 0);
-  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 .blob {

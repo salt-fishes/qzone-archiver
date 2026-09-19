@@ -23,6 +23,9 @@ const MAIN_MAX_BYTES = 10 * 1024 * 1024;
 const MAIN_MAX_ARCHIVES = 3;
 const TASK_MAX_BYTES = 5 * 1024 * 1024; // §K6：任务日志轮转 5MB × 2
 const TASK_MAX_ARCHIVES = 2;
+/** v4.9.1：日志保留天数（应用日志与任务日志同口径）与任务日志保留个数上限 */
+export const LOG_RETENTION_DAYS = 14;
+export const TASK_LOG_KEEP = 20;
 
 /**
  * 文件落地器：惰性目录由调用方保证 + 追加 + 轮转 + 降级可见（main 与任务日志共用）
@@ -129,6 +132,7 @@ class Logger {
     this.minLevel = LOG_LEVELS.info;
     this._dir = null;
     this._mainSink = null;
+    this._mainSinkDay = null;
     this._taskSinks = new Map();
     // 轮转参数实例化（单测可注入小阈值验证轮转行为）
     this.maxBytes = MAIN_MAX_BYTES;
@@ -143,8 +147,15 @@ class Logger {
     return this._dir;
   }
 
+  /** 本地日期戳（按本机时区分天，而非 UTC） */
+  _dateStamp(d = new Date()) {
+    const p2 = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  }
+
+  /** 当前应用日志文件（按天分文件：main-YYYY-MM-DD.log） */
   get file() {
-    return path.join(this.dir, 'main.log');
+    return path.join(this.dir, `main-${this._dateStamp()}.log`);
   }
 
   setLevel(level) {
@@ -165,11 +176,14 @@ class Logger {
     this._main.append(`[${new Date().toISOString()}] ${line}\n`);
   }
 
+  /** 应用日志落地器：跨天自动切新文件（旧文件保留在磁盘，由 cleanup 按保留期清理） */
   get _main() {
-    if (!this._mainSink) {
+    const today = this._dateStamp();
+    if (!this._mainSink || this._mainSinkDay !== today) {
+      this._mainSinkDay = today;
       this._mainSink = new FileSink(
         this.file,
-        'main.log',
+        path.basename(this.file),
         () => ({ maxBytes: this.maxBytes, maxArchives: this.maxArchives })
       );
     }
@@ -206,10 +220,60 @@ class Logger {
   }
 
   /**
-   * §K2 会话自检行：应用日志链路的验收探针——冷启动后 main.log 必有此行，
+   * 日志清理（会话开始时执行一次）：
+   *  - 应用日志 main-*.log：按文件名中的日期，超 LOG_RETENTION_DAYS 天删除
+   *  - 任务日志 backup-*.log：超保留期删除，且最多保留最近 TASK_LOG_KEEP 个
+   * 全程吞错（清理失败不影响业务，下个会话再试）。
+   */
+  cleanup() {
+    try {
+      const names = fs.existsSync(this.dir) ? fs.readdirSync(this.dir) : [];
+      const cutoff = Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+      const taskLogs = [];
+      for (const name of names) {
+        const full = path.join(this.dir, name);
+        try {
+          const mMain = /^main-\d{4}-\d{2}-\d{2}\.log/.exec(name);
+          if (mMain) {
+            const day = new Date(`${mMain[0].slice(5, 15)}T00:00:00`).getTime();
+            if (day < cutoff) {
+              fs.rmSync(full, { force: true });
+              continue;
+            }
+          }
+          if (name.startsWith('backup-') && name.endsWith('.log')) {
+            const st = fs.statSync(full);
+            if (st.mtimeMs < cutoff) {
+              fs.rmSync(full, { force: true });
+              continue;
+            }
+            taskLogs.push({ name, full, mtime: st.mtimeMs });
+          }
+        } catch {
+          /* 单个文件清理失败跳过 */
+        }
+      }
+      // 任务日志超过保留个数：删最旧的（排除今日仍在写的活跃任务）
+      taskLogs.sort((a, b) => b.mtime - a.mtime);
+      for (const t of taskLogs.slice(TASK_LOG_KEEP)) {
+        try {
+          fs.rmSync(t.full, { force: true });
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      /* 清理失败不影响业务 */
+    }
+  }
+
+  /**
+   * §K2 会话自检行：应用日志链路的验收探针——冷启动后当天 main-*.log 必有此行，
    * 缺失即代表"应用日志"链路断了（与 132 行全是引擎透传的故障形态直接对应）。
+   * 顺带执行一次日志清理（分天 + 保留期）。
    */
   sessionStart() {
+    this.cleanup();
     const version = typeof app.getVersion === 'function' ? app.getVersion() : 'unknown';
     this.info(
       `[main] 会话开始 v${version} pid=${process.pid} userData=${app.getPath('userData')} ` +

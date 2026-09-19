@@ -133,12 +133,52 @@ describe('双轨：句柄与降级', () => {
 });
 
 describe('会话自检行（§K2 验收探针）', () => {
-  it('sessionStart 写入 v/pid/userData/level 且落在 main.log', () => {
+  it('sessionStart 写入 v/pid/userData/level 且落在当天 main-*.log', () => {
     silenceConsole();
     logger.sessionStart();
     const main = fs.readFileSync(logger.file, 'utf8');
     expect(main).toMatch(
       /\[main\] 会话开始 v9\.9\.9-test pid=\d+ userData=.+ level=info/
     );
+  });
+});
+
+describe('v4.9.1 日志分天与清理', () => {
+  it('应用日志按天命名 main-YYYY-MM-DD.log', () => {
+    expect(path.basename(logger.file)).toMatch(/^main-\d{4}-\d{2}-\d{2}\.log$/);
+  });
+
+  it('cleanup 删除超期应用日志与任务日志，任务日志超量删最旧', () => {
+    silenceConsole();
+    const dir = logger.dir;
+    const old = Date.now() - 20 * 24 * 60 * 60 * 1000; // 20 天前
+    // 超期应用日志（文件名日期在保留期外）
+    fs.writeFileSync(path.join(dir, 'main-2020-01-01.log'), 'old');
+    // 当天日志（不删）
+    fs.writeFileSync(logger.file, 'today');
+    // 超期任务日志
+    const oldTask = path.join(dir, 'backup-task-old.log');
+    fs.writeFileSync(oldTask, 'old-task');
+    const utimes = new Date(old);
+    fs.utimesSync(oldTask, utimes, utimes);
+    // 22 个新鲜任务日志 → 超量 2 个删最旧
+    const fresh = [];
+    for (let i = 0; i < 22; i++) {
+      const f = path.join(dir, `backup-task-keep-${String(i).padStart(2, '0')}.log`);
+      fs.writeFileSync(f, 'x');
+      fresh.push(f);
+    }
+    const t = new Date();
+    fs.utimesSync(fresh[0], t, t);
+
+    logger.sessionStart();
+
+    expect(fs.existsSync(path.join(dir, 'main-2020-01-01.log'))).toBe(false);
+    expect(fs.existsSync(logger.file)).toBe(true);
+    expect(fs.existsSync(oldTask)).toBe(false);
+    // 保留最近 20 个：最早的 keep-00/keep-01 被删（keep-00 被手动刷新过 mtime，删的是 keep-01、keep-02）
+    const kept = fs.readdirSync(dir).filter((n) => n.startsWith('backup-task-keep-'));
+    expect(kept.length).toBe(20);
+    expect(kept).not.toContain('backup-task-keep-01.log');
   });
 });

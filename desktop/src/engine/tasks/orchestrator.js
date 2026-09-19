@@ -428,19 +428,27 @@
 
     async getLoginStatus() {
       try {
+        // 登录态检测只报告【登录者本人】。此前 qqNumber 取 (targetUin || uin)、
+        // getUserInfos 也按 Target 查询——他人备份期间 Target 被覆写为对方，
+        // 会把对方的 QQ 号/昵称/头像推给 UI（顶栏变成对方的头像昵称）。
         const uin = (API.Utils.getCookie('uin') || '').replace(/\D/g, '');
+        const ownerUin = String((window.QZone.Common.Owner && window.QZone.Common.Owner.uin) || uin || '');
         const targetUin = window.QZone.Common.Target && window.QZone.Common.Target.uin;
         let info = null;
-        try {
-          const data = await API.Common.getUserInfos();
-          const d = data && (data.data || data);
-          info = d && (d.userinfo || d.UserInfo || d);
-        } catch (e) {
-          console.warn('[tasks/orchestrator] getUserInfos 失败', e);
+        // 仅当采集目标即登录者（或未覆写）时才拉取公开资料；他人备份期间跳过，
+        // UI 侧保留上一次的本人昵称/头像（推送过滤 undefined，不会清空）
+        if (!targetUin || String(targetUin) === ownerUin) {
+          try {
+            const data = await API.Common.getUserInfos();
+            const d = data && (data.data || data);
+            info = d && (d.userinfo || d.UserInfo || d);
+          } catch (e) {
+            console.warn('[tasks/orchestrator] getUserInfos 失败', e);
+          }
         }
         return {
-          loggedIn: !!uin || !!targetUin,
-          qqNumber: (targetUin || uin).toString(),
+          loggedIn: !!ownerUin,
+          qqNumber: ownerUin,
           nickname: info && info.nickname,
           avatar: info && info.avatar,
         };

@@ -28,19 +28,29 @@ export default defineComponent({
     const message = useMessage();
     const auth = useAuthStore();
 
-    // ④ 登录成功后倒计时跳转（成功提示由 auth:login-notice 在最小化后推送）
+    // ④ 登录成功后倒计时跳转（成功提示由 auth:login-notice 在最小化后推送）。
+    // v4.9.1：跳转前等昵称就绪（引擎注入完成后才能取到），避免落在新建任务页时
+    // 本人卡片还是 QQ 号；昵称 10s 内仍未就绪则照常跳转（ensureProfile 会后台补齐）
     watch(
       () => auth.auth.loginJustSucceeded,
       (just) => {
         if (!just) return;
         const seconds = auth.auth.minimizeInSec ?? LOGIN_MINIMIZE_DELAY_SEC;
-        window.setTimeout(() => {
-          // 登录态已由主进程广播，这里只负责把用户带到下一步
+        const startedAt = Date.now();
+        const go = () => {
           if (router.currentRoute.value.path !== '/new') {
             router.push('/new');
           }
           auth.clearLoginJustSucceeded();
-        }, seconds * 1000);
+        };
+        const waitProfile = () => {
+          if (auth.auth.nickname || Date.now() - startedAt > 10000) {
+            go();
+            return;
+          }
+          window.setTimeout(waitProfile, 500);
+        };
+        window.setTimeout(waitProfile, seconds * 1000);
       }
     );
 

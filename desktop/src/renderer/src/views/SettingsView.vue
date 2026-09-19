@@ -310,7 +310,7 @@ async function exportConfig() {
           <div class="st-block">
             <h4>日志</h4>
             <p class="st-tip">
-              应用日志 main.log 与每次备份的任务日志 backup-*.log 都在这里；反馈备份问题时可直接提供对应任务的那个文件。
+              应用日志按天存为 main-日期.log（保留 14 天）；每次备份另有独立任务日志 backup-*.log（保留最近 20 次）。反馈备份问题时可直接提供对应任务的那个文件。
             </p>
             <div class="st-actions">
               <NButton

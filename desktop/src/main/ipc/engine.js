@@ -210,7 +210,7 @@ export function registerEngineIpc() {
         if (data?.state === 'completed' || data?.state === 'cancelled') {
           if (data?.state === 'completed') {
             // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
-            // P3-4：目录统计已异步化，fire-and-forget 不阻塞 completed 推送
+            // P3-4：目录统计已异步化，fire-and-forget 不阻塞状态机推送
             const active = getActiveTaskContext();
             // v4.7 反馈 ②：先把备份目标的头像抓到本地缓存（带引擎 session，
             // 避免渲染层 file:// 直连 qlogo 被防盗链拦掉），再落历史记录
@@ -218,6 +218,9 @@ export function registerEngineIpc() {
             const ensureAvatar = targetUin
               ? avatarStore.ensure(targetUin).catch(() => false)
               : Promise.resolve(false);
+            // v4.9.1 修复：backup:completed 推送移到 recordBackup **之后**，并携带
+            // 本次备份的完整记录。此前先推 completed、渲染层再回查历史，
+            // 拿到的是【上一次】备份的记录 —— 完成页显示上一次备份的数据。
             ensureAvatar
               .then(() =>
                 backupStats.recordBackup({
@@ -231,9 +234,13 @@ export function registerEngineIpc() {
               )
               .then((rec) => {
                 if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
+                sendToUi(PushChannels.backupCompleted, { ...data, record: rec });
               })
-              .catch((e) => console.error('[backup-stats] 记录历史失败', e));
-            sendToUi(PushChannels.backupCompleted, data);
+              .catch((e) => {
+                console.error('[backup-stats] 记录历史失败', e);
+                // 落库失败也要推完成（数据可从 completed 事件本身构造）
+                sendToUi(PushChannels.backupCompleted, data);
+              });
           }
           // P5.2：终态清理任务上下文
           dropTaskContext(data.taskId);
