@@ -29,8 +29,10 @@ function writeJson(file, data) {
   fs.renameSync(tmp, file);
 }
 
-/** 统计目录字节数（限制遍历量，避免大目录卡 UI；P3-4：fs.promises 逐目录 await 让出主线程） */
-export async function dirBytes(dir, budget = 5000) {
+/** 统计目录字节数（限制遍历量，避免大目录卡 UI；P3-4：fs.promises 逐目录 await 让出主线程）
+ *  v4.9.1：sinceMs 传入时只统计该时间点之后写入的文件——目标目录跨多次备份复用时，
+ *  完成页不应把上几次备份残留的文件算进本次的"占用空间/文件数"。 */
+export async function dirBytes(dir, budget = 5000, sinceMs = 0) {
   let total = 0;
   let visited = 0;
   const walk = async (d) => {
@@ -47,7 +49,10 @@ export async function dirBytes(dir, budget = 5000) {
       const p = path.join(d, e.name);
       try {
         if (e.isDirectory()) await walk(p);
-        else if (e.isFile()) total += (await fs.promises.stat(p)).size;
+        else if (e.isFile()) {
+          const st = await fs.promises.stat(p);
+          if (!sinceMs || st.mtimeMs >= sinceMs) total += st.size;
+        }
       } catch (err) {
         /* ignore */
       }
@@ -57,8 +62,8 @@ export async function dirBytes(dir, budget = 5000) {
   return total;
 }
 
-/** 统计文件数（截断到上限，防止慢；P3-4：异步遍历不再阻塞主线程） */
-export async function countFiles(dir, count = 0, limit = 20000) {
+/** 统计文件数（截断到上限，防止慢；P3-4：异步遍历不再阻塞主线程；sinceMs 同 dirBytes） */
+export async function countFiles(dir, count = 0, limit = 20000, sinceMs = 0) {
   let list = [];
   try {
     list = await fs.promises.readdir(dir, { withFileTypes: true });
@@ -67,8 +72,17 @@ export async function countFiles(dir, count = 0, limit = 20000) {
   }
   for (const e of list) {
     if (count >= limit) break;
-    if (e.isDirectory()) count = await countFiles(path.join(dir, e.name), count, limit);
-    else if (e.isFile()) count += 1;
+    if (e.isDirectory()) count = await countFiles(path.join(dir, e.name), count, limit, sinceMs);
+    else if (e.isFile()) {
+      if (sinceMs) {
+        try {
+          if ((await fs.promises.stat(path.join(dir, e.name))).mtimeMs < sinceMs) continue;
+        } catch (err) {
+          /* ignore */
+        }
+      }
+      count += 1;
+    }
   }
   return count;
 }
@@ -88,11 +102,16 @@ export const backupStats = {
    * 备份完成时自动记录（引擎此时已生成 manifest.json / report.json）
    * 幂等：同 taskId 不重复追加
    * P3-4：目录统计异步化，本函数为 async，调用方 fire-and-forget 即可
+   * v4.9.1：startedAt 传入任务开始时间——目标目录跨多次备份复用时，
+   * "文件数/占用空间"只统计本次任务实际写入的文件，不再混入之前的残留
    * @param {object} p.errors 模块级失败明细（P3-1：P0-3 遗留项落库，重启后历史不再显示假成功）
    */
-  async recordBackup({ taskId, targetDir, modules, results, errors, target }) {
+  async recordBackup({ taskId, targetDir, modules, results, errors, target, startedAt }) {
     const dir = String(targetDir || '');
     if (!dir) return null;
+
+    // 2s 余量：引擎写盘与状态事件之间可能有小间隔
+    const sinceMs = startedAt ? startedAt - 2000 : 0;
 
     const entry = {
       taskId: taskId || null,
@@ -123,10 +142,10 @@ export const backupStats = {
       if (manifest.createdAt) entry.createdAt = manifest.createdAt;
     }
 
-    // 目录大小 / 文件数（与 scanBackups 同一统计口径，截断避免卡顿；P3-4：异步遍历）
+    // 目录大小 / 文件数（只算本次任务写入：目标目录复用时不混入旧备份；截断避免卡顿）
     try {
-      entry.size = await dirBytes(dir);
-      entry.files = await countFiles(dir, 0, 20000);
+      entry.size = await dirBytes(dir, 5000, sinceMs);
+      entry.files = await countFiles(dir, 0, 20000, sinceMs);
     } catch (e) {
       console.warn('[backup-stats] 统计目录失败', e);
     }

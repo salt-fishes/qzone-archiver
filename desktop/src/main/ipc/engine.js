@@ -230,6 +230,7 @@ export function registerEngineIpc() {
                   results: data.results,
                   errors: data.errors,
                   target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
+                  startedAt: taskMachine.getSnapshot().startedAt, // v4.9.1：只统计本次任务写入的文件
                 })
               )
               .then((rec) => {

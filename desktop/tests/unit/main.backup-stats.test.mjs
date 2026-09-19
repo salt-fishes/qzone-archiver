@@ -63,6 +63,46 @@ describe('dirBytes / countFiles 异步语义（P3-4 §5.4）', () => {
   });
 });
 
+describe('v4.9.1 sinceMs 只统计本次任务写入的文件', () => {
+  it('dirBytes/countFiles 传入 sinceMs 时跳过旧文件', async () => {
+    const root = makeTree(path.join(tmpRoot, 'since-root'));
+    const old = path.join(root, 'old.txt');
+    fs.writeFileSync(old, 'old-data');
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(old, past, past); // 旧文件：1 分钟前
+
+    const allBytes = await dirBytes(root);
+    const newOnlyBytes = await dirBytes(root, 5000, Date.now() - 30_000);
+    expect(newOnlyBytes).toBeLessThan(allBytes);
+    expect(newOnlyBytes).toBe(3 + 5 + 7); // a/b/c 三个新文件，old.txt 不计
+
+    const allCount = await countFiles(root);
+    const newOnlyCount = await countFiles(root, 0, 20000, Date.now() - 30_000);
+    expect(newOnlyCount).toBe(allCount - 1);
+  });
+
+  it('recordBackup 带 startedAt：文件数/体积只含本次写入', async () => {
+    const dir = makeTree(path.join(tmpRoot, 'reuse-root'));
+    const old = path.join(dir, 'leftover.bin');
+    fs.writeFileSync(old, 'x'.repeat(1000));
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(old, past, past);
+    const manifest = JSON.stringify({ modules: { Messages: { count: 3 } }, createdAt: 1 });
+    fs.writeFileSync(path.join(dir, 'manifest.json'), manifest);
+
+    const entry = await backupStats.recordBackup({
+      taskId: 'task-since-1',
+      targetDir: dir,
+      modules: ['Messages'],
+      results: {},
+      startedAt: Date.now() - 30_000,
+    });
+    expect(entry.total).toBe(3); // manifest 口径不变
+    expect(entry.files).toBe(4); // a/b/c + manifest（leftover 不计）
+    expect(entry.size).toBe(3 + 5 + 7 + manifest.length);
+  });
+});
+
 describe('recordBackup 异步落盘（P3-4 §5.4）', () => {
   it('记录历史：manifest 计数 + 目录统计 + 落盘，返回 entry', async () => {
     const dir = makeTree(path.join(tmpRoot, 'backup-1'));
