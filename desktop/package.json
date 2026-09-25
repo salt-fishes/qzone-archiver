@@ -1,6 +1,6 @@
 {
   "name": "qzone-archiver-desktop",
-  "version": "4.9.0",
+  "version": "5.0.0",
   "private": true,
   "description": "QQ空间档案备份桌面版（内嵌登录 → 采集 → 打包 → 内置 SPA 浏览）",
   "type": "module",
@@ -16,8 +16,8 @@
     "build:renderer": "node scripts/sync-emoticons.mjs && vite build",
     "start": "electron .",
     "start:dev": "npm run build:renderer && electron .",
-    "dist": "npm run gen:icon && npm run build:renderer && electron-builder",
-    "dist:win": "npm run gen:icon && npm run build:renderer && electron-builder --win"
+    "dist": "npm run gen:icon && npm run build:renderer && electron-builder --publish never",
+    "dist:win": "npm run gen:icon && npm run build:renderer && electron-builder --win --publish never"
   },
   "dependencies": {
     "archiver": "^8.0.0",

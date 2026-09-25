@@ -26,7 +26,7 @@ type HistoryEntry = {
   completedAt: number;
   targetDir: string;
   name: string;
-  /** v4.9.1：目标目录是否仍存在（加载时由主进程检查） */
+  /** v5.0：目标目录是否仍存在（加载时由主进程检查） */
   exists?: boolean;
   modules: string[];
   total: number;
@@ -77,7 +77,7 @@ function onStart() {
   router.push('/new');
 }
 
-/** v4.9.1：删除一条备份历史记录（只删记录不动文件） */
+/** v5.0：删除一条备份历史记录（只删记录不动文件） */
 async function removeHistory(h: HistoryEntry) {
   await window.api.backup.deleteHistory(String(h.taskId || ''));
 }
@@ -242,7 +242,7 @@ onBeforeUnmount(() => {
             >
               目录已不存在
             </NTag>
-            <!-- v4.9.1：删除记录（阻止触发整行的跳转） -->
+            <!-- v5.0：删除记录（阻止触发整行的跳转） -->
             <NPopconfirm
               @positive-click="removeHistory(h)"
             >
@@ -299,7 +299,7 @@ onBeforeUnmount(() => {
 .hero-icon {
   width: 58px;
   height: 58px;
-  /* §F：圆角已由资源本身携带（gen-app-icon --write-source 写回 128 圆角版），不再二次圆角 */
+  /* §F：圆角已由资源本身携带（gen-app-icon 从方形母图 icon-source.png 重画的 128 成品），不再二次圆角 */
   margin-bottom: 18px;
   box-shadow: 0 4px 16px rgba(153, 79, 49, 0.25);
 }

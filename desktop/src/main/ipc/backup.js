@@ -172,7 +172,7 @@ export function registerBackupIpc() {
     // P3-1：preparing → running 由状态机统一持久化 checkpoint 并推送 UI（迁移流水由状态机写任务日志）
     taskMachine.dispatch('start', ctx);
 
-    // v4.9.1：清理历史任务的已完成/失败下载记录（下载列表不再重现旧任务的媒体）
+    // v5.0：清理历史任务的已完成/失败下载记录（下载列表不再重现旧任务的媒体）
     try {
       downloadManager.purgeFinished();
     } catch (e) {
@@ -257,7 +257,7 @@ export function registerBackupIpc() {
     return { ok: true, history: backupStats.getHistory() };
   });
 
-  // v4.9.1：删除一条备份历史记录（只删记录不动文件；删除后推 history-changed 刷新列表）
+  // v5.0：删除一条备份历史记录（只删记录不动文件；删除后推 history-changed 刷新列表）
   ipcMain.handle(Channels.backup.deleteHistory, (event, { taskId } = {}) => {
     const r = backupStats.deleteHistory(taskId);
     if (r.ok) {

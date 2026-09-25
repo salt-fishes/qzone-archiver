@@ -54,7 +54,7 @@ declare global {
         listFriends(): Promise<{ ok: boolean; friends?: { uin: string; nickname?: string; remark?: string; avatar?: string }[]; error?: string }>;
         validateTarget(uin: string): Promise<{ ok: boolean; isOwner?: boolean; uin?: string; nickname?: string; avatar?: string; code?: number; notice?: string; error?: string }>;
         engineInject(): Promise<{ ok: boolean; error?: string }>;
-        /** v4.9.1：删除一条备份历史记录（只删记录不动文件） */
+        /** v5.0：删除一条备份历史记录（只删记录不动文件） */
         deleteHistory(taskId: string): Promise<{ ok: boolean; removed?: number; error?: string }>;
       };
       download: {

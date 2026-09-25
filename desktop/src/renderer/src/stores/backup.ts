@@ -112,7 +112,7 @@ export const useBackupStore = defineStore('backup', () => {
     extra?: { success?: number; failed?: number; skip?: number; elapsed?: number };
   }>({});
   /**
-   * v4.9.1：模块加权进度（0-100，阶段内单调不回退）——总进度用这个，
+   * v5.0：模块加权进度（0-100，阶段内单调不回退）——总进度用这个，
    * 修复"列表取完进入全文阶段，总进度从 ~30% 跳回 0%"的倒退。
    * bk.progress.percent 保留原始阶段百分比（当前模块子条显示用）。
    */
@@ -404,7 +404,7 @@ export const useBackupStore = defineStore('backup', () => {
   /* -------- 事件订阅（App.vue onMounted 调 init，onBeforeUnmount 调 dispose） -------- */
 
   let unsubs: (() => void)[] = [];
-  /** v4.9.1：最近一次进入 running 的任务（区分新任务与同任务 resume，用于清下载列表） */
+  /** v5.0：最近一次进入 running 的任务（区分新任务与同任务 resume，用于清下载列表） */
   let lastDownloadTaskId = '';
 
   function initBackup() {
@@ -422,7 +422,7 @@ export const useBackupStore = defineStore('backup', () => {
         if (p.state === 'running') {
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
           pushLog('info', '开始备份');
-          // v4.9.1：新任务的 running（区别于同任务 resume）→ 清空下载列表，
+          // v5.0：新任务的 running（区别于同任务 resume）→ 清空下载列表，
           // 上一任务的媒体不再出现在本次列表里（主进程已同步清理终态记录）
           if (p.taskId && p.taskId !== lastDownloadTaskId) {
             lastDownloadTaskId = p.taskId;
@@ -449,7 +449,7 @@ export const useBackupStore = defineStore('backup', () => {
       }),
       window.api.on('backup:progress', (p) => {
         progress.value = p;
-        // v4.9.1：模块加权进度（阶段切换时原始 percent 回 0，这里按阶段表加权 + 单调钳制）
+        // v5.0：模块加权进度（阶段切换时原始 percent 回 0，这里按阶段表加权 + 单调钳制）
         const mod = String(p?.module || '');
         if (mod !== moduleOverallFor) {
           moduleOverallFor = mod;
@@ -483,7 +483,7 @@ export const useBackupStore = defineStore('backup', () => {
         if (cfg.targetDir) {
           pushLog('info', `入口文件：${cfg.targetDir}\\index.html（双击浏览备份）`);
         }
-        // v4.9.1 修复：主进程把 completed 推送移到落库之后并携带本次记录（p.record），
+        // v5.0 修复：主进程把 completed 推送移到落库之后并携带本次记录（p.record），
         // 成功页直接用它——此前先推完成、这里回查历史，拿到的是【上一次】备份的记录，
         // 导致备份好友 A 时完成页显示上一次备份 B 的数据。
         if (p?.record) {

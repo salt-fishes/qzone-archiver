@@ -29,7 +29,7 @@ export default defineComponent({
     const auth = useAuthStore();
 
     // ④ 登录成功后倒计时跳转（成功提示由 auth:login-notice 在最小化后推送）。
-    // v4.9.1：跳转前等昵称就绪（引擎注入完成后才能取到），避免落在新建任务页时
+    // v5.0：跳转前等昵称就绪（引擎注入完成后才能取到），避免落在新建任务页时
     // 本人卡片还是 QQ 号；昵称 10s 内仍未就绪则照常跳转（ensureProfile 会后台补齐）
     watch(
       () => auth.auth.loginJustSucceeded,

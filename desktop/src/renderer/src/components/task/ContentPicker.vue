@@ -18,7 +18,7 @@ const props = defineProps<{
 const cfg = useConfigStore();
 const target = useTargetStore();
 
-/** v4.9.1：向导内相册选择（勾选「相册」时展示；复用 store 的 albumSel → settings.Photos.albumSelect 链路） */
+/** v5.0：向导内相册选择（勾选「相册」时展示；复用 store 的 albumSel → settings.Photos.albumSelect 链路） */
 const albumOptions = computed(() =>
   cfg.albumClassNames.map((g) => ({
     type: 'group' as const,
@@ -222,7 +222,7 @@ function selectNone() {
       </Motion>
     </div>
 
-    <!-- v4.9.1：勾选「相册」时可在向导内直接选择要备份哪些相册。
+    <!-- v5.0：勾选「相册」时可在向导内直接选择要备份哪些相册。
          仅本人模式：他人模式的相册 ID 与登录者不一致，向导期 Target 又未就位，不做选择（备份全部）。 -->
     <div
       v-if="cfg.selected.Photos && !target.isOtherUser"

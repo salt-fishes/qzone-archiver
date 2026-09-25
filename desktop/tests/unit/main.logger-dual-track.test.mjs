@@ -143,7 +143,7 @@ describe('会话自检行（§K2 验收探针）', () => {
   });
 });
 
-describe('v4.9.1 日志分天与清理', () => {
+describe('v5.0 日志分天与清理', () => {
   it('应用日志按天命名 main-YYYY-MM-DD.log', () => {
     expect(path.basename(logger.file)).toMatch(/^main-\d{4}-\d{2}-\d{2}\.log$/);
   });

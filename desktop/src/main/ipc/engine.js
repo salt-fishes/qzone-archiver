@@ -221,7 +221,7 @@ export function registerEngineIpc() {
             const ensureAvatar = targetUin
               ? avatarStore.ensure(targetUin).catch(() => false)
               : Promise.resolve(false);
-            // v4.9.1 修复：backup:completed 推送移到 recordBackup **之后**，并携带
+            // v5.0 修复：backup:completed 推送移到 recordBackup **之后**，并携带
             // 本次备份的完整记录。此前先推 completed、渲染层再回查历史，
             // 拿到的是【上一次】备份的记录 —— 完成页显示上一次备份的数据。
             ensureAvatar
@@ -233,7 +233,7 @@ export function registerEngineIpc() {
                   results: data.results,
                   errors: data.errors,
                   target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
-                  startedAt: taskMachine.getSnapshot().startedAt, // v4.9.1：只统计本次任务写入的文件
+                  startedAt: taskMachine.getSnapshot().startedAt, // v5.0：只统计本次任务写入的文件
                 })
               )
               .then((rec) => {

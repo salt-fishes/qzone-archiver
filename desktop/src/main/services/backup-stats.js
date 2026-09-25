@@ -30,7 +30,7 @@ function writeJson(file, data) {
 }
 
 /** 统计目录字节数（限制遍历量，避免大目录卡 UI；P3-4：fs.promises 逐目录 await 让出主线程）
- *  v4.9.1：sinceMs 传入时只统计该时间点之后写入的文件——目标目录跨多次备份复用时，
+ *  v5.0：sinceMs 传入时只统计该时间点之后写入的文件——目标目录跨多次备份复用时，
  *  完成页不应把上几次备份残留的文件算进本次的"占用空间/文件数"。 */
 export async function dirBytes(dir, budget = 5000, sinceMs = 0) {
   let total = 0;
@@ -88,7 +88,7 @@ export async function countFiles(dir, count = 0, limit = 20000, sinceMs = 0) {
 }
 
 export const backupStats = {
-  /** 全部历史记录（最新在前）；v4.9.1：标注目标目录是否仍存在（用户手工删除文件夹后 UI 可提示） */
+  /** 全部历史记录（最新在前）；v5.0：标注目标目录是否仍存在（用户手工删除文件夹后 UI 可提示） */
   loadHistory() {
     const list = readJson(historyFile(), []);
     if (!Array.isArray(list)) return [];
@@ -110,7 +110,7 @@ export const backupStats = {
    * 备份完成时自动记录（引擎此时已生成 manifest.json / report.json）
    * 幂等：同 taskId 不重复追加
    * P3-4：目录统计异步化，本函数为 async，调用方 fire-and-forget 即可
-   * v4.9.1：startedAt 传入任务开始时间——目标目录跨多次备份复用时，
+   * v5.0：startedAt 传入任务开始时间——目标目录跨多次备份复用时，
    * "文件数/占用空间"只统计本次任务实际写入的文件，不再混入之前的残留
    * @param {object} p.errors 模块级失败明细（P3-1：P0-3 遗留项落库，重启后历史不再显示假成功）
    */
@@ -166,7 +166,7 @@ export const backupStats = {
   },
 
   /**
-   * v4.9.1：删除一条历史记录（档案列表/最近备份的删除按钮）。
+   * v5.0：删除一条历史记录（档案列表/最近备份的删除按钮）。
    * 只删记录不动文件——用户手工删目录后可清掉失效条目；要删文件请自行到文件夹操作。
    */
   deleteHistory(taskId) {

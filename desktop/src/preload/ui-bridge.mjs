@@ -45,7 +45,7 @@ const api = {
     // v4.6 他人模式：好友列表 / 目标空间可访问性探测
     listFriends: () => invoke(Channels.backup.listFriends),
     validateTarget: (targetUin) => invoke(Channels.backup.validateTarget, targetUin),
-    // v4.9.1：删除一条备份历史记录
+    // v5.0：删除一条备份历史记录
     deleteHistory: (taskId) => invoke(Channels.backup.deleteHistory, { taskId }),
   },
   download: {

@@ -63,7 +63,7 @@ describe('dirBytes / countFiles 异步语义（P3-4 §5.4）', () => {
   });
 });
 
-describe('v4.9.1 sinceMs 只统计本次任务写入的文件', () => {
+describe('v5.0 sinceMs 只统计本次任务写入的文件', () => {
   it('dirBytes/countFiles 传入 sinceMs 时跳过旧文件', async () => {
     const root = makeTree(path.join(tmpRoot, 'since-root'));
     const old = path.join(root, 'old.txt');

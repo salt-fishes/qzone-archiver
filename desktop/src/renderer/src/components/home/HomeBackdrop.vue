@@ -59,7 +59,7 @@ function onVisibility() {
 onMounted(() => {
   const node = el.value;
   if (!node || reducedMotion) return;
-  // v4.9.1 修复：背景层是 pointer-events:none 的纯装饰，自己永远收不到鼠标事件——
+  // v5.0 修复：背景层是 pointer-events:none 的纯装饰，自己永远收不到鼠标事件——
   // 监听挂在宿主容器（hero）上，色斑照样能动
   const host = node.parentElement || node;
   host.addEventListener('pointermove', onPointerMove, { passive: true });

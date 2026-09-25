@@ -152,7 +152,7 @@ export const downloadManager = {
 
   /**
    * v4.9.2：新备份启动时清除**所有非当前任务**的下载记录（终态与 pending/running 一并清）。
-   * v4.9.1 只清 done/failed，保留了旧任务遗留的 pending —— 但那些 pending 指向的
+   * v5.0 只清 done/failed，保留了旧任务遗留的 pending —— 但那些 pending 指向的
    * 是已过期的 psc 直链和旧目标目录，续传毫无意义，还会因 FIFO 先于当前任务的
    * 媒体被调度（实机：新备份前 2 分钟全在补下旧任务 1790 条，当前任务的 1077 条
    * 一条没轮到），下载列表也被灌成几千条。
@@ -242,7 +242,7 @@ export const downloadManager = {
       dir: task.dir,
       module: task.module,
       targetDir: active.targetDir || task.targetDir || null,
-      // v4.9.1：归属任务（新备份启动时据此清理历史任务的已完成/失败记录）
+      // v5.0：归属任务（新备份启动时据此清理历史任务的已完成/失败记录）
       taskId: active.taskId || null,
       state: 'pending',
       createdAt: Date.now(),
