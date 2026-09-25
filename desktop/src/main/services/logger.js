@@ -19,11 +19,24 @@ import path from 'node:path';
 import { app } from 'electron';
 
 export const LOG_LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+
+/**
+ * stdout 镜像（§K 同源保护）：启动它的终端已断开时写入会抛 EPIPE。
+ * 镜像只是开发期便利，失败必须静默跳过——文件轨道才是可观测性主路径，
+ * 不允许"终端没了"反过来杀掉主进程（2026-09-22 实机踩到：EPIPE 未捕获弹窗）。
+ */
+function mirrorConsole(level, line) {
+  try {
+    (level === 'debug' ? console.log : console[level] || console.log)(line);
+  } catch {
+    /* stdout/stderr 断管：忽略，文件轨道已写入 */
+  }
+}
 const MAIN_MAX_BYTES = 10 * 1024 * 1024;
 const MAIN_MAX_ARCHIVES = 3;
 const TASK_MAX_BYTES = 5 * 1024 * 1024; // §K6：任务日志轮转 5MB × 2
 const TASK_MAX_ARCHIVES = 2;
-/** v4.9.1：日志保留天数（应用日志与任务日志同口径）与任务日志保留个数上限 */
+/** v5.0：日志保留天数（应用日志与任务日志同口径）与任务日志保留个数上限 */
 export const LOG_RETENTION_DAYS = 14;
 export const TASK_LOG_KEEP = 20;
 
@@ -57,7 +70,7 @@ class FileSink {
       fs.appendFileSync(this.file, text);
     } catch (e) {
       this.degraded = true;
-      console.error(`[logger] ${this.label} 落盘失败，本次会话降级为仅终端输出：${e?.message || e}`);
+      mirrorConsole('error', `[logger] ${this.label} 落盘失败，本次会话降级为仅终端输出：${e?.message || e}`);
     }
   }
 
@@ -114,7 +127,7 @@ class TaskLogger {
   log(level, msg) {
     if (LOG_LEVELS[level] === undefined || LOG_LEVELS[level] < this.minLevel) return;
     const line = `[${level}] [${this.taskId}] ${msg}`;
-    (level === 'debug' ? console.log : console[level] || console.log)(line);
+    mirrorConsole(level, line);
     this._sink.append(`[${new Date().toISOString()}] ${line}\n`);
   }
 
@@ -122,7 +135,7 @@ class TaskLogger {
   engine(level, msg, loc) {
     if (LOG_LEVELS[level] === undefined || LOG_LEVELS[level] < this.minLevel) return;
     const line = `[${level}] [engine] ${msg}${loc ? ` @ ${loc}` : ''}`;
-    (console[level] || console.log)(line);
+    mirrorConsole(level, line);
     this._sink.append(`[${new Date().toISOString()}] ${line}\n`);
   }
 }
@@ -170,9 +183,9 @@ class Logger {
   /** @param {string} level debug/info/warn/error 之外的级别忽略 */
   log(level, msg) {
     if (LOG_LEVELS[level] === undefined || LOG_LEVELS[level] < this.minLevel) return;
-    // stdout 镜像（保持既有开发期习惯：终端可直接观察）
+    // stdout 镜像（保持既有开发期习惯：终端可直接观察；断管时静默跳过）
     const line = `[${level}] ${msg}`;
-    (level === 'debug' ? console.log : console[level])(line);
+    mirrorConsole(level, line);
     this._main.append(`[${new Date().toISOString()}] ${line}\n`);
   }
 

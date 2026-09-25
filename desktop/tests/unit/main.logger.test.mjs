@@ -68,7 +68,7 @@ describe('logger 文件落盘与轮转', () => {
     expect(content).toMatch(/\[\d{4}-\d{2}-\d{2}T.+Z\] \[info\] hello-file\n/);
   });
 
-  it('超过 maxBytes 触发轮转：当天文件→.1→.2，最旧删除（v4.9.1 起按天分文件）', () => {
+  it('超过 maxBytes 触发轮转：当天文件→.1→.2，最旧删除（v5.0 起按天分文件）', () => {
     logger.maxBytes = 200;
     logger.maxArchives = 2;
     for (let i = 0; i < 12; i++) logger.info(`line-${i}-${'x'.repeat(30)}`);
@@ -85,5 +85,32 @@ describe('logger 文件落盘与轮转', () => {
     const size = fs.statSync(logger.file).size;
     expect(size).toBeLessThan(200);
     expect(fs.readFileSync(logger.file, 'utf8')).toContain('before-rotate');
+  });
+});
+
+describe('stdout 断管保护（§K：镜像失败不得打断主流程）', () => {
+  it('console 写入抛 EPIPE 时应用日志不抛错，文件轨道仍写入', () => {
+    const before = fs.existsSync(logger.file) ? fs.readFileSync(logger.file, 'utf8') : '';
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      throw new Error('EPIPE: broken pipe, write');
+    });
+    expect(() => logger.error('[main] 断管演练')).not.toThrow();
+    const after = fs.readFileSync(logger.file, 'utf8');
+    expect(after.length).toBeGreaterThan(before.length);
+    expect(after).toContain('断管演练');
+  });
+
+  it('任务日志/引擎透传同样受保护（2026-09-22 实机 EPIPE 崩溃回归）', () => {
+    const t = logger.task('epipe-test');
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      throw new Error('EPIPE: broken pipe, write');
+    });
+    expect(() => t.error('任务断管演练')).not.toThrow();
+    expect(() => t.engine('error', '引擎断管演练', 'x.js:1')).not.toThrow();
+    const f = path.join(logger.dir, 'backup-epipe-test.log');
+    const content = fs.readFileSync(f, 'utf8');
+    expect(content).toContain('任务断管演练');
+    expect(content).toContain('引擎断管演练');
+    logger.disposeTask('epipe-test');
   });
 });
