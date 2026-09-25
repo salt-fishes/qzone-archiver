@@ -401,8 +401,8 @@ function handleClick() {
     font-size: 1rem;
   }
   .archive-entry :deep(.entry-stat-cta) {
-    padding: var(--sp-2) var(--sp-3);
-    border: var(--rule-dot);
+    /* 移动端隐藏 CTA：整卡可点，文字按钮在窄屏是冗余噪音 */
+    display: none;
   }
 }
 </style>
