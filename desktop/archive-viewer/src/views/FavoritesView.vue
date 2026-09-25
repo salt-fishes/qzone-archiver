@@ -41,6 +41,8 @@
         ref="listRef"
         :items="results"
         :key-of="(it: FavoriteIndex) => it.id || `${it.type}-${it.time}`"
+        :segment-of="segmentOf"
+        :grid-available="results.length <= 800"
         list-class="favorite-list"
       >
         <template #default="{ item }">
@@ -51,20 +53,6 @@
           />
         </template>
       </VirtualList>
-
-      <!-- 年份快速跳转 -->
-      <div v-if="!query && favoritesStore.yearGroups.length > 1" class="year-jump">
-        <span class="meta">归档：</span>
-        <button
-          v-for="[year, items] in favoritesStore.yearGroups"
-          :key="year"
-          class="year-jump-btn"
-          type="button"
-          @click="jumpToYear(year)"
-        >
-          {{ year }} <span class="year-jump-count">{{ items.length }}</span>
-        </button>
-      </div>
     </template>
 
     <!-- 详情模态 -->
@@ -93,6 +81,9 @@ const favoritesStore = useFavoritesStore()
 
 // 客户端搜索：收藏数据量通常较小，用普通 includes 过滤即可
 const query = ref('')
+
+// 年代分段（V1 阅读型骨架 §4.1）：相邻同年条目归段，段首注入 sticky 分段头
+const segmentOf = (it: FavoriteIndex) => (it.time || '').slice(0, 4) || null
 
 const listRef = ref<InstanceType<typeof VirtualList> | null>(null)
 
@@ -237,38 +228,8 @@ onMounted(() => {
   border-color: var(--vermilion);
 }
 
-.year-jump {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--sp-2);
-  margin-top: var(--sp-5);
-  padding-top: var(--sp-4);
-  border-top: var(--rule-double);
-}
 
-.year-jump-btn {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  background: transparent;
-  color: var(--ink);
-  border: var(--rule);
-  padding: var(--sp-1) var(--sp-3);
-  cursor: pointer;
-  transition: all 0.15s;
-}
 
-.year-jump-btn:hover {
-  background: var(--ink);
-  color: var(--paper);
-}
 
-.year-jump-count {
-  color: var(--vermilion);
-  margin-left: var(--sp-1);
-}
 
-.year-jump-btn:hover .year-jump-count {
-  color: var(--paper);
-}
 </style>

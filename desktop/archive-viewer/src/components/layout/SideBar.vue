@@ -1,15 +1,15 @@
 <template>
-  <!-- 移动端窄图标栏（≤900px 常驻左侧，点击图标直达 / 汉堡展开抽屉） -->
+  <!-- 窄屏图标栏（≤1100px 常驻左侧，点击展开抽屉卷目） -->
   <div class="side-rail">
     <button
       type="button"
       class="rail-toggle"
       :class="{ open: drawerOpen }"
-      aria-label="打开导航"
+      aria-label="打开卷目"
       @click="drawerOpen = !drawerOpen"
     >☰</button>
     <RouterLink
-      v-for="item in navItems"
+      v-for="item in tocItems"
       :key="`rail-${item.path}`"
       :to="item.path"
       class="rail-item"
@@ -20,125 +20,41 @@
     </RouterLink>
   </div>
 
-  <!-- 抽屉遮罩（仅移动端） -->
+  <!-- 抽屉遮罩（仅窄屏） -->
   <div v-if="drawerOpen" class="side-backdrop" @click="drawerOpen = false"></div>
 
-  <aside class="sidebar" :class="{ 'drawer-open': drawerOpen }">
-    <div class="sidebar-head">
-      <h4>模块导航</h4>
-      <button type="button" class="sidebar-close" aria-label="关闭导航" @click="drawerOpen = false">×</button>
+  <!-- 卷目（§4.1）：类型 + mono 计数；当前卷 = 朱砂竖线 + 加重；年报以点线分隔 -->
+  <aside class="toc" :class="{ 'drawer-open': drawerOpen }">
+    <div class="toc-head">
+      <h4>卷目</h4>
+      <button type="button" class="toc-close" aria-label="关闭卷目" @click="drawerOpen = false">×</button>
     </div>
-    <ul>
-      <li v-for="item in navItems" :key="item.path">
-        <RouterLink :to="item.path" active-class="active">
-          <span class="nav-label">{{ item.label }}</span>
-          <span class="sidebar-count">{{ formatCount(item.count) }}</span>
+    <ul class="toc-list">
+      <li v-for="item in tocItems" :key="item.path">
+        <RouterLink :to="item.path" class="toc-item" active-class="active">
+          <span class="toc-glyph">{{ item.glyph }}</span>
+          <span class="toc-label">卷·{{ item.label }}</span>
+          <span class="toc-count">{{ formatCount(item.count) }}</span>
         </RouterLink>
+        <!-- 当前卷的子索引（年代 / 相册 / 分组），仅展开当前卷 -->
+        <ul v-if="item.path === modulePath && subEntries.length" class="toc-sub">
+          <li v-for="sub in subEntries" :key="sub.to">
+            <RouterLink :to="sub.to" :class="{ 'is-loading': sub.loading }">
+              <span class="toc-sub-label">{{ sub.label }}</span>
+              <span class="toc-sub-count">{{ sub.count }}</span>
+            </RouterLink>
+          </li>
+        </ul>
       </li>
     </ul>
 
-    <h4 v-if="yearGroups.length" class="sidebar-section">说说归档</h4>
-    <ul v-if="yearGroups.length">
+    <div class="toc-sep"></div>
+    <ul class="toc-list">
       <li>
-        <RouterLink to="/messages-deleted" active-class="active">
-          <span class="nav-label">已删除</span>
-          <span class="sidebar-count sidebar-count-deleted" :class="{ 'is-loading': deletedLoading }">{{ deletedCount }}</span>
-        </RouterLink>
-      </li>
-      <li v-for="[year, items] in yearGroups" :key="year">
-        <RouterLink :to="`/messages?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="visitorYearGroups.length" class="sidebar-section">访客归档</h4>
-    <ul v-if="visitorYearGroups.length">
-      <li v-for="[year, items] in visitorYearGroups" :key="`v-${year}`">
-        <RouterLink :to="`/visitors?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="favoriteYearGroups.length" class="sidebar-section">收藏归档</h4>
-    <ul v-if="favoriteYearGroups.length">
-      <li v-for="[year, items] in favoriteYearGroups" :key="`f-${year}`">
-        <RouterLink :to="`/favorites?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="boardYearGroups.length" class="sidebar-section">留言归档</h4>
-    <ul v-if="boardYearGroups.length">
-      <li v-for="[year, items] in boardYearGroups" :key="`b-${year}`">
-        <RouterLink :to="`/boards?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="shareYearGroups.length" class="sidebar-section">分享归档</h4>
-    <ul v-if="shareYearGroups.length">
-      <li v-for="[year, items] in shareYearGroups" :key="`s-${year}`">
-        <RouterLink :to="`/shares?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="videoYearGroups.length" class="sidebar-section">视频归档</h4>
-    <ul v-if="videoYearGroups.length">
-      <li v-for="[year, items] in videoYearGroups" :key="`v-${year}`">
-        <RouterLink :to="`/videos?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="diaryYearGroups.length" class="sidebar-section">日记归档</h4>
-    <ul v-if="diaryYearGroups.length">
-      <li v-for="[year, items] in diaryYearGroups" :key="`d-${year}`">
-        <RouterLink :to="`/diaries?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="blogYearGroups.length" class="sidebar-section">日志归档</h4>
-    <ul v-if="blogYearGroups.length">
-      <li v-for="[year, items] in blogYearGroups" :key="`bl-${year}`">
-        <RouterLink :to="`/blogs?year=${year}`">
-          <span class="nav-label">{{ year }} 年</span>
-          <span class="sidebar-count">{{ items.length }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="albumList.length" class="sidebar-section">相册归档</h4>
-    <ul v-if="albumList.length">
-      <li v-for="album in albumList" :key="`album-${album.albumId}`">
-        <RouterLink :to="`/photos?album=${album.albumId}`">
-          <span class="nav-label">{{ album.name || '(未命名相册)' }}</span>
-          <span class="sidebar-count">{{ album.photoCount }}</span>
-        </RouterLink>
-      </li>
-    </ul>
-
-    <h4 v-if="friendGroups.length" class="sidebar-section">好友归档</h4>
-    <ul v-if="friendGroups.length">
-      <li v-for="[groupName, items] in friendGroups" :key="`fr-${groupName}`">
-        <RouterLink :to="`/friends?group=${encodeURIComponent(groupName)}`">
-          <span class="nav-label">{{ groupName }}</span>
-          <span class="sidebar-count">{{ items.length }}</span>
+        <RouterLink to="/report" class="toc-item toc-report" active-class="active">
+          <span class="toc-glyph">报</span>
+          <span class="toc-label">年度报告</span>
+          <span class="toc-count">ANN</span>
         </RouterLink>
       </li>
     </ul>
@@ -174,20 +90,9 @@ const friendsStore = useFriendsStore()
 const photosStore = usePhotosStore()
 
 const stats = computed(() => userStore.stats)
-const yearGroups = computed(() => messagesStore.yearGroups)
-const visitorYearGroups = computed(() => visitorsStore.yearGroups)
-const favoriteYearGroups = computed(() => favoritesStore.yearGroups)
-const boardYearGroups = computed(() => boardsStore.yearGroups)
-const shareYearGroups = computed(() => sharesStore.yearGroups)
-const videoYearGroups = computed(() => videosStore.yearGroups)
-const diaryYearGroups = computed(() => diariesStore.yearGroups)
-const blogYearGroups = computed(() => blogsStore.yearGroups)
-const friendGroups = computed(() => friendsStore.groupLists)
-const albumList = computed(() => photosStore.index)
-const deletedCount = computed(() => messagesStore.deletedTotal)
-const deletedLoading = computed(() => messagesStore.deletedLoading)
 
-const navItems = computed(() => [
+const tocItems = computed(() => [
+  { path: '/', label: '看板', glyph: '首', count: userStore.totalRecords },
   { path: '/messages', label: '说说', glyph: '说', count: stats.value.messages },
   { path: '/blogs', label: '日志', glyph: '志', count: stats.value.blogs },
   { path: '/diaries', label: '日记', glyph: '记', count: stats.value.diaries },
@@ -199,7 +104,58 @@ const navItems = computed(() => [
   { path: '/visitors', label: '访客', glyph: '访', count: stats.value.visitors }
 ])
 
-/* ============ 移动端抽屉 ============ */
+/** 当前模块路径（含子索引的卷） */
+const modulePath = computed(() => {
+  const p = route.path
+  return tocItems.value.some(it => it.path === p && it.path !== '/') ? p : ''
+})
+
+interface SubEntry { to: string; label: string; count: number | string; loading?: boolean }
+
+/** 当前卷的子索引：年代 / 相册 / 分组 */
+const subEntries = computed<SubEntry[]>(() => {
+  switch (route.path) {
+    case '/messages': {
+      const list: SubEntry[] = [{
+        to: '/messages-deleted',
+        label: '已删除',
+        count: messagesStore.deletedLoading ? '…' : messagesStore.deletedTotal,
+        loading: messagesStore.deletedLoading,
+      }]
+      return list.concat(yearSubs(messagesStore.yearGroups, '/messages'))
+    }
+    case '/visitors': return yearSubs(visitorsStore.yearGroups, '/visitors')
+    case '/favorites': return yearSubs(favoritesStore.yearGroups, '/favorites')
+    case '/boards': return yearSubs(boardsStore.yearGroups, '/boards')
+    case '/shares': return yearSubs(sharesStore.yearGroups, '/shares')
+    case '/videos': return yearSubs(videosStore.yearGroups, '/videos')
+    case '/diaries': return yearSubs(diariesStore.yearGroups, '/diaries')
+    case '/blogs': return yearSubs(blogsStore.yearGroups, '/blogs')
+    case '/photos':
+      return photosStore.index.map(album => ({
+        to: `/photos?album=${album.albumId}`,
+        label: album.name || '(未命名相册)',
+        count: album.photoCount,
+      }))
+    case '/friends':
+      return Object.entries(friendsStore.groupLists).map(([groupName, items]) => ({
+        to: `/friends?group=${encodeURIComponent(groupName)}`,
+        label: groupName,
+        count: (items as any[]).length,
+      }))
+    default: return []
+  }
+})
+
+function yearSubs(groups: [string, any[]][], base: string): SubEntry[] {
+  return groups.map(([year, items]) => ({
+    to: `${base}?year=${year}`,
+    label: `${year} 年`,
+    count: items.length,
+  }))
+}
+
+/* ============ 窄屏抽屉 ============ */
 const drawerOpen = ref(false)
 
 function onDrawerKeydown(e: KeyboardEvent) {
@@ -245,145 +201,221 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.sidebar {
+.toc {
   position: sticky;
-  top: var(--sp-5);
+  top: 72px;
   align-self: start;
-  max-height: calc(100vh - var(--sp-9));
+  max-height: calc(100vh - 96px);
   overflow-y: auto;
-  padding-right: var(--sp-4);
-  border-right: var(--rule-dot);
+  border-right: var(--line-1);
+  padding: var(--sp-2) 0 var(--sp-2) var(--sp-1);
 }
 
-.sidebar-head {
+.toc-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--sp-2);
+  padding: 0 var(--sp-2);
 }
 
-.sidebar-close {
+.toc h4 {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: var(--sp-1);
+}
+
+.toc-close {
   display: none;
   font-family: var(--font-mono);
   font-size: 1.05rem;
   line-height: 1;
-  color: var(--ink-3);
+  color: var(--ink-muted);
   background: transparent;
-  border: var(--rule);
+  border: var(--line-1);
   padding: var(--sp-1) var(--sp-2);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--dur-1);
 }
 
-.sidebar-close:hover {
+.toc-close:hover {
   color: var(--vermilion);
   border-color: var(--vermilion);
 }
 
-.sidebar h4 {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  letter-spacing: 0.25em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-bottom: var(--sp-4);
-  padding-bottom: var(--sp-2);
-  border-bottom: var(--rule);
-}
-
-.sidebar-section {
-  margin-top: var(--sp-6);
-}
-
-.sidebar ul {
+.toc-list {
   list-style: none;
 }
 
-.sidebar li {
-  margin-bottom: var(--sp-1);
-}
-
-.sidebar a {
+.toc-item {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: var(--sp-1) 0;
-  font-family: var(--font-serif-cn);
-  font-size: 0.95rem;
-  color: var(--ink-2);
-  border-bottom: none;
+  gap: 6px;
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-2);
   border-left: 2px solid transparent;
-  padding-left: var(--sp-3);
-  transition: all 0.15s;
+  text-decoration: none;
+  border-bottom: none;
+  transition: border-color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out);
 }
 
-.sidebar a:hover {
-  color: var(--vermilion);
-  border-left-color: var(--vermilion);
-  padding-left: var(--sp-4);
-}
-
-.sidebar a.active {
+.toc-glyph {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-serif-cn);
+  font-size: 0.85rem;
   color: var(--ink);
-  border-left-color: var(--ink);
+  border: var(--line-1);
+  background: var(--paper-raised);
+}
+
+.toc-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--font-serif-cn);
+  font-size: 0.82rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toc-count {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.03em;
+}
+
+.toc-item:hover {
+  border-left-color: var(--vermilion);
+  background: rgba(181, 67, 42, 0.05);
+}
+
+.toc-item.active {
+  border-left-color: var(--vermilion);
   font-weight: 600;
 }
 
-.sidebar-count {
+.toc-item.active .toc-glyph {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+
+/* 当前卷子索引（年代/相册/分组） */
+.toc-sub {
+  list-style: none;
+  margin: 0 0 var(--sp-1) calc(24px + var(--sp-2));
+  border-left: var(--rule-dot);
+  padding-left: var(--sp-2);
+}
+
+.toc-sub a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 3px 0;
+  font-family: var(--font-serif-cn);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  text-decoration: none;
+  border-bottom: none;
+  transition: color var(--dur-1) var(--ease-out);
+}
+
+.toc-sub a:hover { color: var(--vermilion); }
+.toc-sub a.router-link-active { color: var(--ink); }
+
+.toc-sub-count {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--ink-3);
-  margin-left: var(--sp-2);
+  font-size: 0.6rem;
+  color: var(--ink-muted);
 }
 
-.sidebar-count-deleted {
-  color: var(--warning, #b8860b);
+/* 年报：点线与其余卷目分隔 */
+.toc-sep {
+  border-top: var(--rule-dot);
+  margin: var(--sp-2) var(--sp-2);
 }
 
-.sidebar-count-deleted.is-loading::after {
-  content: '...';
-  margin-left: 2px;
+.toc-report .toc-glyph {
+  color: var(--vermilion);
+  border-color: var(--vermilion);
 }
 
-/* 移动端（≤900px）：侧栏收纳为左侧抽屉 + 窄图标栏 */
-@media (max-width: 900px) {
-  .sidebar {
+.toc-report.active .toc-glyph {
+  background: var(--vermilion);
+  color: var(--paper);
+}
+
+/* ============ ≥1440px：卷目 160px 宽整形态 ============ */
+@media (max-width: 1439px) {
+  /* 88px 窄卷目：隐藏文字标签与计数，仅字形 */
+  .toc-label,
+  .toc-count,
+  .toc-sub,
+  .toc-head h4 {
+    display: none;
+  }
+  .toc-item {
+    justify-content: center;
+    padding: var(--sp-1) 0;
+  }
+  .toc {
+    padding-left: 0;
+  }
+  .toc-sep { margin: var(--sp-1) var(--sp-2); }
+}
+
+/* ============ 窄屏（≤1100px）：卷目收纳为抽屉 + 窄图标栏 ============ */
+@media (max-width: 1100px) {
+  .toc {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
-    width: 268px;
+    width: 240px;
     max-width: 82vw;
     margin: 0;
-    padding: var(--sp-5);
+    padding: var(--sp-3);
     background: var(--paper);
     border-right: var(--rule-double);
-    border-bottom: none;
-    box-shadow: 4px 0 24px rgba(26, 22, 18, 0.25);
+    box-shadow: 4px 0 24px rgba(33, 29, 23, 0.25);
     transform: translateX(-100%);
-    transition: transform 0.25s var(--ease-out);
+    transition: transform var(--dur-2) var(--ease-out);
     z-index: 100;
     max-height: none;
     overflow-y: auto;
   }
 
-  .sidebar.drawer-open {
-    transform: translateX(0);
-  }
+  .toc.drawer-open { transform: translateX(0); }
 
-  .sidebar-close {
-    display: block;
-  }
+  /* 抽屉内恢复完整形态 */
+  .toc-label,
+  .toc-count,
+  .toc-sub,
+  .toc-head h4 { display: block; }
+  .toc-item { justify-content: flex-start; }
 
-  /* 窄图标栏：常驻左侧 */
+  .toc-close { display: block; }
+
   .side-rail {
     display: flex;
     flex-direction: column;
     align-items: stretch;
     position: sticky;
-    top: 0;
+    top: 72px;
     align-self: start;
-    max-height: 100vh;
+    max-height: calc(100vh - 96px);
     overflow-y: auto;
   }
 
@@ -391,7 +423,7 @@ onMounted(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--sp-3) 0;
+    padding: var(--sp-2) 0;
     font-size: 1rem;
     line-height: 1;
     color: var(--ink);
@@ -401,9 +433,7 @@ onMounted(() => {
     cursor: pointer;
   }
 
-  .rail-toggle.open {
-    color: var(--vermilion);
-  }
+  .rail-toggle.open { color: var(--vermilion); }
 
   .rail-item {
     display: flex;
@@ -413,15 +443,13 @@ onMounted(() => {
     padding: var(--sp-2) 0;
     font-family: var(--font-serif-cn);
     font-size: 0.95rem;
-    color: var(--ink-2);
+    color: var(--ink);
     text-decoration: none;
     border-left: 2px solid transparent;
-    transition: all 0.15s;
+    transition: all var(--dur-1);
   }
 
-  .rail-item:hover {
-    color: var(--vermilion);
-  }
+  .rail-item:hover { color: var(--vermilion); }
 
   .rail-item.active {
     color: var(--vermilion);
@@ -431,25 +459,19 @@ onMounted(() => {
   .rail-count {
     font-family: var(--font-mono);
     font-size: 0.55rem;
-    color: var(--ink-3);
+    color: var(--ink-muted);
   }
 
   .side-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(26, 22, 18, 0.45);
+    background: rgba(33, 29, 23, 0.45);
     z-index: 99;
   }
 }
 
-/* 桌面端（≥901px）：隐藏窄图标栏与遮罩 */
-@media (min-width: 901px) {
-  .side-rail {
-    display: none;
-  }
-
-  .side-backdrop {
-    display: none;
-  }
+@media (min-width: 1101px) {
+  .side-rail { display: none; }
+  .side-backdrop { display: none; }
 }
 </style>

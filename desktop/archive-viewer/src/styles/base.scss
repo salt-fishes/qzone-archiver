@@ -20,6 +20,8 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  // sticky 报头之下的锚点跳转偏移
+  scroll-padding-top: 76px;
 }
 
 body {
@@ -94,12 +96,17 @@ a {
 .frame {
   max-width: 1400px;
   margin: 0 auto;
-  padding: var(--sp-7) var(--sp-7) var(--sp-9);
+  padding: var(--sp-4) var(--sp-4) var(--sp-9);
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: var(--sp-7);
+  // 卷目双宽（§4.2）：88px 常规 / 160px 宽屏
+  grid-template-columns: 88px 1fr;
+  gap: var(--sp-4);
+}
+
+@media (min-width: 1440px) {
+  .frame { grid-template-columns: 160px 1fr; }
 }
 
 .content { min-width: 0; }
@@ -311,11 +318,11 @@ a {
 }
 
 // 响应式
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .frame {
-    // 移动端：左侧 52px 窄图标栏 + 内容区（完整侧栏收纳为抽屉）
+    // 窄屏：左侧 52px 窄图标栏 + 内容区（完整卷目收纳为抽屉）
     grid-template-columns: 52px 1fr;
-    gap: var(--sp-4);
-    padding: var(--sp-4);
+    gap: var(--sp-3);
+    padding: var(--sp-3);
   }
 }
