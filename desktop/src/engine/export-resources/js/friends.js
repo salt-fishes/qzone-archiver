@@ -107,14 +107,16 @@ API.Friends.showTableList = function() {
         title: 'QQ昵称',
         align: 'center',
         formatter: (value, row) => {
-            return API.Common.formatContent(value, "HTML", false, false, false, false, true);
+            // v5.0 F5：昵称列 friendNick 等价取值（接口数据只有 nick，直接读 row.name 恒空）
+            return API.Common.formatContent(row.nick || value || row.nickname, "HTML", false, false, false, false, true);
         }
     }, {
         field: 'remark',
         title: 'QQ备注',
         align: 'center',
         formatter: (value, row) => {
-            return API.Common.formatContent(value || row.name, "HTML", false, false, false, false, true);
+            // v5.0 F5：备注空时回退昵称（nick 优先）
+            return API.Common.formatContent(value || row.nick || row.name || row.nickname, "HTML", false, false, false, false, true);
         }
     }, {
         field: 'groupName',

@@ -3,6 +3,14 @@
  */
 window.QZoneExporters = window.QZoneExporters || {};
 
+/**
+ * v5.0 F1：昵称统一取值（单一来源）。
+ * 接口默认返回 `nick`（friend_show_qqfriends / mfriend_list），`name`/`nickname` 是
+ * 历史别名——五处各读各的会形成"全链路错读"（friends-index 的 name 恒空即此）。
+ * 仅在本文件（引擎导出侧）定义；输出键名保持不变（SPA 索引仍叫 `name`）。
+ */
+const friendNick = (f) => (f && (f.nick || f.name || f.nickname)) || '';
+
 QZoneExporters.Friends = {
   /**
    * 导出好友到 SPA（迁移自 modules/friends.js exportToSpa）
@@ -39,7 +47,8 @@ QZoneExporters.Friends = {
             const timeStr = ts ? API.Utils.formatDate(ts) : '';
             return {
                 uin: f.uin || 0,
-                name: f.name || '',
+                // v5.0 F1：键名仍叫 name（预构建 SPA 按此键读取），取值改走 friendNick（nick 优先）
+                name: friendNick(f),
                 remark: f.remark || '',
                 groupName: f.groupName || '',
                 groupId: f.groupid || 0,
@@ -61,7 +70,9 @@ QZoneExporters.Friends = {
         for (const f of friends) {
             const groupName = f.groupName || '未分组';
             if (!groupMap.has(groupName)) groupMap.set(groupName, []);
-            groupMap.get(groupName).push(f);
+            // v5.0 F2：分组数据补 name 别名（只增，保留 nick/remark/searchField 等全量字段），
+            // 归档 SPA 详情页「昵称 · xxx」副行读 name，填上即生效、无需重建 SPA
+            groupMap.get(groupName).push({ ...f, name: friendNick(f) });
         }
         // 转为数组结构，保留分组顺序
         const groupData = Array.from(groupMap.entries()).map(([name, items]) => ({
@@ -135,7 +146,8 @@ QZoneExporters.Friends = {
     for (const [groupName, groupItems] of groupMaps) {
         contents.push('###### ' + groupName + "(" + groupItems.length + ")");
         for (const item of groupItems) {
-            let nickname = item.remark || item.name;
+            // v5.0 F5：备注优先，昵称列走 friendNick（原来只读 name → 恒空）
+            let nickname = item.remark || friendNick(item);
             // 备份/昵称
             contents.push('\r\n');
             contents.push('- {0}'.format(API.Common.getUserLink(item.uin, nickname, "MD")));
@@ -247,7 +259,7 @@ QZoneExporters.Friends = {
         // 行信息
         const rowData = [
             friend.uin,
-            friend.name,
+            friendNick(friend), // v5.0 F5：「QQ昵称」列走 friendNick（原来读 name → 恒空）
             friend.remark,
             friend.groupName,
             API.Friends.getShowCare(friend),

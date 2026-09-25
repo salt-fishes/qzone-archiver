@@ -25,21 +25,49 @@ const OPTIONS = [
 
 const manualUin = ref('');
 
+/** v5.2 N3：显示名 = 备注（昵称）——两者相同或昵称缺省时不重复展示 */
+function friendDisplayName(f: { remark?: string; nickname?: string }) {
+  const remark = f.remark || '';
+  const nick = f.nickname || '';
+  if (remark && nick && remark !== nick) return `${remark}（${nick}）`;
+  return remark || nick || '好友';
+}
+
 const friendOptions = computed(() =>
   target.friends.map((f) => ({
-    label: `${f.remark || f.nickname || '好友'}（${f.uin}）`,
+    label: `${friendDisplayName(f)}（${f.uin}）`,
+    name: friendDisplayName(f),
     value: f.uin,
     remark: f.remark,
     nickname: f.nickname,
+    searchField: f.searchField,
   }))
 );
+
+/**
+ * v5.2 N3：自定义过滤——NSelect 默认只匹配 label 文本，按昵称（尤其拼音/缩写）搜不到。
+ * 匹配范围：QQ 号 + label + 昵称 + 接口原生 searchField（"QQ号 备注 昵称 拼音 缩写"）。
+ */
+function filterFriendOption(pattern: string, option: SelectOption) {
+  const q = pattern.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [
+    String(option.value ?? ''),
+    String(option.label ?? ''),
+    String(option.nickname ?? ''),
+    String(option.searchField ?? ''),
+  ]
+    .join(' ')
+    .toLowerCase();
+  return hay.includes(q);
+}
 
 /**
  * 下拉选项里的昵称同样要把 `[em]e123[/em]` 渲染成图片（v4.7.5）：
  * NSelect 的 options.label 是纯字符串，必须用 render-label 才能塞组件。
  */
 function renderFriendLabel(option: SelectOption) {
-  const name = String(option.remark || option.nickname || '好友');
+  const name = String(option.name || option.remark || option.nickname || '好友');
   return [
     h(EmoticonText, { text: name, size: 15 }),
     h('span', { class: 'fo-uin' }, `（${String(option.value ?? '')}）`),
@@ -48,8 +76,8 @@ function renderFriendLabel(option: SelectOption) {
 
 const friendPlaceholder = computed(() =>
   target.friends.length
-    ? `或从好友列表选择（${target.friends.length} 位好友，备注 / 昵称 / QQ 号搜索）`
-    : '或从好友列表选择（备注 / 昵称 / QQ 号搜索）'
+    ? `或从好友列表选择（${target.friends.length} 位好友，备注 / 昵称 / QQ 号 / 拼音搜索）`
+    : '或从好友列表选择（备注 / 昵称 / QQ 号 / 拼音搜索）'
 );
 
 /** 显示中的目标 QQ 号（输入框 / 下拉选中同步） */
@@ -136,6 +164,7 @@ async function doValidate() {
             filterable
             clearable
             :options="friendOptions"
+            :filter="filterFriendOption"
             :loading="target.friendsLoading"
             :value="target.inputUin || null"
             :placeholder="friendPlaceholder"

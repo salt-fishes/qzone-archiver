@@ -11,8 +11,11 @@ export type TargetMode = 'self' | 'other';
 
 export type FriendItem = {
   uin: string;
+  /** v5.0 F1：接口返回 nick（orchestrator 已映射为 nickname，三个别名容错） */
   nickname?: string;
   remark?: string;
+  /** v5.0 F3：接口原生 searchField（"QQ号 备注 昵称 拼音 缩写"），选择器按此整串可搜 */
+  searchField?: string;
   avatar?: string;
 };
 
@@ -66,19 +69,8 @@ export const useTargetStore = defineStore('target', () => {
     }
   }
 
-  /** 好友下拉选项：备注/昵称 + QQ 号过滤 */
-  function filterFriends(query: string): FriendItem[] {
-    const q = query.trim().toLowerCase();
-    if (!q) return friends.value.slice(0, 50);
-    return friends.value
-      .filter(
-        (f) =>
-          f.uin.includes(q) ||
-          (f.nickname || '').toLowerCase().includes(q) ||
-          (f.remark || '').toLowerCase().includes(q)
-      )
-      .slice(0, 50);
-  }
+  // v5.0 F3：原 filterFriends（store 内过滤）是死代码——NSelect 自带过滤且只匹配
+  // label 文本，已删除；改为 TargetPicker 传自定义 :filter（走 searchField，含拼音/缩写）。
 
   /* -------- 目标校验 -------- */
 
@@ -160,7 +152,7 @@ export const useTargetStore = defineStore('target', () => {
   return {
     mode, inputUin, profile, validating, validateError,
     friends, friendsLoading, friendsLoaded, friendsError,
-    loadFriends, filterFriends, validate, setMode, pickFriend, reset,
+    loadFriends, validate, setMode, pickFriend, reset,
     effectiveUin, isOtherUser, isFriendUin,
   };
 });

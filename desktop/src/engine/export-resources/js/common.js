@@ -2611,6 +2611,7 @@ TPL.BLOGS_TYPE_LIST = `
 
 /**
  * 好友列表单个好友模板
+ * v5.0 F5：备注/昵称回退链含 nick（接口数据只有 nick，原 friend.name 恒空）
  */
 TPL.FRIENDS_LIST_ITEM = `
  <div class="list-group-item list-group-item-action mb-2">
@@ -2618,7 +2619,7 @@ TPL.FRIENDS_LIST_ITEM = `
         <a class="avatar" href="<%:=API.Common.getUserUrl(friend.uin)%>" target="_blank" title="访问TA的QQ空间">
             <img src="<%:=API.Common.getUserLogoLocalUrl(friend.uin, true)%>">
         </a>
-        <span title="备注/昵称" class="ml-2"><%:=API.Common.formatContent(friend.remark || friend.name, "HTML", false, false, false, false, true)%></span>
+        <span title="备注/昵称" class="ml-2"><%:=API.Common.formatContent(friend.remark || friend.nick || friend.name || friend.nickname, "HTML", false, false, false, false, true)%></span>
      </div>
      <ul class="list-inline">
         <li class="list-inline-item qq-message">

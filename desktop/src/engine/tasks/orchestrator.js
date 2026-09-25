@@ -313,8 +313,11 @@
             .filter((it) => it && it.uin)
             .map((it) => ({
               uin: String(it.uin),
-              nickname: it.nickname || '',
+              // v5.2 N1：接口返回 nick（从不返回 nickname）——三个别名容错，否则选择器昵称恒空
+              nickname: it.nick || it.nickname || it.name || '',
               remark: it.remark || '',
+              // v5.2 N3：接口已返回 searchField（"QQ号 备注 昵称 拼音 缩写"），供选择器整串可搜
+              searchField: it.searchField || '',
               avatar: it.avatar || (it.uin ? `https://q1.qlogo.cn/g?b=qq&nk=${it.uin}&s=40` : ''),
             }));
 

@@ -79,6 +79,8 @@ API.Friends.exportAllToFiles = QZoneExporters.Friends.exportAllToFiles;
  *
  * 索引字段：uin, name, remark, groupName, addFriendTime, intimacyScore,
  *           care, isFriend, deleted, hasAvatar
+ * v5.0 F1：name 的取值来自 friendNick（nick || name || nickname）——接口返回的字段
+ * 是 nick，键名保持 name 不变（预构建 SPA 按此键读取）。
  *
  * @param {Array} friends 好友列表
  */
