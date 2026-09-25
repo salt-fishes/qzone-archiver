@@ -4,38 +4,20 @@
     <h3 class="seg-title">{{ seg.label }}</h3>
     <span class="seg-count">{{ seg.count }} 条</span>
     <span class="seg-flex"></span>
-    <div class="seg-density" role="group" aria-label="阅读密度">
-      <button
-        type="button"
-        class="seg-density-btn"
-        :class="{ active: density === 'stream' }"
-        :disabled="!gridAvailable"
-        @click="set('stream')"
-      >流式</button>
-      <span class="seg-density-sep">／</span>
-      <button
-        type="button"
-        class="seg-density-btn"
-        :class="{ active: density === 'grid' }"
-        :disabled="!gridAvailable"
-        @click="set('grid')"
-      >网格</button>
-    </div>
+    <DensityToggle :grid-available="gridAvailable" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { useDensity } from '@/composables/useDensity'
-import { yearLabel } from '@/utils/yearLabel'
+import DensityToggle from './DensityToggle.vue'
 
-/** 分段头（§4.1）：sticky 悬停于报头之下；右侧密度切换 */
+/** 分段头（§4.1）：网格密度下 sticky 悬停；流式下为分组分隔行
+ *  （当前卷由 VirtualList 的常驻指示条负责） */
 defineProps<{
   seg: { id: string; label: string; count: number }
   /** 该列表是否支持网格密度（超长列表回退流式时置 false） */
   gridAvailable?: boolean
 }>()
-
-const { density, set } = useDensity()
 </script>
 
 <style scoped>
@@ -43,12 +25,17 @@ const { density, set } = useDensity()
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  position: sticky;
-  top: 0;
-  z-index: 5;
   padding: var(--sp-1) var(--sp-2);
   background: var(--paper-raised);
   border-bottom: var(--line-1);
+}
+
+/* 网格（非虚拟）模式下分段头 sticky 悬停于报头之下；
+   流式（虚拟滚动）行由 transform 定位，sticky 不生效，由常驻指示条接管 */
+:global(.vl-grid) .seg-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
 }
 
 .seg-mark {
@@ -73,36 +60,4 @@ const { density, set } = useDensity()
 }
 
 .seg-flex { flex: 1; }
-
-.seg-density {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--ink-muted);
-}
-
-.seg-density-btn {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.1em;
-  background: transparent;
-  border: none;
-  color: var(--ink-muted);
-  cursor: pointer;
-  padding: 2px 4px;
-  transition: color var(--dur-1) var(--ease-out);
-}
-
-.seg-density-btn:hover:not(:disabled) { color: var(--vermilion); }
-
-.seg-density-btn.active {
-  color: var(--ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-color: var(--vermilion);
-}
-
-.seg-density-btn:disabled { cursor: default; opacity: 0.5; }
 </style>

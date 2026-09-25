@@ -105,8 +105,8 @@ function handleClick() {
 <style scoped>
 /* Friend 模块的类型标签用靛蓝色背景，区分于视频 */
 .archive-entry :deep(.entry-type-tag) {
-  color: var(--paper);
-  background: var(--indigo);
+  color: var(--indigo);
+  background: rgba(61, 90, 128, 0.07);
   border-color: var(--indigo);
   padding: 1px 8px;
 }

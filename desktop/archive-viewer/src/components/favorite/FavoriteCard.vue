@@ -72,9 +72,9 @@ function handleClick() {
 <style scoped>
 /* Favorite 模块的类型标签采用深色背景样式（区别于其他模块的描边样式） */
 .archive-entry :deep(.entry-type-tag) {
-  color: var(--paper);
-  background: var(--ink-2);
-  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border-color: var(--ink-muted);
   padding: 1px 8px;
 }
 

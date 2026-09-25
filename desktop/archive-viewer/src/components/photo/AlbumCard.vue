@@ -115,9 +115,9 @@ function handleClick() {
 <style scoped>
 /* Photo 模块的类型标签用深色背景（与 Video 保持一致） */
 .archive-entry :deep(.entry-type-tag) {
-  color: var(--paper);
-  background: var(--ink-2);
-  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border-color: var(--ink-muted);
   padding: 1px 8px;
 }
 

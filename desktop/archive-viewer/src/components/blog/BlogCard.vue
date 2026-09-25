@@ -67,9 +67,9 @@ function handleClick() {
 <style scoped>
 /* Blog 模块的类型标签：朱砂色填充，区别于视频的深色填充 */
 .archive-entry :deep(.entry-type-tag) {
-  color: var(--paper);
-  background: var(--vermilion);
-  border-color: var(--vermilion);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border-color: var(--ink-muted);
   padding: 1px 8px;
 }
 

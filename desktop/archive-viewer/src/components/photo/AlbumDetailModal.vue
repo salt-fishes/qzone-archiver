@@ -566,11 +566,16 @@ watch([visible, () => photoList.value.length], ([v]) => {
   transition: all 0.15s;
 }
 
-.detail-action:hover,
-.detail-action.active {
-  background: var(--vermilion);
+.detail-action:hover {
+  background: rgba(181, 67, 42, 0.08);
   border-color: var(--vermilion);
-  color: var(--paper);
+  color: var(--vermilion);
+}
+
+.detail-action.active {
+  border-color: var(--vermilion);
+  color: var(--vermilion);
+  background: rgba(181, 67, 42, 0.06);
 }
 
 .action-icon {
