@@ -150,7 +150,11 @@ describe('v5.0 日志分天与清理', () => {
 
   it('cleanup 删除超期应用日志与任务日志，任务日志超量删最旧', () => {
     silenceConsole();
-    const dir = logger.dir;
+    // 独立目录：此前与前面用例共用 tmpGlobal/logs，遗留的 backup-*（d1/rot 等
+    // mtime=数秒前）会挤进「保留 20 个」的竞争，使断言依赖执行顺序（v5.3 CI 修复）
+    const dir = path.join(tmpGlobal, 'cleanup-' + Date.now());
+    fs.mkdirSync(dir, { recursive: true });
+    logger._dir = dir;
     const old = Date.now() - 20 * 24 * 60 * 60 * 1000; // 20 天前
     // 超期应用日志（文件名日期在保留期外）
     fs.writeFileSync(path.join(dir, 'main-2020-01-01.log'), 'old');
@@ -162,14 +166,18 @@ describe('v5.0 日志分天与清理', () => {
     const utimes = new Date(old);
     fs.utimesSync(oldTask, utimes, utimes);
     // 22 个新鲜任务日志 → 超量 2 个删最旧
+    // ⚠️ 每个文件显式设递增 mtime：同毫秒批量写入时 Linux（ext4/CI）mtime 粒度
+    // 不足以区分先后，cleanup 的「mtime 降序保留 20 个」会变成字典序不定——
+    // Windows NTFS 100ns 精度侥幸通过，CI 稳定失败（v5.3 装机修复）
     const fresh = [];
+    const nowMs = Date.now();
     for (let i = 0; i < 22; i++) {
       const f = path.join(dir, `backup-task-keep-${String(i).padStart(2, '0')}.log`);
       fs.writeFileSync(f, 'x');
       fresh.push(f);
+      const t = new Date(nowMs - (22 - i) * 60_000); // keep-00 最新，keep-21 最旧
+      fs.utimesSync(f, t, t);
     }
-    const t = new Date();
-    fs.utimesSync(fresh[0], t, t);
 
     logger.sessionStart();
 
