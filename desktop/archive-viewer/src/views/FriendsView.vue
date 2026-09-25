@@ -41,6 +41,8 @@
         ref="listRef"
         :items="results"
         :key-of="(it: FriendIndex) => String(it.uin)"
+        :segment-of="groupSegment"
+        :grid-available="results.length <= 800"
         list-class="friend-list"
       >
         <template #default="{ item }">
@@ -95,6 +97,10 @@ const friendsStore = useFriendsStore()
 const query = ref('')
 
 const listRef = ref<InstanceType<typeof VirtualList> | null>(null)
+
+// 分组分段（V1 阅读型骨架 §4.1）：相邻同组好友归段，段首注入 sticky 分段头，
+// 分组名即卷记（含密度切换入口）
+const groupSegment = (it: FriendIndex) => it.groupName || '(未分组)'
 
 // 详情模态状态
 const detailVisible = ref(false)
