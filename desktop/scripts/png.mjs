@@ -165,10 +165,23 @@ export function resizeBilinear(img, targetW, targetH) {
 /**
  * §F：Win11 图标圆角分档——<32px→2px、32px→4px、>32px→8px（用户拍板，非单一比例）。
  * Windows 的做法是同一张图在不同尺寸下圆角半径不同，故按输出尺寸查表。
+ * 仅用于**界面内元素**；启动器/窗口图标走下面的 launcherRadius（按比例）。
  * @param {number} size 输出图标的边长（px）
  */
 export function radiusForSize(size) {
   return size < 32 ? 2 : size === 32 ? 4 : 8;
+}
+
+/**
+ * v5.0 §F：启动器/窗口图标圆角半径——按输出尺寸**成比例**（2026-09-19 拍板 15%）。
+ * 根因回顾（v4.9 §F 返工）：绝对像素分档（8px）在 256px 图标上只占 2.7% 边长，
+ * 肉眼等同直角；且圆角若在源图阶段施加再缩放会被摊薄。
+ * 正确顺序：**先缩放到目标尺寸，再按该尺寸的 15% 施加圆角**。
+ * @param {number} size 输出图标的边长（px）
+ */
+export const RADIUS_RATIO = 0.15;
+export function launcherRadius(size) {
+  return Math.max(2, Math.round(size * RADIUS_RATIO));
 }
 
 /**
