@@ -4,7 +4,7 @@
  * 操作：浏览（viewer）/ 打开文件夹 / 压缩
  * §C：分组名不再拼「好友」、标签按事实显示（好友 / 他人空间）
  */
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, h as createVNode } from 'vue';
 import { useRouter } from 'vue-router';
 import { NButton, NTag, NEmpty, NPopconfirm, useMessage } from 'naive-ui';
 import { MODULE_META } from '../stores/config';
@@ -26,7 +26,7 @@ type HistoryEntry = {
   files: number;
   errors?: unknown[];
   target?: { uin: string; nickname?: string };
-  /** v4.9.1：目标目录是否仍存在（加载时由主进程检查） */
+  /** v5.0：目标目录是否仍存在（加载时由主进程检查） */
   exists?: boolean;
 };
 
@@ -86,16 +86,33 @@ async function zip(h: HistoryEntry) {
   zipping.value = h.targetDir;
   try {
     const dest = `${h.targetDir.replace(/[\\/]+$/, '')}.zip`;
-    await window.api.zip.create(h.targetDir, dest);
-    message.success(`已压缩：${dest}`);
+    const r = await window.api.zip.create(h.targetDir, dest);
+    // v5.0 Z：IPC 把失败编码进 {ok:false} 而不 throw，必须校验返回值
+    if (!r?.ok) throw new Error(r?.error || '压缩失败');
+    message.success(
+      () =>
+        createVNode(
+          'span',
+          { style: 'display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap' },
+          [
+            `已压缩：${dest}`,
+            createVNode(
+              NButton,
+              { size: 'tiny', quaternary: true, type: 'primary', onClick: () => window.api.fs.showInFolder(dest) },
+              { default: () => '打开所在文件夹' },
+            ),
+          ],
+        ),
+      { duration: 6000 },
+    );
   } catch (e: any) {
-    message.error(`压缩失败：${e?.message || e}`);
+    message.error(`压缩失败：${e?.message || e}`, { duration: 8000 });
   } finally {
     zipping.value = null;
   }
 }
 
-/** v4.9.1：删除一条备份历史记录（只删记录不动文件；列表经 history-changed 自动刷新） */
+/** v5.0：删除一条备份历史记录（只删记录不动文件；列表经 history-changed 自动刷新） */
 async function removeHistory(h: HistoryEntry) {
   const r = await window.api.backup.deleteHistory(String(h.taskId || ''));
   if (!r?.ok) message.error(r?.error || '删除失败');

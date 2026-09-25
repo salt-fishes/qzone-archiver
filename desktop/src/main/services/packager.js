@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { sendToUi } from './engine-bridge.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
+import { logger } from './logger.js';
 
 function sendProgress(percent, current) {
   sendToUi(PushChannels.zipProgress, { percent, current });
@@ -22,7 +23,13 @@ export const packager = {
   async createZip({ srcDir, destPath, baseName }) {
     const root = path.resolve(srcDir);
     if (!fs.existsSync(root)) {
+      logger.warn(`[zip] 源目录不存在: ${srcDir}`);
       throw new Error(`源目录不存在: ${srcDir}`);
+    }
+    // 目标已存在 → 直接报错让用户处理（不覆盖、不自动加序号；2026-09-19 拍板）
+    if (fs.existsSync(destPath)) {
+      logger.warn(`[zip] 目标已存在，拒绝覆盖: ${destPath}`);
+      throw new Error(`目标已存在：${destPath}，请先处理该文件`);
     }
     fs.mkdirSync(path.dirname(path.resolve(destPath)), { recursive: true });
 
@@ -58,6 +65,14 @@ export const packager = {
 
       output.on('close', () => {
         sendProgress(100, archive.pointer());
+        // 完成后核验产物：文件必须真实落地且非空（防 close/finish 竞态假成功）
+        try {
+          const st = fs.statSync(destPath);
+          if (!st.size) throw new Error('压缩产物为空文件');
+        } catch (e) {
+          reject(new Error(`压缩产物未落地: ${destPath}（${e.message}）`));
+          return;
+        }
         resolve({ path: destPath, bytes: archive.pointer(), files });
       });
       archive.on('error', (err) => reject(err));
