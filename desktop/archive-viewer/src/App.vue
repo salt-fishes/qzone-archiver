@@ -4,13 +4,18 @@
     <RouterView />
   </template>
 
-  <!-- 常规布局：顶栏 + 左侧导航 + 内容 -->
+  <!-- 常规布局：报头 + 卷目 + 内容 -->
   <template v-else>
     <Masthead />
     <div class="frame">
       <SideBar />
       <main class="content">
-        <RouterView />
+        <RouterView v-slot="{ Component }">
+          <!-- 路由切换：交叉淡入淡出（§3.1，整页扫版转场明确不做） -->
+          <Transition name="route" mode="out-in">
+            <component :is="Component" />
+          </Transition>
+        </RouterView>
       </main>
     </div>
   </template>
@@ -35,4 +40,21 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 路由交叉淡入淡出（--dur-2） */
+.route-enter-active,
+.route-leave-active {
+  transition: opacity var(--dur-2) var(--ease-out);
+}
+
+.route-enter-from,
+.route-leave-to {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-enter-active,
+  .route-leave-active {
+    transition: none;
+  }
+}
 </style>

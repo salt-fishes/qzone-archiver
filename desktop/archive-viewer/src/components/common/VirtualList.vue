@@ -1,59 +1,62 @@
 <template>
   <!-- 网格密度：非虚拟化的 CSS Grid（仅当条目数在阈值内），分段头通栏 -->
-  <div v-if="useGrid" :class="['vl-grid', listClass]">
-    <template v-for="(row, i) in rows" :key="row.__key">
+  <div ref="rootWrap" class="vl-wrap">
+    <span v-if="sweepOn" class="vl-sweep-line" aria-hidden="true"></span>
+    <span v-if="sweepOn" class="vl-sweep-bar" aria-hidden="true"></span>
+    <div v-if="useGrid" :class="['vl-grid', listClass]">
+      <template v-for="(row, i) in rows" :key="row.__key">
+        <SegmentHeader
+          v-if="row.__seg"
+          class="vl-grid-seg"
+          :seg="row.__seg"
+          :grid-available="gridAvailable"
+        />
+        <div v-else class="vl-grid-cell" :data-vl-orig="row.__orig">
+          <slot :item="row" />
+        </div>
+      </template>
+    </div>
+
+    <DynamicScroller
+      ref="scrollerRef"
+      :class="listClass"
+      :style="{ height: '100%' }"
+      :items="rows"
+      :min-item-size="minItemSize"
+      key-field="__key"
+      :buffer="buffer"
+      v-slot="{ item, active }"
+    >
       <SegmentHeader
-        v-if="row.__seg"
-        class="vl-grid-seg"
-        :seg="row.__seg"
+        v-if="item.__seg"
+        :seg="item.__seg"
         :grid-available="gridAvailable"
       />
-      <div v-else class="vl-grid-cell" :data-vl-orig="row.__orig">
-        <slot :item="row" />
-      </div>
-    </template>
+      <DynamicScrollerItem
+        v-else
+        class="archive-item-wrap"
+        :item="item"
+        :active="active"
+        :data-index="item.__key"
+      >
+        <!--
+          默认插槽接收当前项，由调用方决定渲染哪个 Card 组件
+          item 已注入 __key 字段，原数据字段保持不变
+        -->
+        <slot :item="item" />
+      </DynamicScrollerItem>
+    </DynamicScroller>
   </div>
-
-  <!-- 流式密度：虚拟滚动，年代分段行注入为特殊行，sticky 悬停 -->
-  <DynamicScroller
-    v-else
-    ref="scrollerRef"
-    :class="listClass"
-    :style="{ height: listHeight, minHeight: '360px' }"
-    :items="rows"
-    :min-item-size="minItemSize"
-    key-field="__key"
-    :buffer="buffer"
-    v-slot="{ item, active }"
-  >
-    <SegmentHeader
-      v-if="item.__seg"
-      :seg="item.__seg"
-      :grid-available="gridAvailable"
-      :style="{ '--vss-min-item-size': `${SEG_MIN_SIZE}px` }"
-    />
-    <DynamicScrollerItem
-      v-else
-      class="archive-item-wrap"
-      :item="item"
-      :active="active"
-      :data-index="item.__key"
-    >
-      <!--
-        默认插槽接收当前项，由调用方决定渲染哪个 Card 组件
-        item 已注入 __key 字段，原数据字段保持不变
-      -->
-      <slot :item="item" />
-    </DynamicScrollerItem>
-  </DynamicScroller>
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
+import { animate, stagger as animeStagger, utils } from 'animejs'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
 import SegmentHeader from './SegmentHeader.vue'
 import { useDensity } from '@/composables/useDensity'
+import { useMotion } from '@/composables/useMotion'
 import { yearLabel } from '@/utils/yearLabel'
 
 /**
@@ -99,6 +102,54 @@ const SEG_MIN_SIZE = 44
 
 const scrollerRef = ref<any>(null)
 const { density } = useDensity()
+const { reduced, dur, stagger, ease } = useMotion()
+
+/* ===== 细条划卡入场（§3.1②，一次性） =====
+   3px 墨线先 scaleX 划出，朱砂条沿线扫过，卡片在条尾依次落位。
+   仅首屏可见行参与（虚拟滚动行会被复用，不做滚动重播）。 */
+const sweepOn = ref(reduced.value === false)
+
+function playEntrance(): void {
+  if (reduced.value) return
+  const wrap = rootWrap.value
+  if (!wrap) return
+  const line = wrap.querySelector<HTMLElement>('.vl-sweep-line')
+  const bar = wrap.querySelector<HTMLElement>('.vl-sweep-bar')
+  const cells = wrap.querySelectorAll<HTMLElement>(
+    useGrid.value ? '.vl-grid-cell' : '.archive-item-wrap'
+  )
+  const cards = Array.from(cells).slice(0, 24) // 首屏入场只编排前 24 卡
+  if (!line || !bar || cards.length === 0) return
+  if (!cards.some(c => !c.dataset.vlEntered)) return // 二次挂载（密度切换回头）不重播
+  cards.forEach(c => { c.dataset.vlEntered = '1' })
+
+  const lineDur = dur('dur-4')
+  const cardDur = dur('dur-3')
+  const step = stagger()
+
+  utils.set(cards, { opacity: 0, translateY: 12 })
+  animate(line, { scaleX: [0, 1], duration: lineDur, ease: ease('sweep') })
+  animate(bar, {
+    translateX: ['-6%', '106%'],
+    duration: lineDur,
+    ease: ease('sweep'),
+  })
+  animate(cards, {
+    opacity: [0, 1],
+    translateY: [12, 0],
+    duration: cardDur,
+    delay: animeStagger(step, { start: lineDur * 0.6 }),
+    ease: ease('out'),
+  })
+}
+
+const rootWrap = ref<HTMLElement | null>(null)
+
+onMounted(async () => {
+  await nextTick()
+  await new Promise(r => requestAnimationFrame(() => r(null)))
+  playEntrance()
+})
 
 interface SegRow { __key: string; __seg: { id: string; label: string; count: number } }
 type Row = (any & { __key: string; __orig: number }) | SegRow
@@ -185,6 +236,48 @@ defineExpose({ scrollToItem })
 /* 分段头行在虚拟列表内最小高度提示（DynamicScroller 估算用） */
 .archive-list :deep(.seg-head) {
   min-height: 44px;
+}
+
+/* ===== 细条划卡扫版线（§3.1②） ===== */
+.vl-wrap {
+  position: relative;
+  height: calc(100vh - 320px);
+  min-height: 360px;
+}
+
+.vl-sweep-line {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.vl-sweep-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12%;
+  height: 3px;
+  background: var(--vermilion);
+  transform: translateX(-6%);
+  z-index: 7;
+  pointer-events: none;
+}
+
+/* wrapper 承担高度，内部容器占满 */
+.archive-list {
+  height: 100% !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vl-sweep-line,
+  .vl-sweep-bar { display: none; }
 }
 
 /* 网格密度（§4.2）：分段头通栏，卡片 2~3 列随宽度自适应 */

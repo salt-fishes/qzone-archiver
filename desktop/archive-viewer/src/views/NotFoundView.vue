@@ -2,7 +2,7 @@
   <section class="not-found">
     <div class="section-head">
       <span class="section-num">404</span>
-      <h2 class="section-title">未找到档案</h2>
+      <h2 class="section-title"><WipeTitle>未找到档案</WipeTitle></h2>
       <span class="section-meta">Not Found</span>
     </div>
 
@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import WipeTitle from '@/components/common/WipeTitle.vue'
 </script>
 
 <style scoped>

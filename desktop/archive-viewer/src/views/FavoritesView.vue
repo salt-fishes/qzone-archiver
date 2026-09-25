@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 11</span>
-      <h2 class="section-title">收藏 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>收藏 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -70,6 +70,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoritesStore } from '@/stores/favorites'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import FavoriteCard from '@/components/favorite/FavoriteCard.vue'
 import FavoriteDetailModal from '@/components/favorite/FavoriteDetailModal.vue'
 import { stripFormatting } from '@/utils/formatContent'

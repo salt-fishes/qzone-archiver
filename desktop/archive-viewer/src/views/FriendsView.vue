@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 08</span>
-      <h2 class="section-title">好友 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>好友 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -82,6 +82,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFriendsStore } from '@/stores/friends'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import FriendCard from '@/components/friend/FriendCard.vue'
 import FriendDetailModal from '@/components/friend/FriendDetailModal.vue'
 import type { Friend, FriendIndex } from '@/types'

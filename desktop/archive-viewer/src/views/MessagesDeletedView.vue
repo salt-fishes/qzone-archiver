@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 01′</span>
-      <h2 class="section-title">说说 · 已删除</h2>
+      <h2 class="section-title"><WipeTitle>说说 · 已删除</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -81,6 +81,7 @@ import { storeToRefs } from 'pinia'
 import { useMessagesStore } from '@/stores/messages'
 import { useFlexSearch } from '@/composables/useFlexSearch'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import MessageCard from '@/components/message/MessageCard.vue'
 import MessageDetailModal from '@/components/message/MessageDetailModal.vue'
 import type { DeletedMessage, MessageIndex } from '@/types'

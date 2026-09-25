@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 04</span>
-      <h2 class="section-title">相册 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>相册 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -68,6 +68,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { usePhotosStore } from '@/stores/photos'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import AlbumCard from '@/components/photo/AlbumCard.vue'
 import AlbumDetailModal from '@/components/photo/AlbumDetailModal.vue'
 import { stripFormatting } from '@/utils/formatContent'

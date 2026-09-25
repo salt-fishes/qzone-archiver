@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 06</span>
-      <h2 class="section-title">留言 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>留言 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -76,6 +76,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBoardsStore } from '@/stores/boards'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import BoardCard from '@/components/board/BoardCard.vue'
 import BoardDetailModal from '@/components/board/BoardDetailModal.vue'
 import { stripFormatting, resolveModulePath } from '@/utils/formatContent'

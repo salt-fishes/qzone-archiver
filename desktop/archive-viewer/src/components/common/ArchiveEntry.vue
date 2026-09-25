@@ -84,7 +84,24 @@ function handleClick() {
   padding: var(--sp-4) var(--sp-3);
   border-bottom: var(--rule-dot);
   position: relative;
-  transition: background 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
+  transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out),
+    box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+}
+
+/* 标题墨线：自左划入（§3.1 悬停），置于卡顶 */
+.archive-entry::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--dur-1) var(--ease-out);
+  pointer-events: none;
+  z-index: 1;
 }
 
 .archive-entry.clickable {
@@ -92,11 +109,28 @@ function handleClick() {
 }
 
 .archive-entry.clickable:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--paper-raised);
+  transform: translateY(-2px);
+  border-color: rgba(33, 29, 23, 0.3);
+  box-shadow: var(--shadow-raise);
+}
+
+.archive-entry.clickable:hover::before {
+  transform: scaleX(1);
+}
+
+.archive-entry.clickable:active {
+  transform: translateY(1px);
+  box-shadow: none;
 }
 
 .archive-entry.clickable:hover .entry-date::after {
   background: var(--vermilion);
+}
+
+.archive-entry.clickable:focus-visible {
+  outline: 2px solid var(--vermilion);
+  outline-offset: 2px;
 }
 
 .entry-date {

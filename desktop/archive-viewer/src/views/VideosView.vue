@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 05</span>
-      <h2 class="section-title">视频 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>视频 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -75,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useVideosStore } from '@/stores/videos'

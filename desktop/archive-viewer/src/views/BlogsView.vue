@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 02</span>
-      <h2 class="section-title">日志 · 档案</h2>
+      <h2 class="section-title"><WipeTitle>日志 · 档案</WipeTitle></h2>
       <span class="section-meta">{{ headMeta }}</span>
     </div>
 
@@ -70,6 +70,7 @@ import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useBlogsStore } from '@/stores/blogs'
 import VirtualList from '@/components/common/VirtualList.vue'
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import BlogCard from '@/components/blog/BlogCard.vue'
 import BlogDetailModal from '@/components/blog/BlogDetailModal.vue'
 import { stripFormatting } from '@/utils/formatContent'

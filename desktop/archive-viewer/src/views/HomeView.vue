@@ -3,7 +3,7 @@
     <!-- 章节标题 -->
     <div class="section-head">
       <span class="section-num">§ 01</span>
-      <h2 class="section-title">个人中心</h2>
+      <h2 class="section-title"><WipeTitle>个人中心</WipeTitle></h2>
       <span class="section-meta">{{ userStore.isReady ? '已就绪' : '加载中…' }}</span>
     </div>
 
@@ -39,7 +39,7 @@
     <!-- 档案起点：第一条说说 -->
     <div class="section-head" v-if="userStore.isReady">
       <span class="section-num">§ 02</span>
-      <h2 class="section-title">档案起点</h2>
+      <h2 class="section-title"><WipeTitle>档案起点</WipeTitle></h2>
       <span class="section-meta">第一条说说</span>
     </div>
 
@@ -75,7 +75,7 @@
     <!-- 入口提示 -->
     <div class="section-head" v-if="userStore.isReady">
       <span class="section-num">§ 03</span>
-      <h2 class="section-title">入口</h2>
+      <h2 class="section-title"><WipeTitle>入口</WipeTitle></h2>
       <span class="section-meta">Modules</span>
     </div>
 
@@ -102,6 +102,7 @@
 </template>
 
 <script setup lang="ts">
+import WipeTitle from '@/components/common/WipeTitle.vue'
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useMessagesStore } from '@/stores/messages'
