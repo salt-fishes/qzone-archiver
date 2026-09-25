@@ -366,7 +366,10 @@
         try {
           if (API && API.Utils && API.Utils.initGtk) API.Utils.initGtk();
         } catch (_) { /* ignore */ }
-        const data = await API.Friends.getQZoneUserInfo();
+        const raw = await API.Friends.getQZoneUserInfo();
+        // v5.0：同 getLoginStatus——Utils.get 返回的是 JSONP 文本，先解析再取字段；
+        // 原实现对字符串取 .code/.nickname 恒为空 → 资料卡昵称永远回退 QQ 号、notice 常驻
+        const data = typeof raw === 'string' ? API.Utils.toJson(raw, /^_Callback\(/) : raw;
         const d = data && (data.data || data);
         const info = d && (d.userinfo || d.UserInfo || d);
         // §G：判定口径透明化——返回原始 code 供 UI 区分提示
@@ -439,7 +442,11 @@
         // UI 侧保留上一次的本人昵称/头像（推送过滤 undefined，不会清空）
         if (!targetUin || String(targetUin) === ownerUin) {
           try {
-            const data = await API.Common.getUserInfos();
+            const raw = await API.Common.getUserInfos();
+            // v5.0：Utils.get 统一按文本返回（dataType:'text'，JSONP/JSON 字符串），
+            // 必须先解析——原实现直接对字符串取 .data/.nickname 恒为 undefined，
+            // 昵称永远为空 → 重试 8 次全空 → UI 永远回退 QQ 号（2026-09-22 装机发现）
+            const data = typeof raw === 'string' ? API.Utils.toJson(raw, /^_Callback\(/) : raw;
             const d = data && (data.data || data);
             info = d && (d.userinfo || d.UserInfo || d);
           } catch (e) {
