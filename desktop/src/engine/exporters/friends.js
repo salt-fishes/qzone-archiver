@@ -58,6 +58,10 @@ QZoneExporters.Friends = {
                 care: !!f.care,
                 isFriend: f.isFriend !== false,
                 deleted: !!f.deleted,
+                // hasAvatar 语义：采集期已入队头像下载任务（custom_avatar 指向
+                // Common/images/{uin}）。文件是否真实落盘由备份收尾的下载队列
+                // 排空等待（downloadManager.waitIdle）保证；个别终态失败的任务
+                // 文件仍可能缺失——SPA 端按 本地→在线 qlogo→占位字 三级兜底
                 hasAvatar: !!f.custom_avatar || !!f.avatar
             };
         });

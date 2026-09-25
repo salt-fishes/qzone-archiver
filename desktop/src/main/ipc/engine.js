@@ -221,10 +221,17 @@ export function registerEngineIpc() {
             const ensureAvatar = targetUin
               ? avatarStore.ensure(targetUin).catch(() => false)
               : Promise.resolve(false);
+            // v5.2 兜底：宣告完成前等下载队列收尾——头像等尾部媒体落盘后再进完成页，
+            // 避免用户立刻打包/关机导致归档缺文件（hasAvatar:true 却无文件）
+            const drainDownloads = downloadManager.waitIdle().catch((e) => {
+              logger.warn(`[download-manager] waitIdle 异常，跳过收尾等待：${e && e.message}`);
+              return false;
+            });
             // v5.0 修复：backup:completed 推送移到 recordBackup **之后**，并携带
             // 本次备份的完整记录。此前先推 completed、渲染层再回查历史，
             // 拿到的是【上一次】备份的记录 —— 完成页显示上一次备份的数据。
             ensureAvatar
+              .then(() => drainDownloads)
               .then(() =>
                 backupStats.recordBackup({
                   taskId: data.taskId || active?.taskId,

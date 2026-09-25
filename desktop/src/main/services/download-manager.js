@@ -233,6 +233,42 @@ export const downloadManager = {
     }
   },
 
+  /**
+   * 等待当前任务的下载队列排空（备份完成前的兜底，v5.2）。
+   *
+   * 背景：媒体/头像是采集期 fire-and-forget 入队的，引擎模块跑完就推
+   * backup:completed —— 用户在完成页立刻打包 ZIP 或关机时，尾部小文件
+   * （好友头像等）可能还没落盘，归档里 hasAvatar:true 却没有文件。
+   *
+   * 行为：
+   * - 只等 pending/running 归零（done/failed/skipped 均为终态）
+   * - 超时保底（默认 120s）：个别死链的重试不能无限拖住完成页
+   * - 用户暂停态立即返回（completed 不会在暂停态触发，防御性处理）
+   *
+   * @returns {Promise<boolean>} true=队列已排空；false=超时/暂停退出
+   */
+  async waitIdle(timeoutMs = 120_000) {
+    const startedAt = Date.now();
+    let announced = false;
+    while (Date.now() - startedAt < timeoutMs) {
+      // 用户主动暂停：completed 流程不会在暂停态触发，避免死等
+      if (pausedTaskId && pausedTaskId === pauseKey()) return false;
+      const left = queue.filter((q) => q.state === 'pending' || q.state === 'running');
+      if (left.length === 0) {
+        if (announced) downloadLog('info', '下载队列已收尾，全部媒体/头像落盘完成');
+        return true;
+      }
+      if (!announced) {
+        announced = true;
+        downloadLog('info', `备份收尾：等待下载队列落盘（剩余 ${left.length} 项，上限 ${Math.round(timeoutMs / 1000)}s）…`);
+      }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    const left = queue.filter((q) => q.state === 'pending' || q.state === 'running').length;
+    downloadLog('warn', `下载收尾等待超时（${Math.round(timeoutMs / 1000)}s），仍有 ${left} 项未落盘，备份继续完成（缺失文件可增量补采）`);
+    return false;
+  },
+
   async enqueue(task) {
     const active = getActiveTaskContext();
     const record = {
