@@ -138,10 +138,12 @@ const subEntries = computed<SubEntry[]>(() => {
         count: album.photoCount,
       }))
     case '/friends':
-      return Object.entries(friendsStore.groupLists).map(([groupName, items]) => ({
+      // groupLists 是 [组名, 好友数组][] 二元组数组——
+      // 不能用 Object.entries 展开（组名会变成数组下标 0/1/2，计数恒为 2）
+      return friendsStore.groupLists.map(([groupName, items]) => ({
         to: `/friends?group=${encodeURIComponent(groupName)}`,
         label: groupName,
-        count: (items as any[]).length,
+        count: items.length,
       }))
     default: return []
   }
