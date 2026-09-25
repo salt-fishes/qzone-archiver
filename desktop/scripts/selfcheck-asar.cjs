@@ -35,9 +35,11 @@ const nAssets = list.filter((l) => /assets\/emoticons/.test(l)).length;
 const nDist = list.filter((l) => /dist\/emoticons/.test(l)).length;
 results.push([`assets/emoticons(${nAssets}) 与 dist/emoticons(${nDist}) 条目一致`, nAssets === nDist && nAssets > 0]);
 
-// 4. asar 内版本号 5.0.0
+// 4. asar 内版本号 = desktop/package.json（发版同步的单一来源）
 const pkg = JSON.parse(ex('package.json'));
-results.push([`asar 内 package.json 版本 = ${pkg.version}`, pkg.version === '5.0.0']);
+const path = require('path');
+const expectedVersion = JSON.parse(require('fs').readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).version;
+results.push([`asar 内 package.json 版本 = ${pkg.version}（期望 ${expectedVersion}）`, pkg.version === expectedVersion]);
 
 // 5. 好友字段修复已进包
 const orch = ex('src/engine/tasks/orchestrator.js');
