@@ -127,7 +127,7 @@ const STEPS = [
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: linear-gradient(145deg, #b45f3d, #994f31);
+  background: linear-gradient(145deg, #b5432a, #96381f);
   color: #fff;
   font-size: 24px;
   font-weight: 600;
@@ -162,7 +162,7 @@ const STEPS = [
   height: 36px;
   border-radius: 10px;
   background: rgba(180, 95, 61, 0.12);
-  color: #b45f3d;
+  color: #b5432a;
   flex-shrink: 0;
 }
 .step-no svg {

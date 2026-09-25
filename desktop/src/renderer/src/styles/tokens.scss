@@ -4,27 +4,50 @@
  */
 
 :root {
-  --app-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei',
-    'Helvetica Neue', Arial, sans-serif;
-  --mono-font: Consolas, 'JetBrains Mono', Menlo, monospace;
+  /* v5.2「时光档案」令牌（与 archive-viewer tokens.scss / design-system-preview 同源） */
+  --paper: #f6f1e7;
+  --paper-raised: #fdf9ef;
+  --ink: #211d17;
+  --ink-muted: #8a8172;
+  --line: #d8cfbc;
+  --vermilion: #b5432a;
+  --indigo: #3d5a80;
+  --moss: #6b7f5c;
+  --gold: #c9a227;
+
+  --app-font: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
+  --mono-font: 'JetBrains Mono', Consolas, 'SF Mono', monospace;
 
   --sidebar-w: 208px;
   --header-h: 56px;
 
-  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --dur-fast: 150ms;
-  --dur-mid: 260ms;
+  /* 动效令牌（§2.4）——与 SPA 端一致 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-sweep: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 120ms;  /* --dur-1 悬停/按下 */
+  --dur-mid: 240ms;   /* --dur-2 弹窗/过渡 */
+  --dur-3: 320ms;
+  --dur-4: 560ms;
+  --stagger-step: 60ms;
 
   /* 自定义面板表面色（随主题切换；html.dark 由 appearance store 切换） */
-  --surface: #ffffff;
-  --surface-border: rgba(0, 0, 0, 0.1);
-  --surface-soft: #f6f4f1;
+  --surface: var(--paper-raised);
+  --surface-border: rgba(33, 29, 23, 0.16);
+  --surface-soft: var(--paper);
+  --accent: var(--vermilion);
 }
 
+/* 深色仅桌面端：夜墨令牌组（§2.1） */
 html.dark {
-  --surface: #1b1b20;
-  --surface-border: rgba(255, 255, 255, 0.13);
-  --surface-soft: #16161a;
+  --paper: #17140f;
+  --paper-raised: #201c15;
+  --ink: #e9e2d3;
+  --ink-muted: #8a8172;
+  --line: #3d372c;
+  --gold: #e3b34c;
+  --surface: var(--paper-raised);
+  --surface-border: rgba(233, 226, 211, 0.14);
+  --surface-soft: var(--paper);
 }
 
 * {

@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
   animation: blob-drift var(--dur, 30s) ease-in-out infinite alternate;
 }
 .blob-a {
-  background: #b45f3d; /* 品牌暖陶 */
+  background: #b5432a; /* 品牌暖陶 */
 }
 .blob-b {
   width: 340px;

@@ -329,9 +329,9 @@ function selectNone() {
   border-color: rgba(180, 95, 61, 0.5);
 }
 .cpm-btn.active {
-  border-color: #b45f3d;
+  border-color: #b5432a;
   background: rgba(180, 95, 61, 0.13);
-  color: #b45f3d;
+  color: #b5432a;
   font-weight: 600;
 }
 .cpm-hint {
@@ -345,7 +345,7 @@ function selectNone() {
   border: none;
   background: none;
   font-size: 12.5px;
-  color: #b45f3d;
+  color: #b5432a;
   cursor: pointer;
   padding: 2px 4px;
 }
@@ -380,11 +380,11 @@ function selectNone() {
   border-color: rgba(180, 95, 61, 0.5);
 }
 .mod-card.checked {
-  border-color: #b45f3d;
+  border-color: #b5432a;
   background: rgba(180, 95, 61, 0.1);
 }
 .mod-card.checked .mc-label {
-  color: #b45f3d;
+  color: #b5432a;
 }
 .mod-card.disabled {
   opacity: 0.45;
@@ -399,7 +399,7 @@ function selectNone() {
 .mc-top svg {
   width: 21px;
   height: 21px;
-  color: #b45f3d;
+  color: #b5432a;
 }
 /* v4.7 修复：.mc-top svg 的 color 优先级高于 .mc-check，会把对勾染成主题色、
    在同样主题色的背景上"消失"。这里显式还原为白色（对勾用 currentColor 描边）。 */
@@ -422,8 +422,8 @@ function selectNone() {
 }
 .mod-card.checked .mc-check {
   opacity: 1;
-  border-color: #b45f3d;
-  background: #b45f3d;
+  border-color: #b5432a;
+  background: #b5432a;
   color: #fff;
 }
 .mc-check svg {

@@ -125,7 +125,7 @@ function openTutorial() {
 .nav-item.active {
   opacity: 1;
   background: rgba(180, 95, 61, 0.13);
-  color: #b45f3d;
+  color: #b5432a;
   font-weight: 600;
 }
 .sidebar-foot {

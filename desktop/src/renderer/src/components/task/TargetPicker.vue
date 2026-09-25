@@ -319,13 +319,13 @@ async function doValidate() {
   border-color: rgba(180, 95, 61, 0.5);
 }
 .type-card.active {
-  border-color: #b45f3d;
+  border-color: #b5432a;
   background: rgba(180, 95, 61, 0.08);
 }
 .type-card svg {
   width: 22px;
   height: 22px;
-  color: #b45f3d;
+  color: #b5432a;
   margin-bottom: 2px;
 }
 .tc-title {

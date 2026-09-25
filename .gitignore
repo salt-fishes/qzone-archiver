@@ -91,3 +91,16 @@ test-screenshots/
 
 # brainstorming 可视化伴侣会话产物
 .superpowers/
+
+# archive-viewer dev 数据（D:\down 的目录联接，仅本机开发用）
+desktop/archive-viewer/public/Common
+desktop/archive-viewer/public/Friends
+desktop/archive-viewer/public/Messages
+desktop/archive-viewer/public/Visitors
+desktop/archive-viewer/public/Favorites
+desktop/archive-viewer/public/Boards
+desktop/archive-viewer/public/Shares
+desktop/archive-viewer/public/Videos
+desktop/archive-viewer/public/Blogs
+desktop/archive-viewer/public/Diaries
+desktop/archive-viewer/public/Albums

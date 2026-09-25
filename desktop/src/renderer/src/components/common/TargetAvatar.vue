@@ -56,14 +56,14 @@ function renderFallback() {
     :size="size"
     :src="src"
     :render-fallback="renderFallback"
-    style="background: #b45f3d"
+    style="background: #b5432a"
   />
   <!-- 还没拿到图（首次请求中 / 无缓存且抓取失败）：渲染首字占位 -->
   <NAvatar
     v-else
     round
     :size="size"
-    style="background: #b45f3d"
+    style="background: #b5432a"
   >
     {{ fallbackChar }}
   </NAvatar>

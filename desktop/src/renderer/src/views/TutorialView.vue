@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
 .toc-item.active {
   opacity: 1;
   background: rgba(180, 95, 61, 0.12);
-  color: #b45f3d;
+  color: #b5432a;
   font-weight: 600;
 }
 /* 正文 */
@@ -323,7 +323,7 @@ onBeforeUnmount(() => {
   padding: 10px 14px;
   border-radius: 10px;
   background: rgba(180, 95, 61, 0.08);
-  border-left: 3px solid #b45f3d;
+  border-left: 3px solid #b5432a;
   font-size: 12.5px;
   margin: 12px 0;
 }
@@ -365,7 +365,7 @@ code {
   opacity: 0.5;
 }
 .ext {
-  color: #b45f3d;
+  color: #b5432a;
   cursor: pointer;
 }
 @media (max-width: 860px) {

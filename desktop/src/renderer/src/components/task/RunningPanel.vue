@@ -81,7 +81,7 @@ function fmtElapsed(sec?: number) {
           :percentage="overallPercent"
           :stroke-width="8"
           :size="132"
-          :color="paused ? '#f0a020' : '#b45f3d'"
+          :color="paused ? '#c9a227' : '#b5432a'"
           :rail-color="'rgba(128,128,128,0.18)'"
         >
           <div class="rp-center">
@@ -108,7 +108,7 @@ function fmtElapsed(sec?: number) {
           :show-indicator="false"
           :height="5"
           :border-radius="3"
-          :color="paused ? '#f0a020' : '#b45f3d'"
+          :color="paused ? '#c9a227' : '#b5432a'"
         />
         <div class="ri-stats">
           <span>完成模块 <b>{{ bk.doneModules.length }}/{{ cfg.selectedModules.length }}</b></span>
@@ -381,7 +381,7 @@ function fmtElapsed(sec?: number) {
   margin-left: auto;
   font-size: 12.5px;
   font-weight: 600;
-  color: #b45f3d;
+  color: #b5432a;
   flex-shrink: 0;
 }
 .ri-stats {
@@ -428,8 +428,8 @@ function fmtElapsed(sec?: number) {
   height: 14px;
 }
 .mt-item.active {
-  border-color: #b45f3d;
-  color: #b45f3d;
+  border-color: #b5432a;
+  color: #b5432a;
   opacity: 1;
   font-weight: 600;
 }
@@ -454,7 +454,7 @@ function fmtElapsed(sec?: number) {
   height: 11px;
   border-radius: 50%;
   border: 1.8px solid rgba(180, 95, 61, 0.25);
-  border-top-color: #b45f3d;
+  border-top-color: #b5432a;
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin {
