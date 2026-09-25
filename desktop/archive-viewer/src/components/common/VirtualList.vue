@@ -406,6 +406,21 @@ defineExpose({ scrollToItem })
   .vl-current { transition: none; }
 }
 
+/* 移动端：当前卷指示条一行紧凑 */
+@media (max-width: 600px) {
+  .vl-current {
+    gap: var(--sp-1);
+    padding: 0 var(--sp-2);
+  }
+  .vl-current-label {
+    font-size: 0.8rem;
+    flex: none;
+    white-space: nowrap;
+  }
+  .vl-current-count { font-size: 0.58rem; flex: none; }
+  .vl-current .seg-density-btn { font-size: 0.58rem; padding: 2px 2px; }
+}
+
 /* 网格密度（§4.2）：分段头通栏，卡片 2~3 列随宽度自适应 */
 .vl-grid {
   height: 100%;
@@ -413,7 +428,7 @@ defineExpose({ scrollToItem })
   border: var(--line-1);
   background: rgba(255, 255, 255, 0.2);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
   gap: var(--sp-2);
   padding: var(--sp-2);
   align-content: start;

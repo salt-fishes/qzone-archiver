@@ -60,4 +60,22 @@ defineProps<{
 }
 
 .seg-flex { flex: 1; }
+
+/* 移动端：一行放下 卷记 + 计数 + 密度切换 */
+@media (max-width: 600px) {
+  .seg-head {
+    gap: var(--sp-1);
+    padding: var(--sp-1) var(--sp-2);
+  }
+  .seg-title {
+    font-size: 0.85rem;
+    flex: none;
+    white-space: nowrap;
+  }
+  .seg-mark { flex: none; }
+  .seg-count {
+    flex: none;
+    font-size: 0.58rem;
+  }
+}
 </style>

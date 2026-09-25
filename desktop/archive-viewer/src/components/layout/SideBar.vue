@@ -439,10 +439,10 @@ onMounted(() => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2px;
-    padding: var(--sp-2) 0;
+    gap: 1px;
+    padding: var(--sp-1) 0;
     font-family: var(--font-serif-cn);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--ink);
     text-decoration: none;
     border-left: 2px solid transparent;
@@ -458,8 +458,9 @@ onMounted(() => {
 
   .rail-count {
     font-family: var(--font-mono);
-    font-size: 0.55rem;
+    font-size: 0.5rem;
     color: var(--ink-muted);
+    transform: scale(0.9);
   }
 
   .side-backdrop {

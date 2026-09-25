@@ -153,6 +153,31 @@ a {
   text-transform: uppercase;
 }
 
+// 移动端章节头：标题一行放下，编号/摘要不折行（v5.2 移动端优化）
+@media (max-width: 600px) {
+  .section-head {
+    flex-wrap: nowrap;
+    gap: var(--sp-2);
+  }
+  .section-num {
+    font-size: 0.65rem;
+    flex: none;
+  }
+  .section-title {
+    font-size: 1.3rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .section-meta {
+    font-size: 0.55rem;
+    flex: none;
+    max-width: 9em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 // 键盘可达性唯一焦点指示（§7）
 :focus-visible {
   outline: 2px solid var(--vermilion);
