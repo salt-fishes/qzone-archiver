@@ -128,7 +128,7 @@ async function doValidate() {
           </NButton>
         </div>
 
-        <!-- §G：判定依据与留痕口径常驻可见（单一来源 access-copy.ts，经代码事实核对、未实测不承诺） -->
+        <!-- §G：判定依据与留痕口径常驻可见（单一来源 access-copy.ts，2026-09-19 实测确认校验不留痕） -->
         <p class="validate-help">{{ VALIDATE_HELP_TEXT }}</p>
 
         <div class="form-row">
