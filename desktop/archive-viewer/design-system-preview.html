@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QQ空间档案 — 设计系统</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   QQ空间档案 · 设计系统
+   概念：Editorial Archive（编辑型档案）
+   核心：衬线显示字 + 等宽元数据 + 墨水线条 + 印刷网点纹理
+   ============================================================ */
+
+:root {
+  /* 色板 —— 暖纸张 + 墨水 + 朱砂 */
+  --paper: #F4ECD8;          /* 旧纸张底色 */
+  --paper-2: #EAE0C5;        /* 次级纸张 */
+  --paper-3: #DFD2B0;        /* 阴影纸张 */
+  --ink: #1A1612;            /* 主墨色（近黑暖调）*/
+  --ink-2: #3D352A;          /* 次墨色 */
+  --ink-3: #6B5D49;          /* 弱化墨色 */
+  --vermilion: #C8442A;      /* 朱砂红（印章/强调）*/
+  --vermilion-2: #A33620;    /* 深朱砂 */
+  --indigo: #2B4A6F;         /* 靛青（链接）*/
+  --moss: #5C6B3B;           /* 苔绿（次强调）*/
+  --gold: #B8893A;           /* 金箔（装饰）*/
+
+  /* 字体 */
+  --font-display: 'Fraunces', 'Noto Serif SC', Georgia, serif;
+  --font-body: 'Noto Sans SC', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  --font-serif-cn: 'Noto Serif SC', 'Songti SC', serif;
+
+  /* 间距尺度（8 的倍数 + 黄金分割微调）*/
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+  --sp-9: 96px;
+
+  /* 墨水线 */
+  --line: 1px solid var(--ink);
+  --line-2: 1px solid var(--ink-3);
+  --line-double: 3px double var(--ink);
+  --line-dot: 1px dotted var(--ink-3);
+}
+
+/* ===== 重置 ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--paper);
+  color: var(--ink);
+  line-height: 1.65;
+  min-height: 100vh;
+  /* 印刷网点纹理：极淡的网点叠加在纸张底色上 */
+  background-image:
+    radial-gradient(circle at 25% 25%, rgba(26,22,18,0.025) 1px, transparent 1px),
+    radial-gradient(circle at 75% 75%, rgba(26,22,18,0.02) 1px, transparent 1px);
+  background-size: 24px 24px, 32px 32px;
+  /* 纸张噪点 */
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+}
+
+/* ===== 排版基础 ===== */
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.15; letter-spacing: -0.02em; }
+h1 { font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; }
+h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); }
+h3 { font-size: 1.5rem; }
+em { font-style: italic; color: var(--vermilion); }
+strong { font-weight: 600; }
+a { color: var(--indigo); text-decoration: none; border-bottom: 1px solid currentColor; transition: color .2s; }
+a:hover { color: var(--vermilion); }
+
+/* 元数据用等宽字 */
+.meta { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-3); }
+
+/* ===== 顶部刊头 Masthead ===== */
+.masthead {
+  border-bottom: var(--line-double);
+  padding: var(--sp-6) var(--sp-7) var(--sp-4);
+  position: relative;
+  z-index: 2;
+  background: linear-gradient(180deg, var(--paper) 0%, transparent 100%);
+}
+.masthead-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: end;
+  gap: var(--sp-5);
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.masthead-left, .masthead-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+.masthead-right { text-align: right; align-items: flex-end; }
+.masthead-title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  text-align: center;
+}
+.masthead-title em {
+  font-style: italic;
+  color: var(--vermilion);
+  font-weight: 600;
+}
+.masthead-sub {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: var(--sp-2);
+}
+.masthead-rule {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.masthead-rule::before, .masthead-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--ink-3);
+}
+
+/* ===== 主体框架 ===== */
+.frame {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--sp-7) var(--sp-7) var(--sp-9);
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--sp-7);
+}
+
+/* ===== 左侧目录 ===== */
+.sidebar {
+  position: sticky;
+  top: var(--sp-5);
+  align-self: start;
+  max-height: calc(100vh - var(--sp-9));
+  overflow-y: auto;
+  padding-right: var(--sp-4);
+  border-right: var(--line-dot);
+}
+.sidebar h4 {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-2);
+  border-bottom: var(--line);
+}
+.sidebar ul { list-style: none; }
+.sidebar li { margin-bottom: var(--sp-1); }
+.sidebar a {
+  display: block;
+  padding: var(--sp-1) 0;
+  font-family: var(--font-serif-cn);
+  font-size: 0.95rem;
+  color: var(--ink-2);
+  border-bottom: none;
+  border-left: 2px solid transparent;
+  padding-left: var(--sp-3);
+  transition: all .15s;
+}
+.sidebar a:hover {
+  color: var(--vermilion);
+  border-left-color: var(--vermilion);
+  padding-left: var(--sp-4);
+}
+.sidebar a.active {
+  color: var(--ink);
+  border-left-color: var(--ink);
+  font-weight: 600;
+}
+.sidebar-count {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-3);
+  margin-left: var(--sp-2);
+}
+
+/* ===== 内容区 ===== */
+.content { min-width: 0; }
+
+/* 章节标题 */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+  margin: var(--sp-8) 0 var(--sp-5);
+  padding-bottom: var(--sp-3);
+  border-bottom: var(--line-double);
+}
+.section-head:first-child { margin-top: 0; }
+.section-num {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--vermilion);
+  letter-spacing: 0.15em;
+}
+.section-title {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  flex: 1;
+}
+.section-meta {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ===== 色板展示 ===== */
+.swatch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--sp-4);
+  margin: var(--sp-5) 0;
+}
+.swatch {
+  border: var(--line);
+  background: var(--paper);
+  overflow: hidden;
+}
+.swatch-color { height: 80px; border-bottom: var(--line); }
+.swatch-info { padding: var(--sp-3); }
+.swatch-name { font-family: var(--font-display); font-weight: 600; font-size: 1rem; }
+.swatch-hex { font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-3); margin-top: 2px; }
+
+/* ===== 字体展示 ===== */
+.type-spec {
+  border: var(--line);
+  margin: var(--sp-3) 0;
+  padding: var(--sp-5);
+  background: rgba(255,255,255,0.3);
+  position: relative;
+}
+.type-spec::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -10px;
+  left: var(--sp-4);
+  background: var(--paper);
+  padding: 0 var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--vermilion);
+}
+.type-display { font-family: var(--font-display); font-size: 3rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
+.type-display em { color: var(--vermilion); }
+.type-body { font-family: var(--font-body); font-size: 1rem; line-height: 1.7; margin-top: var(--sp-3); }
+.type-mono { font-family: var(--font-mono); font-size: 0.85rem; color: var(--ink-2); margin-top: var(--sp-2); }
+
+/* ===== 档案条目（说说卡片）===== */
+.archive-entry {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: var(--sp-5);
+  padding: var(--sp-5) 0;
+  border-bottom: var(--line-dot);
+  position: relative;
+}
+.archive-entry:last-child { border-bottom: none; }
+.archive-entry:hover { background: rgba(255,255,255,0.25); }
+
+/* 时间戳列 */
+.entry-date {
+  font-family: var(--font-mono);
+  text-align: right;
+  border-right: var(--line);
+  padding-right: var(--sp-4);
+  position: relative;
+}
+.entry-date::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: var(--sp-2);
+  width: 7px;
+  height: 7px;
+  background: var(--vermilion);
+  border-radius: 50%;
+  border: 2px solid var(--paper);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+.entry-year { font-size: 1.5rem; font-weight: 600; color: var(--ink); line-height: 1; }
+.entry-md { font-size: 0.75rem; color: var(--ink-3); margin-top: var(--sp-1); letter-spacing: 0.05em; }
+.entry-time { font-size: 0.7rem; color: var(--ink-3); margin-top: var(--sp-2); }
+
+/* 条目主体 */
+.entry-body { padding-left: var(--sp-2); }
+.entry-author {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.entry-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: var(--line);
+  background: var(--paper-3);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.entry-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.entry-name {
+  font-family: var(--font-serif-cn);
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.entry-uin {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--ink-3);
+  margin-left: var(--sp-2);
+}
+
+/* 说说内容 */
+.entry-text {
+  font-family: var(--font-serif-cn);
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: var(--sp-3);
+}
+.entry-text .emoji { font-style: normal; }
+
+/* 配图网格 */
+.entry-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0;
+}
+.entry-img {
+  aspect-ratio: 1;
+  border: var(--line);
+  overflow: hidden;
+  cursor: zoom-in;
+  position: relative;
+  background: var(--paper-2);
+}
+.entry-img img { width: 100%; height: 100%; object-fit: cover; transition: transform .3s; }
+.entry-img:hover img { transform: scale(1.05); }
+.entry-img::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(244,236,216,0.5);
+  pointer-events: none;
+}
+
+/* 引用块（转发）*/
+.entry-quote {
+  border-left: 3px solid var(--vermilion);
+  padding: var(--sp-2) var(--sp-4);
+  margin: var(--sp-3) 0;
+  background: rgba(200,68,42,0.04);
+  font-family: var(--font-serif-cn);
+  font-size: 0.95rem;
+  color: var(--ink-2);
+}
+.entry-quote .quote-author {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--vermilion);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: var(--sp-1);
+  display: block;
+}
+
+/* 互动数据 */
+.entry-stats {
+  display: flex;
+  gap: var(--sp-5);
+  margin-top: var(--sp-4);
+  padding-top: var(--sp-3);
+  border-top: var(--line-dot);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+.entry-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  cursor: pointer;
+  transition: color .15s;
+}
+.entry-stat:hover { color: var(--vermilion); }
+.entry-stat-icon { font-size: 0.9rem; }
+.entry-stat-num { font-weight: 500; }
+
+/* 印章效果（重要说说标记）*/
+.stamp {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  width: 70px;
+  height: 70px;
+  border: 2px solid var(--vermilion);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--vermilion);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transform: rotate(-12deg);
+  opacity: 0.6;
+  background: rgba(200,68,42,0.05);
+  pointer-events: none;
+}
+
+/* ===== 按钮 ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-5);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--line);
+  cursor: pointer;
+  transition: all .15s;
+  text-decoration: none;
+  border-bottom: var(--line);
+}
+.btn:hover {
+  background: var(--vermilion);
+  border-color: var(--vermilion);
+  color: var(--paper);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--ink);
+}
+.btn-ghost:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ===== 搜索框 ===== */
+.search {
+  display: flex;
+  align-items: center;
+  border: var(--line);
+  background: rgba(255,255,255,0.4);
+  padding: var(--sp-2) var(--sp-4);
+  max-width: 400px;
+}
+.search-icon { color: var(--ink-3); margin-right: var(--sp-2); }
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-serif-cn);
+  font-size: 0.95rem;
+  color: var(--ink);
+  outline: none;
+}
+.search-input::placeholder { color: var(--ink-3); font-style: italic; }
+.search-shortcut {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--ink-3);
+  border: var(--line);
+  padding: 1px 6px;
+}
+
+/* ===== 标签 ===== */
+.tag {
+  display: inline-block;
+  padding: 2px var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--ink-2);
+  border: var(--line);
+  margin-right: var(--sp-1);
+}
+.tag-vermilion { color: var(--vermilion); border-color: var(--vermilion); }
+.tag-moss { color: var(--moss); border-color: var(--moss); }
+
+/* ===== 统计卡 ===== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0;
+  border: var(--line);
+  margin: var(--sp-5) 0;
+}
+.stat-cell {
+  padding: var(--sp-5);
+  border-right: var(--line);
+  border-bottom: var(--line);
+  background: rgba(255,255,255,0.2);
+}
+.stat-cell:nth-child(4n) { border-right: none; }
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink);
+}
+.stat-num em { color: var(--vermilion); font-style: normal; }
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-top: var(--sp-2);
+}
+
+/* ===== 页脚 ===== */
+.colophon {
+  margin-top: var(--sp-9);
+  padding-top: var(--sp-5);
+  border-top: var(--line-double);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.colophon em { color: var(--vermilion); font-style: italic; letter-spacing: 0.05em; }
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--paper-2); }
+::-webkit-scrollbar-thumb { background: var(--ink-3); border: 2px solid var(--paper-2); }
+::-webkit-scrollbar-thumb:hover { background: var(--ink); }
+
+/* ===== 入场动画（错落浮现）===== */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.archive-entry { animation: rise .5s ease-out both; }
+.archive-entry:nth-child(1) { animation-delay: .05s; }
+.archive-entry:nth-child(2) { animation-delay: .12s; }
+.archive-entry:nth-child(3) { animation-delay: .19s; }
+.archive-entry:nth-child(4) { animation-delay: .26s; }
+.archive-entry:nth-child(5) { animation-delay: .33s; }
+
+@keyframes ink-spread {
+  from { opacity: 0; letter-spacing: 0.3em; }
+  to { opacity: 1; letter-spacing: -0.03em; }
+}
+.masthead-title { animation: ink-spread 1s ease-out both; }
+
+/* ===== 响应式 ===== */
+@media (max-width: 900px) {
+  .frame { grid-template-columns: 1fr; padding: var(--sp-5); }
+  .sidebar { position: relative; border-right: none; border-bottom: var(--line-dot); padding-bottom: var(--sp-5); max-height: none; }
+  .masthead-grid { grid-template-columns: 1fr; }
+  .masthead-left, .masthead-right { text-align: center; align-items: center; }
+  .archive-entry { grid-template-columns: 1fr; }
+  .entry-date { text-align: left; border-right: none; border-bottom: var(--line-dot); padding-right: 0; padding-bottom: var(--sp-2); }
+  .entry-date::after { display: none; }
+  .stat-cell:nth-child(4n) { border-right: var(--line); }
+  .stat-cell:last-child { border-right: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== 刊头 ========== -->
+<header class="masthead">
+  <div class="masthead-grid">
+    <div class="masthead-left">
+      <span class="meta">Vol. 03 · Issue 12</span>
+      <span class="meta">2026 · 春</span>
+    </div>
+    <div>
+      <h1 class="masthead-title">QQ空间<em>档案</em></h1>
+      <div class="masthead-sub">Personal Archive · Est. 2005</div>
+    </div>
+    <div class="masthead-right">
+      <span class="meta">第 123456 号</span>
+      <span class="meta">共 1,247 条记录</span>
+    </div>
+  </div>
+  <div class="masthead-rule">
+    <span>个人中心</span><span>·</span><span>说说 1,247</span><span>·</span><span>相册 23</span><span>·</span><span>日志 89</span>
+  </div>
+</header>
+
+<!-- ========== 主体框架 ========== -->
+<div class="frame">
+
+  <!-- 左侧目录 -->
+  <aside class="sidebar">
+    <h4>目录索引</h4>
+    <ul>
+      <li><a href="#colors" class="active">色板 <span class="sidebar-count">11</span></a></li>
+      <li><a href="#typography">字体系统 <span class="sidebar-count">4</span></a></li>
+      <li><a href="#messages">说说示例 <span class="sidebar-count">5</span></a></li>
+      <li><a href="#stats">数据统计 <span class="sidebar-count">8</span></a></li>
+      <li><a href="#components">组件 <span class="sidebar-count">∞</span></a></li>
+    </ul>
+
+    <h4 style="margin-top: 32px;">模块导航</h4>
+    <ul>
+      <li><a href="#">说说 <span class="sidebar-count">1.2k</span></a></li>
+      <li><a href="#">日志 <span class="sidebar-count">89</span></a></li>
+      <li><a href">日记 <span class="sidebar-count">12</span></a></li>
+      <li><a href="#">相册 <span class="sidebar-count">23</span></a></li>
+      <li><a href="#">视频 <span class="sidebar-count">45</span></a></li>
+      <li><a href="#">留言 <span class="sidebar-count">203</span></a></li>
+      <li><a href="#">好友 <span class="sidebar-count">156</span></a></li>
+      <li><a href="#">访客 <span class="sidebar-count">8.9k</span></a></li>
+    </ul>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="content">
+
+    <!-- 色板 -->
+    <section id="colors">
+      <div class="section-head">
+        <span class="section-num">§ 01</span>
+        <h2 class="section-title">色板</h2>
+        <span class="section-meta">11 tones</span>
+      </div>
+      <p style="font-family: var(--font-serif-cn); font-size: 1.05rem; max-width: 60ch; margin-bottom: 24px;">
+        以<em>旧纸张</em>为底，<em>暖墨色</em>为骨，<em>朱砂红</em>作印章式强调。摒弃 Bootstrap 的蓝灰套路，回归印刷时代的克制与温度。
+      </p>
+      <div class="swatch-grid">
+        <div class="swatch"><div class="swatch-color" style="background:#F4ECD8"></div><div class="swatch-info"><div class="swatch-name">旧纸张</div><div class="swatch-hex">#F4ECD8</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#EAE0C5"></div><div class="swatch-info"><div class="swatch-name">次纸张</div><div class="swatch-hex">#EAE0C5</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#1A1612"></div><div class="swatch-info"><div class="swatch-name">墨色</div><div class="swatch-hex">#1A1612</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#3D352A"></div><div class="swatch-info"><div class="swatch-name">次墨</div><div class="swatch-hex">#3D352A</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#C8442A"></div><div class="swatch-info"><div class="swatch-name">朱砂</div><div class="swatch-hex">#C8442A</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#A33620"></div><div class="swatch-info"><div class="swatch-name">深朱砂</div><div class="swatch-hex">#A33620</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#2B4A6F"></div><div class="swatch-info"><div class="swatch-name">靛青</div><div class="swatch-hex">#2B4A6F</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#5C6B3B"></div><div class="swatch-info"><div class="swatch-name">苔绿</div><div class="swatch-hex">#5C6B3B</div></div></div>
+        <div class="swatch"><div class="swatch-color" style="background:#B8893A"></div><div class="swatch-info"><div class="swatch-name">金箔</div><div class="swatch-hex">#B8893A</div></div></div>
+      </div>
+    </section>
+
+    <!-- 字体 -->
+    <section id="typography">
+      <div class="section-head">
+        <span class="section-num">§ 02</span>
+        <h2 class="section-title">字体系统</h2>
+        <span class="section-meta">4 families</span>
+      </div>
+
+      <div class="type-spec" data-label="Display · Fraunces">
+        <div class="type-display">时光<em>不语</em></div>
+        <div class="type-mono">Fraunces 800 · 用于标题、刊头、章节</div>
+      </div>
+
+      <div class="type-spec" data-label="Body · Noto Sans SC">
+        <div class="type-body">在二〇〇五年的那个夏天，我们用 QQ 空间写下第一行字。那时网速很慢，每张照片都要等很久才能加载出来。如今翻看这些旧档，仿佛重新走过了那些时光。</div>
+        <div class="type-mono">Noto Sans SC 400 · 用于正文、UI 文案</div>
+      </div>
+
+      <div class="type-spec" data-label="Serif · Noto Serif SC">
+        <div style="font-family: var(--font-serif-cn); font-size: 1.15rem; line-height: 1.85;">说说正文采用衬线字体，与卡片式 Bootstrap 截然不同。每一行字都像写在纸上，慢一点，重一点。</div>
+        <div class="type-mono">Noto Serif SC 600 · 用于说说正文、引用</div>
+      </div>
+
+      <div class="type-spec" data-label="Mono · JetBrains Mono">
+        <div style="font-family: var(--font-mono); font-size: 0.9rem; color: var(--ink-2);">2026.03.15 · 14:23:07 · uin=123456 · tid=abc123def</div>
+        <div class="type-mono">JetBrains Mono 500 · 用于时间戳、元数据、统计数字</div>
+      </div>
+    </section>
+
+    <!-- 说说示例 -->
+    <section id="messages">
+      <div class="section-head">
+        <span class="section-num">§ 03</span>
+        <h2 class="section-title">说说 · 档案条目</h2>
+        <span class="section-meta">Sample entries</span>
+      </div>
+
+      <!-- 搜索框 -->
+      <div class="search" style="margin-bottom: 32px;">
+        <span class="search-icon">⌕</span>
+        <input class="search-input" placeholder="搜索档案内容、时间、人物…">
+        <span class="search-shortcut">⌘K</span>
+      </div>
+
+      <!-- 条目 1 -->
+      <article class="archive-entry">
+        <div class="entry-date">
+          <div class="entry-year">2026</div>
+          <div class="entry-md">03 · 15</div>
+          <div class="entry-time">14:23</div>
+        </div>
+        <div class="entry-body">
+          <div class="stamp">那年今日</div>
+          <div class="entry-author">
+            <div class="entry-avatar"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=vintage%20portrait%20avatar%20warm%20paper%20texture&image_size=square_hd" alt=""></div>
+            <div>
+              <span class="entry-name">林深时见鹿</span>
+              <span class="entry-uin">№ 123456</span>
+            </div>
+          </div>
+          <div class="entry-text">今天去了一趟老城区，找到了那家开在巷子里的旧书店。老板说这家店开了三十年，比我年纪还大。买了一本九八年的诗集，纸页已经发黄，但字还在。
+
+读了几页，忽然想起以前在 QQ 空间写过很多矫情的话。那时候觉得很重要的事，现在回头看，都变成了轻盈的尘埃。</div>
+          <div class="entry-images">
+            <div class="entry-img"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=old%20bookstore%20alley%20warm%20light%20vintage%20film&image_size=square_hd" alt=""></div>
+            <div class="entry-img"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=yellowed%20poetry%20book%20pages%20close%20up&image_size=square_hd" alt=""></div>
+            <div class="entry-img"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=old%20town%20street%20afternoon%20light&image_size=square_hd" alt=""></div>
+          </div>
+          <div class="entry-stats">
+            <span class="entry-stat"><span class="entry-stat-icon">♡</span><span class="entry-stat-num">42</span> 喜欢</span>
+            <span class="entry-stat"><span class="entry-stat-icon">◇</span><span class="entry-stat-num">8</span> 评论</span>
+            <span class="entry-stat"><span class="entry-stat-icon">↗</span><span class="entry-stat-num">156</span> 访客</span>
+            <span class="entry-stat"><span class="entry-stat-icon">⤴</span><span class="entry-stat-num">3</span> 转发</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 条目 2：转发 -->
+      <article class="archive-entry">
+        <div class="entry-date">
+          <div class="entry-year">2026</div>
+          <div class="entry-md">02 · 28</div>
+          <div class="entry-time">09:15</div>
+        </div>
+        <div class="entry-body">
+          <div class="entry-author">
+            <div class="entry-avatar"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=portrait%20avatar%20retro%20film%20grain&image_size=square_hd" alt=""></div>
+            <div>
+              <span class="entry-name">林深时见鹿</span>
+              <span class="entry-uin">№ 123456</span>
+              <span class="tag tag-vermilion" style="margin-left: 8px;">转发</span>
+            </div>
+          </div>
+          <div class="entry-text">读到一段话，记下来。</div>
+          <div class="entry-quote">
+            <span class="quote-author">@ 沉默是金 · 2026.02.27</span>
+            所有的告别里，我最喜欢「明天见」。<br>
+            它意味着我们还会再见，<br>
+            而不是从此天涯。
+          </div>
+          <div class="entry-stats">
+            <span class="entry-stat"><span class="entry-stat-icon">♡</span><span class="entry-stat-num">128</span> 喜欢</span>
+            <span class="entry-stat"><span class="entry-stat-icon">◇</span><span class="entry-stat-num">23</span> 评论</span>
+            <span class="entry-stat"><span class="entry-stat-icon">↗</span><span class="entry-stat-num">412</span> 访客</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 条目 3：带语音 -->
+      <article class="archive-entry">
+        <div class="entry-date">
+          <div class="entry-year">2026</div>
+          <div class="entry-md">01 · 03</div>
+          <div class="entry-time">22:47</div>
+        </div>
+        <div class="entry-body">
+          <div class="entry-author">
+            <div class="entry-avatar"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=profile%20photo%20vintage%20warm%20tone&image_size=square_hd" alt=""></div>
+            <div>
+              <span class="entry-name">林深时见鹿</span>
+              <span class="entry-uin">№ 123456</span>
+              <span class="tag tag-moss" style="margin-left: 8px;">语音</span>
+            </div>
+          </div>
+          <div class="entry-text">录了一段新年烟火的声音。零点的钟声敲响时，整个城市都在喧闹。</div>
+          <div style="margin: 12px 0; padding: 12px 16px; border: 1px solid var(--ink-3); background: rgba(255,255,255,0.3); display: flex; align-items: center; gap: 12px;">
+            <span style="font-family: var(--font-mono); color: var(--vermilion); font-size: 1.5rem;">▶</span>
+            <div style="flex:1;">
+              <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-3);">voice_20260103_2247.amr</div>
+              <div style="height: 24px; background: repeating-linear-gradient(90deg, var(--ink-3) 0 1px, transparent 1px 4px); margin-top: 4px; opacity: 0.6;"></div>
+            </div>
+            <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--ink-3);">00:23</span>
+          </div>
+          <div class="entry-stats">
+            <span class="entry-stat"><span class="entry-stat-icon">♡</span><span class="entry-stat-num">89</span> 喜欢</span>
+            <span class="entry-stat"><span class="entry-stat-icon">◇</span><span class="entry-stat-num">15</span> 评论</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 条目 4：纯文字 -->
+      <article class="archive-entry">
+        <div class="entry-date">
+          <div class="entry-year">2025</div>
+          <div class="entry-md">12 · 31</div>
+          <div class="entry-time">23:59</div>
+        </div>
+        <div class="entry-body">
+          <div class="entry-author">
+            <div class="entry-avatar"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=avatar%20winter%20night%20warm&image_size=square_hd" alt=""></div>
+            <div>
+              <span class="entry-name">林深时见鹿</span>
+              <span class="entry-uin">№ 123456</span>
+            </div>
+          </div>
+          <div class="entry-text">这一年最后的几秒钟。
+
+愿来年仍有书可读，有人可想，有路可走。</div>
+          <div class="entry-stats">
+            <span class="entry-stat"><span class="entry-stat-icon">♡</span><span class="entry-stat-num">256</span> 喜欢</span>
+            <span class="entry-stat"><span class="entry-stat-icon">◇</span><span class="entry-stat-num">48</span> 评论</span>
+            <span class="entry-stat"><span class="entry-stat-icon">↗</span><span class="entry-stat-num">892</span> 访客</span>
+          </div>
+        </div>
+      </article>
+
+      <!-- 条目 5：长文 -->
+      <article class="archive-entry">
+        <div class="entry-date">
+          <div class="entry-year">2025</div>
+          <div class="entry-md">10 · 12</div>
+          <div class="entry-time">16:30</div>
+        </div>
+        <div class="entry-body">
+          <div class="entry-author">
+            <div class="entry-avatar"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=autumn%20portrait%20warm%20tones&image_size=square_hd" alt=""></div>
+            <div>
+              <span class="entry-name">林深时见鹿</span>
+              <span class="entry-uin">№ 123456</span>
+            </div>
+          </div>
+          <div class="entry-text">最近在读《百年的孤独》。马尔克斯写马孔多下了一场四年十一个月零两天的雨，整个镇子都泡在水里，铁皮锈了，墙发霉了，连记忆都被泡得发胀。
+
+我想起小时候的梅雨季，外婆家的木地板总是潮的，墙角会长蘑菇。我蹲在地上看蘑菇，一看就是一下午。
+
+现在外婆不在了，老房子也拆了。那些下午没了。
+
+但书还在。读到这一段时，我好像又闻到了那股潮湿的味道。</div>
+          <div class="entry-images">
+            <div class="entry-img"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=old%20wooden%20house%20rain%20humid%20vintage&image_size=square_hd" alt=""></div>
+            <div class="entry-img"><img src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=hundred%20years%20solitude%20book%20cover%20spanish&image_size=square_hd" alt=""></div>
+          </div>
+          <div class="entry-stats">
+            <span class="entry-stat"><span class="entry-stat-icon">♡</span><span class="entry-stat-num">178</span> 喜欢</span>
+            <span class="entry-stat"><span class="entry-stat-icon">◇</span><span class="entry-stat-num">32</span> 评论</span>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <!-- 统计 -->
+    <section id="stats">
+      <div class="section-head">
+        <span class="section-num">§ 04</span>
+        <h2 class="section-title">数据档案</h2>
+        <span class="section-meta">Statistics</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-cell"><div class="stat-num">1,<em>247</em></div><div class="stat-label">说说</div></div>
+        <div class="stat-cell"><div class="stat-num">89</div><div class="stat-label">日志</div></div>
+        <div class="stat-cell"><div class="stat-num">23</div><div class="stat-label">相册</div></div>
+        <div class="stat-cell"><div class="stat-num">1,<em>538</em></div><div class="stat-label">照片</div></div>
+        <div class="stat-cell"><div class="stat-num">45</div><div class="stat-label">视频</div></div>
+        <div class="stat-cell"><div class="stat-num">203</div><div class="stat-label">留言</div></div>
+        <div class="stat-cell"><div class="stat-num">156</div><div class="stat-label">好友</div></div>
+        <div class="stat-cell"><div class="stat-num">8,<em>924</em></div><div class="stat-label">访客</div></div>
+      </div>
+    </section>
+
+    <!-- 组件 -->
+    <section id="components">
+      <div class="section-head">
+        <span class="section-num">§ 05</span>
+        <h2 class="section-title">组件库</h2>
+        <span class="section-meta">Atoms</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; margin: 24px 0; align-items: center;">
+        <button class="btn">导出 ZIP</button>
+        <button class="btn btn-ghost">返回首页</button>
+        <span class="tag">普通标签</span>
+        <span class="tag tag-vermilion">重要</span>
+        <span class="tag tag-moss">已备份</span>
+      </div>
+
+      <div style="margin-top: 32px; padding: 24px; border: 1px solid var(--ink); background: rgba(255,255,255,0.3);">
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--vermilion); margin-bottom: 12px;">引用块 · Blockquote</div>
+        <blockquote style="font-family: var(--font-serif-cn); font-size: 1.1rem; line-height: 1.8; border-left: 3px solid var(--vermilion); padding-left: 20px; color: var(--ink-2); font-style: italic;">
+          "我们用十年的时间，写下了五千条说说。<br>如今它们安静地躺在硬盘里，像一座小小的、私人的图书馆。"
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- 页脚 -->
+    <div class="colophon">
+      QQ空间<em>档案</em> · 设计系统 · Editorial Archive Style<br>
+      Fraunces · Noto Serif SC · JetBrains Mono · 暖纸张 · 朱砂 · 墨
+    </div>
+
+  </main>
+</div>
+
+<script>
+// 目录锚点高亮
+const links = document.querySelectorAll('.sidebar a');
+links.forEach(link => {
+  link.addEventListener('click', e => {
+    links.forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+  });
+});
+
+// 滚动监听激活当前章节
+const sections = document.querySelectorAll('section[id]');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      links.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(s => observer.observe(s));
+
+// 搜索框聚焦快捷键
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    e.preventDefault();
+    document.querySelector('.search-input').focus();
+  }
+});
+</script>
+
+</body>
+</html>
