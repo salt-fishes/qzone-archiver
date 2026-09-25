@@ -14,6 +14,8 @@ export default tseslint.config(
       'src/renderer/dist/**',
       'src/engine/**',
       'docs/**',
+      // 自包含子项目：有独立 vue-tsc/vite 门禁（v5.2 S1 取回的归档 SPA 前端源码）
+      'archive-viewer/**',
     ],
   },
 

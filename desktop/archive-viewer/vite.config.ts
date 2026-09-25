@@ -48,6 +48,18 @@ export default defineConfig({
     vue(),
     fixHtmlForFileProtocol(),
     {
+      // export-entry.html（归档根入口重定向页）原依赖 publicDir 拷贝进产物，
+      // copyPublicDir 关闭后由构建末尾显式复制——保持原样输出，不经 Rollup 处理
+      name: 'copy-export-entry',
+      apply: 'build',
+      closeBundle() {
+        const src = resolve(__dirname, 'public/export-entry.html')
+        if (existsSync(src)) {
+          writeFileSync(resolve(OUT_DIR, 'export-entry.html'), readFileSync(src))
+        }
+      }
+    },
+    {
       // CSS 中字体/图片引用会被 Vite 自动加上 ?hash 查询串（如 ./lg.ttf?io9a6k）
       // file:// 协议下浏览器会按字面路径查找，导致 ./lg.ttf?io9a6k 404
       // 这里在文件全部写入磁盘后去掉 CSS url() 中的查询串，保证 file:// 可加载
@@ -82,6 +94,9 @@ export default defineConfig({
     outDir: OUT_DIR,
     // outDir 位于项目根之外，默认不清空，须显式开启避免旧产物（含测试数据）残留
     emptyOutDir: true,
+    // public/ 仅供 dev server 使用（junction 到本机真实备份数据）——
+    // 绝不能拷进产物：① 体积爆炸 ② 开发数据泄入归档。运行时数据走 ../Common 相对路径
+    copyPublicDir: false,
     // target 不能高于 es2018（IIFE 兼容性）
     target: 'es2018',
     // V0.1 字体离线化：拉丁子集字体（67KB/31KB）以 data URL 内联进 style.css——

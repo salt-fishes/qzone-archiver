@@ -595,7 +595,7 @@ export interface Video {
 export interface FriendIndex {
   /** QQ 号 */
   uin: number | string
-  /** 昵称（可能为空） */
+  /** 显示名：引擎侧按 nick || name || nickname 取值写入（S8 语义对齐） */
   name: string
   /** 备注名 */
   remark: string
@@ -633,7 +633,7 @@ export interface Friend {
   intimacyScore?: number
   care?: boolean
   isFriend?: boolean
-  /** 本地头像相对路径 */
+  /** 本地头像相对路径（源数据字段；实际展示用 avatar，导出时写入 custom_avatar） */
   custom_avatar_filepath?: string
   avatar?: string
   [key: string]: any
