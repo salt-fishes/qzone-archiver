@@ -208,7 +208,7 @@ onMounted(() => {
 .error-tip,
 .empty-tip {
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(200, 68, 42, 0.04);
   font-family: var(--font-serif-cn);
 }
@@ -231,7 +231,7 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   background: transparent;
-  border: var(--line-dot);
+  border: var(--rule-dot);
   color: var(--ink-3);
   padding: 2px var(--sp-2);
   cursor: pointer;

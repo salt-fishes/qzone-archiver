@@ -82,7 +82,7 @@ onUnmounted(() => {
 
 .modal-window {
   background: var(--paper);
-  border: var(--line-double);
+  border: var(--rule-double);
   box-shadow: 8px 8px 0 var(--ink);
   max-width: 92vw;
   max-height: 88vh;
@@ -101,7 +101,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: var(--sp-4);
   padding: var(--sp-4) var(--sp-5);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
   background: rgba(255, 255, 255, 0.25);
 }
 
@@ -153,7 +153,7 @@ onUnmounted(() => {
 }
 
 .modal-footer {
-  border-top: var(--line-dot);
+  border-top: var(--rule-dot);
   padding: var(--sp-3) var(--sp-5);
   display: flex;
   justify-content: flex-end;

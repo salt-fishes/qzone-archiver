@@ -70,7 +70,7 @@ watch(() => userStore.totalRecords, (v) => {
 
 <style scoped>
 .masthead {
-  border-bottom: var(--line-double);
+  border-bottom: var(--rule-double);
   padding: var(--sp-6) var(--sp-7) var(--sp-4);
   position: relative;
   z-index: 2;

@@ -159,7 +159,7 @@ function handleClose() {
   font-size: 0.75rem;
   color: var(--ink-3);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
   align-items: center;
 }
 
@@ -187,7 +187,7 @@ function handleClose() {
   align-items: baseline;
   gap: var(--sp-3);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 }
 
 .visitor-name {
@@ -207,7 +207,7 @@ function handleClose() {
 
 .visit-section {
   padding: var(--sp-3) 0;
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .visit-section:last-child {
@@ -222,7 +222,7 @@ function handleClose() {
   color: var(--ink-3);
   margin-bottom: var(--sp-3);
   padding-bottom: var(--sp-2);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 }
 
 .visit-list {
@@ -246,7 +246,7 @@ function handleClose() {
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
   background: rgba(255, 255, 255, 0.3);
-  border: var(--line-dot);
+  border: var(--rule-dot);
 }
 
 .visit-name {
@@ -285,7 +285,7 @@ function handleClose() {
   width: 48px;
   height: 48px;
   object-fit: cover;
-  border: var(--line);
+  border: var(--rule);
 }
 
 .visit-inline {
@@ -293,7 +293,7 @@ function handleClose() {
   flex-direction: column;
   padding: var(--sp-1) var(--sp-3);
   background: rgba(255, 255, 255, 0.3);
-  border: var(--line-dot);
+  border: var(--rule-dot);
   font-family: var(--font-mono);
   font-size: 0.75rem;
   min-width: 140px;

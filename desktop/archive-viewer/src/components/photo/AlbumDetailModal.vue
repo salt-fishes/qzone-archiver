@@ -412,7 +412,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
   flex-wrap: wrap;
   gap: var(--sp-4);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .meta {
@@ -466,7 +466,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
 
 .detail-section {
   padding-top: var(--sp-3);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .section-title {
@@ -493,7 +493,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
 
 .photo-cell {
   padding: 0;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper-2);
   cursor: pointer;
   overflow: hidden;
@@ -549,7 +549,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
   align-items: center;
   gap: var(--sp-5);
   padding-top: var(--sp-4);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .detail-action {
@@ -557,7 +557,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
   align-items: center;
   gap: var(--sp-2);
   background: transparent;
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-2) var(--sp-4);
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -727,7 +727,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
   max-width: 92vw;
   max-height: 82vh;
   object-fit: contain;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper);
 }
 
@@ -735,14 +735,14 @@ watch([visible, () => photoList.value.length], ([v]) => {
   max-width: 92vw;
   max-height: 82vh;
   background: #000;
-  border: var(--line);
+  border: var(--rule);
 }
 
 /* H.265 等无法解码时的引导提示容器 */
 .photo-preview-error {
   max-width: min(560px, 92vw);
   background: var(--paper);
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-1);
 }
 

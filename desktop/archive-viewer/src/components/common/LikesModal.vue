@@ -82,7 +82,7 @@ function itemKey(item: LikeItem, i: number): string {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2);
-  border: var(--line-dot);
+  border: var(--rule-dot);
   background: rgba(255, 255, 255, 0.2);
   transition: background 0.15s;
 }
@@ -95,7 +95,7 @@ function itemKey(item: LikeItem, i: number): string {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: var(--line);
+  border: var(--rule);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--paper-3);

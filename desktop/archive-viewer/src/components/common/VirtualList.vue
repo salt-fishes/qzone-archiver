@@ -100,7 +100,7 @@ defineExpose({ scrollToItem })
 .archive-list {
   height: calc(100vh - 320px);
   min-height: 360px;
-  border: var(--line);
+  border: var(--rule);
   background: rgba(255, 255, 255, 0.2);
 }
 

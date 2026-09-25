@@ -234,7 +234,7 @@ onBeforeUnmount(() => {
 .error-tip,
 .empty-tip {
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(200, 68, 42, 0.04);
   font-family: var(--font-serif-cn);
 }
@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--sp-4);
   padding: var(--sp-4);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(255, 255, 255, 0.2);
 }
 
@@ -279,7 +279,7 @@ onBeforeUnmount(() => {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   background: transparent;
-  border: var(--line-dot);
+  border: var(--rule-dot);
   color: var(--ink-3);
   padding: 2px var(--sp-2);
   cursor: pointer;
@@ -298,7 +298,7 @@ onBeforeUnmount(() => {
   gap: var(--sp-2);
   margin-top: var(--sp-5);
   padding-top: var(--sp-4);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .year-jump-btn {
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
   font-size: 0.75rem;
   background: transparent;
   color: var(--ink);
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-1) var(--sp-3);
   cursor: pointer;
   transition: all 0.15s;

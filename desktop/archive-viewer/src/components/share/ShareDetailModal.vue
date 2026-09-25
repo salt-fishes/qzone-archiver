@@ -277,7 +277,7 @@ watch(visible, v => {
   flex-wrap: wrap;
   gap: var(--sp-4);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .meta {
@@ -418,7 +418,7 @@ watch(visible, v => {
   align-items: center;
   gap: var(--sp-5);
   padding-top: var(--sp-4);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .detail-action {
@@ -426,7 +426,7 @@ watch(visible, v => {
   align-items: center;
   gap: var(--sp-2);
   background: transparent;
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-2) var(--sp-4);
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -465,7 +465,7 @@ watch(visible, v => {
 
 .detail-section {
   padding-top: var(--sp-3);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .section-title {

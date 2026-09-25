@@ -128,7 +128,7 @@ function handleClose() {
   flex-wrap: wrap;
   gap: var(--sp-4);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .meta {
@@ -182,7 +182,7 @@ function handleClose() {
 .board-content :deep(img) {
   max-width: 100%;
   height: auto;
-  border: var(--line);
+  border: var(--rule);
   margin: var(--sp-2) 0;
   display: block;
 }
@@ -204,7 +204,7 @@ function handleClose() {
 
 .detail-section {
   padding-top: var(--sp-3);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .section-title {

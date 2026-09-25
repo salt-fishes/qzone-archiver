@@ -84,6 +84,9 @@ export default defineConfig({
     emptyOutDir: true,
     // target 不能高于 es2018（IIFE 兼容性）
     target: 'es2018',
+    // V0.1 字体离线化：拉丁子集字体（67KB/31KB）以 data URL 内联进 style.css——
+    // 不产生独立字体文件，无需登记 SpaExportFiles，file:// 与断网均可用
+    assetsInlineLimit: 204800,
     // CSS 合并到单个 style.css 文件
     cssCodeSplit: false,
     // 关闭文件名 hash：备份 ZIP 是一次性产物，固定名便于扩展端按清单复制

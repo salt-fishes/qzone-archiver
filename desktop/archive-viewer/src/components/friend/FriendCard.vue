@@ -127,7 +127,7 @@ function handleClick() {
 .friend-avatar {
   width: 38px;
   height: 38px;
-  border: var(--line);
+  border: var(--rule);
   object-fit: cover;
   background: var(--paper-2);
 }

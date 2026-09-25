@@ -82,7 +82,7 @@ function handleClick() {
   grid-template-columns: 80px 1fr;
   gap: var(--sp-5);
   padding: var(--sp-4) var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
   position: relative;
   transition: background 0.2s, transform 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
 }
@@ -102,7 +102,7 @@ function handleClick() {
 .entry-date {
   font-family: var(--font-mono);
   text-align: right;
-  border-right: var(--line);
+  border-right: var(--rule);
   padding-right: var(--sp-3);
   position: relative;
 }
@@ -340,7 +340,7 @@ function handleClick() {
   .entry-date {
     text-align: left;
     border-right: none;
-    border-bottom: var(--line-dot);
+    border-bottom: var(--rule-dot);
     padding-right: 0;
     padding-bottom: var(--sp-2);
     display: flex;
@@ -366,7 +366,7 @@ function handleClick() {
   }
   .archive-entry :deep(.entry-stat-cta) {
     padding: var(--sp-2) var(--sp-3);
-    border: var(--line-dot);
+    border: var(--rule-dot);
   }
 }
 </style>

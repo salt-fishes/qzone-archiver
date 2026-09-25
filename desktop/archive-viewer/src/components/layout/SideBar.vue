@@ -252,7 +252,7 @@ onMounted(() => {
   max-height: calc(100vh - var(--sp-9));
   overflow-y: auto;
   padding-right: var(--sp-4);
-  border-right: var(--line-dot);
+  border-right: var(--rule-dot);
 }
 
 .sidebar-head {
@@ -269,7 +269,7 @@ onMounted(() => {
   line-height: 1;
   color: var(--ink-3);
   background: transparent;
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-1) var(--sp-2);
   cursor: pointer;
   transition: all 0.15s;
@@ -288,7 +288,7 @@ onMounted(() => {
   color: var(--ink-3);
   margin-bottom: var(--sp-4);
   padding-bottom: var(--sp-2);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 }
 
 .sidebar-section {
@@ -357,7 +357,7 @@ onMounted(() => {
     margin: 0;
     padding: var(--sp-5);
     background: var(--paper);
-    border-right: var(--line-double);
+    border-right: var(--rule-double);
     border-bottom: none;
     box-shadow: 4px 0 24px rgba(26, 22, 18, 0.25);
     transform: translateX(-100%);
@@ -397,7 +397,7 @@ onMounted(() => {
     color: var(--ink);
     background: transparent;
     border: none;
-    border-bottom: var(--line-dot);
+    border-bottom: var(--rule-dot);
     cursor: pointer;
   }
 

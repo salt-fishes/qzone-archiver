@@ -79,7 +79,7 @@ const extra = computed(() => {
   display: block;
   width: 96px;
   height: 96px;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper-2);
   overflow: hidden;
   flex-shrink: 0;

@@ -7,6 +7,16 @@
   padding: 0;
 }
 
+// 系统级动效降级（§3.3 规则 1）：CSS 过渡/动画直切；JS 侧由 useMotion() 同步短路
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+}
+
 html {
   font-size: 16px;
   scroll-behavior: smooth;
@@ -101,7 +111,7 @@ a {
   gap: var(--sp-4);
   margin: var(--sp-8) 0 var(--sp-5);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-double);
+  border-bottom: var(--rule-double);
 
   &:first-child { margin-top: 0; }
 }
@@ -140,11 +150,11 @@ a {
   text-transform: uppercase;
   background: var(--ink);
   color: var(--paper);
-  border: var(--line);
+  border: var(--rule);
   cursor: pointer;
   transition: all 0.15s;
   text-decoration: none;
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 
   &:hover {
     background: var(--vermilion);
@@ -172,7 +182,7 @@ a {
   text-transform: uppercase;
   background: transparent;
   color: var(--ink-2);
-  border: var(--line);
+  border: var(--rule);
   margin-right: var(--sp-1);
 }
 
@@ -208,7 +218,7 @@ a {
 .search {
   display: flex;
   align-items: center;
-  border: var(--line);
+  border: var(--rule);
   background: rgba(255,255,255,0.4);
   padding: var(--sp-2) var(--sp-4);
   max-width: 400px;
@@ -234,7 +244,7 @@ a {
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--ink-3);
-  border: var(--line);
+  border: var(--rule);
   padding: 1px 6px;
 }
 

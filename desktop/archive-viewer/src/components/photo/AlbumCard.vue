@@ -145,7 +145,7 @@ function handleClick() {
   height: 100%;
   aspect-ratio: 1;
   object-fit: cover;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper-2);
   overflow: hidden;
   transition: filter 0.25s var(--ease-out), border-color 0.2s;
@@ -163,7 +163,7 @@ function handleClick() {
   align-items: center;
   justify-content: center;
   background: var(--paper-2);
-  border: var(--line-dot);
+  border: var(--rule-dot);
   color: var(--ink-3);
   font-size: 1.1rem;
 }

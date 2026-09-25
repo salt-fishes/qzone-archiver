@@ -176,7 +176,7 @@ watch(() => props.mediaItems, () => {
 .media-cell {
   position: relative;
   aspect-ratio: 1;
-  border: var(--line);
+  border: var(--rule);
   overflow: hidden;
   background: var(--paper-2);
   cursor: zoom-in;
@@ -301,7 +301,7 @@ watch(() => props.mediaItems, () => {
 .media-empty {
   padding: var(--sp-3);
   text-align: center;
-  border: var(--line-dot);
+  border: var(--rule-dot);
 }
 
 /* ============ 就地预览遮罩 ============ */
@@ -323,7 +323,7 @@ watch(() => props.mediaItems, () => {
   max-width: 92vw;
   max-height: 82vh;
   object-fit: contain;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper);
 }
 
@@ -331,14 +331,14 @@ watch(() => props.mediaItems, () => {
   max-width: 92vw;
   max-height: 82vh;
   background: #000;
-  border: var(--line);
+  border: var(--rule);
 }
 
 /* H.265 等无法解码时的引导提示容器 */
 .media-preview-error {
   max-width: min(560px, 92vw);
   background: var(--paper);
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-1);
 }
 

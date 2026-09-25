@@ -154,7 +154,7 @@ function handleClick() {
   aspect-ratio: 16 / 9;
   overflow: hidden;
   background: var(--paper-2);
-  border: var(--line);
+  border: var(--rule);
   transition: border-color 0.15s;
 }
 

@@ -161,7 +161,7 @@ function handleClose() {
   gap: var(--sp-4);
   align-items: center;
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .avatar-wrap {
@@ -172,7 +172,7 @@ function handleClose() {
   display: block;
   width: 72px;
   height: 72px;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper-2);
   object-fit: cover;
 }
@@ -216,7 +216,7 @@ function handleClose() {
   flex-wrap: wrap;
   gap: var(--sp-3);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .meta {
@@ -249,7 +249,7 @@ function handleClose() {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-4);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(43, 74, 111, 0.05);
   text-decoration: none;
   color: var(--indigo);

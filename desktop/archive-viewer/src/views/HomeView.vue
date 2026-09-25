@@ -169,7 +169,7 @@ function formatStatNum(n: number): string {
 <style scoped>
 .error-tip {
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(200, 68, 42, 0.04);
   font-family: var(--font-serif-cn);
 }
@@ -184,7 +184,7 @@ function formatStatNum(n: number): string {
   align-items: center;
   gap: var(--sp-5);
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(255, 255, 255, 0.3);
   margin: var(--sp-5) 0;
 }
@@ -193,7 +193,7 @@ function formatStatNum(n: number): string {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  border: var(--line);
+  border: var(--rule);
   overflow: hidden;
   flex-shrink: 0;
   background: var(--paper-3);
@@ -231,7 +231,7 @@ function formatStatNum(n: number): string {
   align-items: stretch;
   gap: var(--sp-5);
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: linear-gradient(180deg, rgba(234, 224, 197, 0.2), rgba(200, 68, 42, 0.04));
   margin: var(--sp-5) 0;
 }
@@ -244,7 +244,7 @@ function formatStatNum(n: number): string {
   justify-content: center;
   min-width: 88px;
   padding-right: var(--sp-5);
-  border-right: var(--line-dot);
+  border-right: var(--rule-dot);
 }
 
 .first-date-day {
@@ -301,7 +301,7 @@ function formatStatNum(n: number): string {
   font-size: 0.66rem;
   letter-spacing: 0.08em;
   color: var(--ink-3);
-  border: 1px solid var(--border);
+  border: 1px solid var(--rule);
   padding: 1px 7px;
   border-radius: 2px;
 }
@@ -321,7 +321,7 @@ function formatStatNum(n: number): string {
   gap: var(--sp-4);
   margin: var(--sp-5) 0;
   padding: var(--sp-4) var(--sp-5);
-  border: var(--line-double);
+  border: var(--rule-double);
   background: linear-gradient(180deg, rgba(234, 224, 197, 0.35), rgba(200, 68, 42, 0.05));
   color: var(--ink);
   text-decoration: none;
@@ -386,7 +386,7 @@ function formatStatNum(n: number): string {
     padding-right: 0;
     padding-bottom: var(--sp-3);
     border-right: none;
-    border-bottom: var(--line-dot);
+    border-bottom: var(--rule-dot);
   }
   .first-date-day {
     font-size: 1.8rem;
@@ -399,7 +399,7 @@ function formatStatNum(n: number): string {
 .colophon {
   margin-top: var(--sp-9);
   padding-top: var(--sp-5);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
   text-align: center;
   font-family: var(--font-mono);
   font-size: 0.7rem;

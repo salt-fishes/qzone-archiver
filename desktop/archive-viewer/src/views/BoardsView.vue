@@ -248,7 +248,7 @@ onMounted(() => {
 .error-tip,
 .empty-tip {
   padding: var(--sp-5);
-  border: var(--line);
+  border: var(--rule);
   background: rgba(200, 68, 42, 0.04);
   font-family: var(--font-serif-cn);
 }
@@ -271,7 +271,7 @@ onMounted(() => {
   font-family: var(--font-mono);
   font-size: 0.7rem;
   background: transparent;
-  border: var(--line-dot);
+  border: var(--rule-dot);
   color: var(--ink-3);
   padding: 2px var(--sp-2);
   cursor: pointer;
@@ -290,7 +290,7 @@ onMounted(() => {
   gap: var(--sp-2);
   margin-top: var(--sp-5);
   padding-top: var(--sp-4);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .year-jump-btn {
@@ -298,7 +298,7 @@ onMounted(() => {
   font-size: 0.75rem;
   background: transparent;
   color: var(--ink);
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-1) var(--sp-3);
   cursor: pointer;
   transition: all 0.15s;

@@ -1,44 +1,73 @@
-// 设计系统 tokens —— Editorial Archive 风格
-// 概念：暖纸张 + 墨水 + 朱砂 + 衬线 + 等宽元数据
-// 与 design-system-preview.html 中的 :root 变量保持一致
+// 设计系统 tokens —— 「时光档案」v5.2 规范（plans/v5.2-design.md §2）
+// 权威来源：design-system-preview.html（两端共用），本文件与预览页令牌必须同步（守卫测试）。
+// 标注「deprecated」的令牌为旧版兼容别名，V1/V2 重构视图时消除，禁止在新代码中使用。
 
 :root {
-  /* 色板 —— 暖纸张 + 墨水 + 朱砂 */
-  --paper: #F4ECD8;
-  --paper-2: #EAE0C5;
-  --paper-3: #DFD2B0;
-  --ink: #1A1612;
-  --ink-2: #3D352A;
-  --ink-3: #6B5D49;
-  --vermilion: #C8442A;
-  --vermilion-2: #A33620;
-  --indigo: #2B4A6F;
-  --moss: #5C6B3B;
-  --gold: #B8893A;
+  /* ===== 色板（§2.1）—— 暖纸张 + 墨水 + 朱砂唯一强调 ===== */
+  --paper: #F6F1E7;            /* 页面底色 */
+  --paper-raised: #FDF9EF;     /* 卡面 / 浮层底 */
+  --ink: #211D17;              /* 主文字 / 主描边 */
+  --ink-muted: #8A8172;        /* 次级文字 / 元数据 */
+  --line: #D8CFBC;             /* 1px 分隔线（线色，配合 --line-1 / --rule 使用） */
+  --vermilion: #B5432A;        /* 唯一强调色：当前卷指示、进度线、扫版色块、错误态 */
+  --indigo: #3D5A80;           /* 辅色：信息态、链接 */
+  --moss: #6B7F5C;             /* 辅色：成功态 */
+  --gold: #C9A227;             /* 辅色：警示态、年报点缀 */
+  --night: #17140F;            /* 桌面端深色底（仅桌面端使用，SPA 不出深色） */
 
-  /* 字体 */
-  --font-display: 'Fraunces', 'Noto Serif SC', Georgia, serif;
-  --font-body: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-  --font-serif-cn: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  /* 状态色映射：成功=苔 · 警示=金 · 错误=朱砂 · 信息=靛 */
+  --state-success: var(--moss);
+  --state-warning: var(--gold);
+  --state-error: var(--vermilion);
+  --state-info: var(--indigo);
 
-  /* 间距尺度（8 的倍数） */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
+  /* ===== 字体（§2.2）—— 中文走系统衬线降级链，不内联中文字族 ===== */
+  --font-display: 'Fraunces', Georgia, 'Songti SC', serif;
+  --font-body: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+  --font-mono: 'JetBrains Mono', Consolas, monospace;
+  --font-serif-cn: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif;
+
+  /* 字阶（5 档，行高向上取整为 4 的倍数） */
+  --fs-display: 40px / 1.15;   /* 首屏大标题、年报章节 · 700 */
+  --fs-h1: 22px / 1.3;         /* 卷章标题、页面题 · 700 */
+  --fs-h2: 16px / 1.4;         /* 卡片题、区块题 · 600 */
+  --fs-body: 13px / 1.75;      /* 正文、列表条目 · 400 */
+  --fs-meta: 10px / 1.4;       /* 时间戳、计数、标签（mono）· 400 · 字距 1px */
+
+  /* ===== 间距（§2.3）—— 8px 基尺，四档，组件内禁止出现其他间距值 ===== */
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 40px;
+  /* deprecated：旧版间距档（V1/V2 重构时消除） */
   --sp-5: 24px;
   --sp-6: 32px;
   --sp-7: 48px;
   --sp-8: 64px;
   --sp-9: 96px;
 
-  /* 墨水线 */
-  --line: 1px solid var(--ink);
-  --line-2: 1px solid var(--ink-3);
-  --line-double: 3px double var(--ink);
-  --line-dot: 1px dotted var(--ink-3);
+  /* ===== 圆角 / 描边 / 阴影（§2.3） ===== */
+  --radius: 2px;                       /* 统一圆角：卡片、按钮、弹窗、输入框一致 */
+  --line-1: 1px solid var(--rule);     /* 常规分隔 */
+  --rule: 1px solid var(--ink);        /* 墨线（旧 --line 语义迁移） */
+  --rule-double: 3px double var(--ink); /* 章节级专用：报头底线、卷章分隔，全页最多 2 处 */
+  --rule-dot: 1px dotted var(--ink-muted);
+  --shadow-raise: 0 2px 8px rgba(33, 29, 23, 0.12); /* 仅悬停抬升；静止元素一律无阴影 */
 
-  /* 动画 */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* ===== 动效令牌（§2.4）—— 组件禁止写死毫秒/缓动，一律引用此处 ===== */
+  --dur-1: 120ms;              /* 悬停 / 按下 / 焦点 */
+  --dur-2: 240ms;              /* 弹窗、路由淡入淡出 */
+  --dur-3: 320ms;              /* 卡片单卡入场落位 */
+  --dur-4: 560ms;              /* 扫版（色块划过整段） */
+  --stagger-step: 60ms;        /* 列表逐卡错峰间隔 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);    /* 一切入场 */
+  --ease-sweep: cubic-bezier(0.65, 0, 0.35, 1); /* 扫版专用（匀进匀出） */
+
+  /* ===== deprecated：旧版色兼容别名（V1/V2 重构时消除） ===== */
+  --paper-2: #EFE7D5;
+  --paper-3: #E5DAC2;
+  --ink-2: #4A4335;
+  --ink-3: #6B6254;
+  --vermilion-2: #96381F;
+  --warning: var(--gold);
 }

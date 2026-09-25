@@ -84,7 +84,7 @@ async function handleLoad(e: Event) {
 <style scoped>
 .video-cover {
   display: block;
-  border: var(--line);
+  border: var(--rule);
   background: var(--paper-2);
 }
 
@@ -110,7 +110,7 @@ async function handleLoad(e: Event) {
   align-items: center;
   justify-content: center;
   background: var(--paper-2);
-  border: var(--line-dot);
+  border: var(--rule-dot);
 }
 
 .video-cover-fallback.video-cover-fill {

@@ -191,7 +191,7 @@ function commentKey(c: Comment, i: number): string {
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: var(--line);
+  border: var(--rule);
   overflow: hidden;
   background: var(--paper-3);
   display: flex;
@@ -288,7 +288,7 @@ function commentKey(c: Comment, i: number): string {
   margin-top: var(--sp-2);
   margin-left: calc(var(--sp-4) + 40px);
   padding-left: var(--sp-3);
-  border-left: var(--line-dot);
+  border-left: var(--rule-dot);
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);

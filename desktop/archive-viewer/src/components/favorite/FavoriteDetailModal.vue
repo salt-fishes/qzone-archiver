@@ -300,7 +300,7 @@ function handleClose() {
   font-size: 0.75rem;
   color: var(--ink-3);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
   align-items: center;
 }
 
@@ -325,7 +325,7 @@ function handleClose() {
   align-items: baseline;
   gap: var(--sp-3);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 }
 
 .favorite-name {
@@ -350,7 +350,7 @@ function handleClose() {
   color: var(--ink);
   margin: 0;
   padding-bottom: var(--sp-2);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .detail-title :deep(.mention) {
@@ -418,7 +418,7 @@ function handleClose() {
   font-size: 0.75rem;
   color: var(--ink-3);
   padding: var(--sp-2) var(--sp-3);
-  border: var(--line-dot);
+  border: var(--rule-dot);
   word-break: break-all;
 }
 
@@ -443,7 +443,7 @@ function handleClose() {
 
 .detail-section {
   padding: var(--sp-3) 0;
-  border-top: var(--line-dot);
+  border-top: var(--rule-dot);
 }
 
 .section-title {
@@ -454,7 +454,7 @@ function handleClose() {
   color: var(--ink-3);
   margin-bottom: var(--sp-3);
   padding-bottom: var(--sp-2);
-  border-bottom: var(--line);
+  border-bottom: var(--rule);
 }
 
 .audio-list {
@@ -472,7 +472,7 @@ function handleClose() {
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-3);
   background: rgba(255, 255, 255, 0.3);
-  border: var(--line-dot);
+  border: var(--rule-dot);
 }
 
 .audio-icon {

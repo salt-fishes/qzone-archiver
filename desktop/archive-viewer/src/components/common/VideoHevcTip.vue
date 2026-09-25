@@ -44,7 +44,7 @@ const message = computed(() =>
   display: flex;
   gap: var(--sp-3);
   padding: var(--sp-4);
-  border: var(--line);
+  border: var(--rule);
   border-left: 3px solid #b8860b;
   background: rgba(184, 134, 11, 0.06);
   font-family: var(--font-serif-cn);

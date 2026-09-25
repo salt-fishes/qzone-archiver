@@ -83,7 +83,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleShortcut))
 
 <style scoped>
 .navbar {
-  border-top: var(--line-dot);
+  border-top: var(--rule-dot);
   margin-top: var(--sp-4);
   padding-top: var(--sp-3);
 }
@@ -148,7 +148,7 @@ onUnmounted(() => document.removeEventListener('keydown', handleShortcut))
 .search-box {
   display: flex;
   align-items: center;
-  border: var(--line);
+  border: var(--rule);
   background: rgba(255, 255, 255, 0.4);
   padding: var(--sp-2) var(--sp-4);
   flex: 1;

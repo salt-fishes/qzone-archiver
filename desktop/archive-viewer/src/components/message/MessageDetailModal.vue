@@ -250,7 +250,7 @@ watch(visible, v => {
   flex-wrap: wrap;
   gap: var(--sp-4);
   padding-bottom: var(--sp-3);
-  border-bottom: var(--line-dot);
+  border-bottom: var(--rule-dot);
 }
 
 .detail-quote {
@@ -319,7 +319,7 @@ watch(visible, v => {
   align-items: center;
   gap: var(--sp-5);
   padding-top: var(--sp-4);
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
 }
 
 .detail-action {
@@ -327,7 +327,7 @@ watch(visible, v => {
   align-items: center;
   gap: var(--sp-2);
   background: transparent;
-  border: var(--line);
+  border: var(--rule);
   padding: var(--sp-2) var(--sp-4);
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -370,7 +370,7 @@ watch(visible, v => {
 
 /* 最近访问 */
 .detail-visitors {
-  border-top: var(--line-double);
+  border-top: var(--rule-double);
   padding-top: var(--sp-4);
 }
 
@@ -408,7 +408,7 @@ watch(visible, v => {
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  border: var(--line);
+  border: var(--rule);
   object-fit: cover;
   flex-shrink: 0;
 }

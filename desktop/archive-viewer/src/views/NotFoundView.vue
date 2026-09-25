@@ -19,7 +19,7 @@
 <style scoped>
 .placeholder {
   padding: var(--sp-5);
-  border: var(--line-dot);
+  border: var(--rule-dot);
   background: rgba(255, 255, 255, 0.2);
 }
 
