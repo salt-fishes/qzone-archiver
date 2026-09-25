@@ -61,6 +61,7 @@ const EXPECTED_MODIFIED = new Set([
   'config.js',
   ...MODS11.map((x) => `modules/${x}.js`), // P2-4：瘦身为纯编排
   ...['blogs', 'boards', 'diaries', 'favorites', 'messages', 'photos', 'shares', 'videos', 'visitors'].map((x) => `collectors/${x}.js`),
+  'collectors/friends.js', // v5.0 F4：特别关心循环 undefined.care 崩溃修复
   ...MODS11.map((x) => `exporters/${x}.js`),
   'repos/incremental.js', // P2-3/P2-4：增量判定方法补齐
   'tasks/orchestrator.js',

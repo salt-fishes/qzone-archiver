@@ -182,8 +182,10 @@ QZoneCollectors.Friends = {
           indicator.setTotal(items.length);
 
           for (const item of items) {
-              const friend = _.find(friends, (friend) => friend.uin === item.uin);
-              friend.care = friend !== undefined;
+              const friend = _.find(friends, (f) => f.uin === item.uin);
+              // v5.0 F4：特别关心列表可能含不在好友列表里的 uin（非好友/认证空间）——
+              // 原实现 undefined.care 直接抛错中断循环，其余好友全部丢失标记
+              if (friend) friend.care = true;
           }
 
           // 成功
