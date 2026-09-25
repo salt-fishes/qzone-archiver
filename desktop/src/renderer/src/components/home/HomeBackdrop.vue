@@ -7,7 +7,7 @@
  *    外层位移 ≤10px 视差；移出回中（transition 缓动，不做跟随光斑）
  *  - 只动 transform/opacity（无 canvas、无布局抖动）；document.hidden 暂停动画
  *  - prefers-reduced-motion → 完全静态（不绑事件、动画关闭）
- *  - 深色模式整体降透明度（:global(html.dark)）
+ *  - 深色模式色斑降透明度（html.dark，非 scoped 块）
  */
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 
@@ -180,8 +180,15 @@ onBeforeUnmount(() => {
 .home-backdrop.is-static .blob {
   animation: none;
 }
-/* 深色模式：整体降透明度，避免暗环境刺眼/过亮 */
-:global(html.dark) .home-backdrop .blob {
+</style>
+
+<style>
+/* 深色模式：色斑整体降透明度，避免暗环境刺眼/过亮。
+   ⚠️ 必须放非 scoped 块：`:global(html.dark) .blob` 这种「global 包组合选择器前缀」的
+   scoped 写法会被编译管线错误输出成 `html.dark{opacity:.14}`（命中根元素，
+   整页透明度 0.14，深色模式全界面洗成灰色——v5.3 装机实测）。
+   html.dark 根选择器本就无法 scoped 命中，非 scoped + 全局唯一类名即可。 */
+html.dark .home-backdrop .blob {
   opacity: 0.14;
 }
 </style>
