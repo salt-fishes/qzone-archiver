@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- 禁用 Referer：QQ 空间图片 CDN（qlogo/photogz）按 Referer 防盗链，
+       带页内 Referer 会返回"此图片未经允许 不可引用"占位图；
+       file:// 归档下多数请求本就不带 Referer，此声明显式统一并覆盖 dev/http 场景 -->
+  <meta name="referrer" content="no-referrer">
   <title>QQ空间档案</title>
   <link rel="icon" href="../images/favicon.ico">
   <!-- 字体：拉丁子集已在构建期内联进 CSS（src/styles/fonts.scss，V0.1 离线化）；
@@ -14,6 +18,6 @@
   <div id="app">
     <!-- Vue 应用挂载点 -->
     <div class="app-loading">正在载入档案…</div>
-  </div>
+  </div>
 </body>
 </html>
