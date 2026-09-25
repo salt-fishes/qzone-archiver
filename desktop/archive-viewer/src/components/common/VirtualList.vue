@@ -365,6 +365,10 @@ defineExpose({ scrollToItem })
 /* wrapper 承担高度，内部容器占满 */
 .archive-list {
   height: 100% !important;
+  /* 流式去盒子化（v5.2 重设计）：开放式阅读流——无边框无底色，
+     条目间靠点线分隔 + 分段头划界；网格模式仍由 .vl-grid 自带边界 */
+  border: none;
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {

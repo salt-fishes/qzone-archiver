@@ -1,10 +1,10 @@
 <template>
   <article class="archive-entry" :class="{ clickable }" @click="handleClick">
-    <!-- 时间戳列（年份/月日/时分，由 time 自动派生） -->
+    <!-- 时间戳列（由 time 自动派生）：月日为主、年·时为辅——
+         年份已由分段头（二〇二六年）承载，卡内不重复做视觉主角 -->
     <div class="entry-date">
-      <div class="entry-year">{{ yearText }}</div>
       <div class="entry-md">{{ mdText }}</div>
-      <div class="entry-time">{{ timeText }}</div>
+      <div class="entry-sub"><span>{{ yearText }}</span><span v-if="timeText">{{ timeText }}</span></div>
     </div>
 
     <!-- 主体 -->
@@ -79,100 +79,91 @@ function handleClick() {
 <style scoped>
 .archive-entry {
   display: grid;
-  grid-template-columns: 80px 1fr;
-  gap: var(--sp-5);
-  padding: var(--sp-4) var(--sp-3);
+  grid-template-columns: 64px 1fr;
+  gap: var(--sp-4);
+  padding: var(--sp-3) var(--sp-2);
   border-bottom: var(--rule-dot);
   position: relative;
-  transition: background var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out),
-    box-shadow var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out);
+  transition: background var(--dur-1) var(--ease-out);
 }
 
-/* 标题墨线：自左划入（§3.1 悬停），置于卡顶 */
+/* 流式行悬停：行语义——纸亮底 + 左缘朱砂竖线（v5.2 流式重设计），
+   不做卡片浮起（阅读流里逐行浮起是噪音）；网格密度由 vl-grid-cell 承载无此态 */
 .archive-entry::before {
   content: '';
   position: absolute;
-  top: -1px;
   left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--vermilion);
+  transform: scaleY(0);
+  transition: transform var(--dur-1) var(--ease-out);
+  pointer-events: none;
+}
+
+.archive-entry.clickable { cursor: pointer; }
+
+.archive-entry.clickable:hover { background: var(--paper-raised); }
+
+.archive-entry.clickable:hover::before { transform: scaleY(1); }
+
+.archive-entry.clickable:active { background: rgba(181, 67, 42, 0.05); }
+
+/* 网格密度下的档案卡恢复「卡语义」：浮起 + 卡顶墨线自左划入
+   （行语义只属于流式阅读流；网格里每一格是一张卡） */
+:global(.vl-grid) .archive-entry.clickable::before {
+  top: -1px;
   right: 0;
+  bottom: auto;
+  width: auto;
   height: 2px;
   background: var(--ink);
   transform: scaleX(0);
   transform-origin: left center;
-  transition: transform var(--dur-1) var(--ease-out);
-  pointer-events: none;
-  z-index: 1;
 }
 
-.archive-entry.clickable {
-  cursor: pointer;
-}
-
-.archive-entry.clickable:hover {
-  background: var(--paper-raised);
+:global(.vl-grid) .archive-entry.clickable:hover {
   transform: translateY(-2px);
-  border-color: rgba(33, 29, 23, 0.3);
   box-shadow: var(--shadow-raise);
 }
 
-.archive-entry.clickable:hover::before {
-  transform: scaleX(1);
-}
+:global(.vl-grid) .archive-entry.clickable:hover::before { transform: scaleX(1); }
 
-.archive-entry.clickable:active {
+:global(.vl-grid) .archive-entry.clickable:active {
+  background: transparent;
   transform: translateY(1px);
   box-shadow: none;
 }
 
-.archive-entry.clickable:hover .entry-date::after {
-  background: var(--vermilion);
-}
-
 .archive-entry.clickable:focus-visible {
   outline: 2px solid var(--vermilion);
-  outline-offset: 2px;
+  outline-offset: -2px;
 }
 
 .entry-date {
   font-family: var(--font-mono);
   text-align: right;
-  border-right: var(--rule);
-  padding-right: var(--sp-3);
-  position: relative;
-}
-
-.entry-date::after {
-  content: '';
-  position: absolute;
-  right: -5px;
-  top: var(--sp-2);
-  width: 9px;
-  height: 9px;
-  background: var(--ink-3);
-  border-radius: 50%;
-  border: 2px solid var(--paper);
-  box-shadow: 0 0 0 1px var(--ink);
-  transition: background 0.2s;
-}
-
-.entry-year {
-  font-size: 1.4rem;
-  font-weight: 600;
-  color: var(--ink);
-  line-height: 1;
+  padding-right: var(--sp-2);
+  border-right: var(--line-1);
 }
 
 .entry-md {
-  font-size: 0.7rem;
-  color: var(--ink-3);
-  margin-top: var(--sp-1);
-  letter-spacing: 0.05em;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  letter-spacing: 0.04em;
 }
 
-.entry-time {
-  font-size: 0.65rem;
-  color: var(--ink-3);
-  margin-top: var(--sp-1);
+.entry-sub {
+  margin-top: 2px;
+  font-size: 0.6rem;
+  color: var(--ink-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  letter-spacing: 0.04em;
 }
 
 .entry-body {
@@ -192,9 +183,13 @@ function handleClick() {
 /* 通用头部标签（编号/印章/类型）—— 各 Card 直接复用 */
 .entry-head :deep(.entry-num) {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
-  color: var(--ink-3);
-  letter-spacing: 0.1em;
+  font-size: 0.6rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.06em;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .entry-head :deep(.entry-stamp-tag),
@@ -358,10 +353,12 @@ function handleClick() {
   color: var(--vermilion);
   font-style: italic;
   letter-spacing: 0.05em;
-  transition: transform 0.2s var(--ease-out);
+  opacity: 0;
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
 }
 
 .archive-entry.clickable:hover :deep(.entry-stat-cta) {
+  opacity: 1;
   transform: translateX(4px);
 }
 
@@ -376,13 +373,18 @@ function handleClick() {
     border-right: none;
     border-bottom: var(--rule-dot);
     padding-right: 0;
-    padding-bottom: var(--sp-2);
+    padding-bottom: var(--sp-1);
     display: flex;
-    gap: var(--sp-3);
+    gap: var(--sp-2);
     align-items: baseline;
   }
-  .entry-date::after {
-    display: none;
+  .entry-sub {
+    flex-direction: row;
+    gap: var(--sp-2);
+  }
+  /* 触屏无悬停：CTA 常显 */
+  .archive-entry :deep(.entry-stat-cta) {
+    opacity: 1;
   }
   /* 移动端扩大互动数据点击区域 */
   .entry-stats {
