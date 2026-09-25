@@ -109,7 +109,15 @@ a {
   .frame { grid-template-columns: 160px 1fr; }
 }
 
-.content { min-width: 0; }
+.content {
+  min-width: 0;
+}
+
+// 含流式阅读列的视图：底部内边距让位——阅读列高度由 VirtualList
+// 按视口实测（top 偏移）动态设定，内容一直延伸到视口底
+.frame:has(.vl-wrap) {
+  padding-bottom: 0;
+}
 
 // 章节标题
 .section-head {

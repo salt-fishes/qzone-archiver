@@ -1,5 +1,5 @@
 <template>
-  <div ref="rootWrap" class="vl-wrap">
+  <div ref="rootWrap" class="vl-wrap" :style="wrapStyle">
     <span v-if="sweepOn" class="vl-sweep-line" aria-hidden="true"></span>
     <span v-if="sweepOn" class="vl-sweep-bar" aria-hidden="true"></span>
 
@@ -69,7 +69,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { animate, stagger as animeStagger, utils } from 'animejs'
 import { DynamicScroller, DynamicScrollerItem } from 'vue-virtual-scroller'
 import 'vue-virtual-scroller/dist/vue-virtual-scroller.css'
@@ -122,6 +122,22 @@ const GRID_MAX = 800
 
 const scrollerRef = ref<any>(null)
 const rootWrap = ref<HTMLElement | null>(null)
+
+/* ===== 阅读列通底（v5.2）：高度 = 视口高 − 自身顶部偏移 =====
+   挂载与窗口尺寸变化时实测；内容列从此一直延伸到视口底，
+   不再依赖写死的 calc(100vh - 320px)（旧值留一大截底部空白）。 */
+const wrapStyle = ref<{ height: string }>({ height: 'calc(100vh - 320px)' })
+
+function syncWrapHeight(): void {
+  const el = rootWrap.value
+  if (!el) return
+  const top = Math.round(el.getBoundingClientRect().top)
+  wrapStyle.value = { height: `${Math.max(360, window.innerHeight - top)}px` }
+}
+
+function onWindowResize(): void {
+  syncWrapHeight()
+}
 const { density } = useDensity()
 const { reduced, dur, stagger, ease } = useMotion()
 
@@ -273,10 +289,23 @@ function playEntrance(): void {
   }, lineDur + cardDur * 2 + step * 8)
 }
 
+let syncTimers: ReturnType<typeof setTimeout>[] = []
+
 onMounted(async () => {
   await nextTick()
   await new Promise(r => requestAnimationFrame(() => r(null)))
+  syncWrapHeight()
+  window.addEventListener('resize', onWindowResize, { passive: true })
+  // 布局稳定前的二次校准：webfont 加载/标题渲染会改变列表上方的偏移
+  // （挂载瞬间量得的 top 偏小/偏大都会让底部留白或溢出）
+  document.fonts?.ready.then(() => syncWrapHeight()).catch(() => {})
+  syncTimers = [300, 900].map(ms => setTimeout(syncWrapHeight, ms))
   playEntrance()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', onWindowResize)
+  syncTimers.forEach(t => clearTimeout(t))
 })
 
 defineExpose({ scrollToItem })
@@ -285,7 +314,7 @@ defineExpose({ scrollToItem })
 <style scoped>
 .vl-wrap {
   position: relative;
-  height: calc(100vh - 320px);
+  /* 高度由 wrapStyle 按视口实测设定（style 内联），此处仅兜底 */
   min-height: 360px;
 }
 
