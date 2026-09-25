@@ -490,9 +490,30 @@ function revealChars(chars: HTMLElement[], baseDelay = 0, perChar = 26, dur = 90
 function runSectionAnim(sec: HTMLElement) {
   if (reduced) return
 
-  // 标题逐字揭示
+  // 章节开篇：朱砂扫版（§3.1①）——色块扫过标题区，字符在扫过处升起
   const title = sec.querySelector<HTMLElement>('.rp-ch-title')
-  if (title) revealChars((title as TitleElement).__chars || [], 0)
+  if (title) {
+    const wipe = document.createElement('span')
+    wipe.setAttribute('aria-hidden', 'true')
+    wipe.className = 'rp-wipe'
+    title.appendChild(wipe)
+    const sweepEase = 'cubic-bezier(0.65, 0, 0.35, 1)' // --ease-sweep
+    anims.push(animate(wipe, {
+      scaleX: [0, 1],
+      duration: 560,
+      ease: sweepEase,
+      onComplete: () => {
+        wipe.style.transformOrigin = 'right center'
+        anims.push(animate(wipe, {
+          scaleX: [1, 0],
+          duration: 240,
+          ease: sweepEase,
+          onComplete: () => wipe.remove(),
+        }))
+      },
+    }))
+    revealChars((title as TitleElement).__chars || [], 220)
+  }
 
   // 正文浮现
   const text = sec.querySelector('.rp-ch-text')
@@ -1141,12 +1162,28 @@ onBeforeUnmount(() => {
 }
 
 .rp-ch-title {
-  font-family: 'Fraunces', 'Noto Serif SC', serif;
+  font-family: var(--font-display);
   font-size: clamp(2.4rem, 6vw, 4.4rem);
   font-weight: 800;
   line-height: 1.05;
   margin: 0;
   letter-spacing: 0.01em;
+  position: relative;
+}
+
+/* 章节开篇朱砂扫版色块（JS 按需注入） */
+.rp-wipe {
+  position: absolute;
+  inset: -4% -2%;
+  background: var(--vermilion);
+  transform: scaleX(0);
+  transform-origin: left center;
+  pointer-events: none;
+  z-index: 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rp-wipe { display: none; }
 }
 
 .rp-section .rp-accent {
