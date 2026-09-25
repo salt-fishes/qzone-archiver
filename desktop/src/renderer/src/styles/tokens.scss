@@ -42,7 +42,8 @@ html.dark {
   --paper: #17140f;
   --paper-raised: #201c15;
   --ink: #e9e2d3;
-  --ink-muted: #8a8172;
+  /* 深色下 muted 提亮：#8a8172 在夜墨底对比 ~3.5:1（小字不达标）→ #a69d8c ≈ 6.9:1 */
+  --ink-muted: #a69d8c;
   --line: #3d372c;
   --gold: #e3b34c;
   --surface: var(--paper-raised);

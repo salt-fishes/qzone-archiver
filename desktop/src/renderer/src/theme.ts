@@ -92,6 +92,14 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
   ...shared,
   common: {
     ...shared.common,
+    /* 深色下 primary 反转为「夜墨墨色」（浅暖）：
+       浅色体系的 primary=墨 #211D17 是「暗上暗」，按钮/激活态在夜墨底上不可读（v5.3 装机实测）。
+       Naive darkTheme 主按钮文字取 baseColor，显式配墨字保证浅底墨字高对比 */
+    primaryColor: PALETTE.nightInk,
+    primaryColorHover: '#F5EFE2',
+    primaryColorPressed: '#D8D0BE',
+    primaryColorSuppl: '#FFFFFF',
+    baseColor: PALETTE.ink,
     bodyColor: PALETTE.night,
     cardColor: PALETTE.nightRaised,
     modalColor: PALETTE.nightRaised,
@@ -103,7 +111,9 @@ export const darkThemeOverrides: GlobalThemeOverrides = {
     textColorBase: PALETTE.nightInk,
     textColor1: PALETTE.nightInk,
     textColor2: PALETTE.nightInk,
-    textColor3: PALETTE.inkMuted,
+    /* 深色下次级文字提亮：#8A8172 在夜墨底上对比仅 ~3.5:1（小字不达标），
+       #A69D8C ≈ 6.9:1（浅色端维持 --ink-muted 不变） */
+    textColor3: '#A69D8C',
     /* 深色下金提亮（§2.1） */
     warningColor: PALETTE.goldBright,
     warningColorHover: '#EDC36A',
