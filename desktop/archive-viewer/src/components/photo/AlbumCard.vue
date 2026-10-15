@@ -2,7 +2,7 @@
   <ArchiveEntry
     :time="index.createTime"
     :clickable="clickable"
-    :class="{ 'album-noaccess': isNoAccess }"
+    :class="['album-entry', { 'album-noaccess': isNoAccess }]"
     @click="handleClick"
   >
     <template #head>
@@ -175,6 +175,16 @@ function handleClick() {
   padding: 1px 8px;
 }
 
+/* 相册条目压缩（v5.4.1 反馈）：行距收窄——封面限高后单个相册不再占大半屏。
+   .album-entry 标在 ArchiveEntry 根上；双类叠加提升优先级，稳压组件本体 padding */
+.archive-entry.album-entry.album-entry {
+  padding: var(--sp-2);
+}
+
+.archive-entry.album-entry :deep(.entry-head) {
+  margin-bottom: var(--sp-1);
+}
+
 /* ===== 状态印章（v5.4 视觉重做） ===== */
 .album-badge {
   font-family: var(--font-mono);
@@ -204,12 +214,15 @@ function handleClick() {
   color: var(--ink-muted);
 }
 
-/* ===== 封面（v5.4 视觉重做）：16:9 稳定高度，拼图 / 单图 / 密封 / 空白 ===== */
+/* ===== 封面（v5.4 视觉重做）：拼图 / 单图 / 密封 / 空白 =====
+   v5.4.1：限高 200px——流式阅读列在大窗口下最宽 1400px，
+   不限制时 16:9 会等比放大成巨幅、单个相册占掉大半屏 */
 .album-cover {
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  margin-bottom: var(--sp-2);
+  max-height: 200px;
+  margin-bottom: var(--sp-1);
   overflow: hidden;
   border: var(--rule);
   background: var(--paper-2);

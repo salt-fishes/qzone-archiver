@@ -263,7 +263,8 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  margin: var(--sp-4) 0 var(--sp-3);
+  /* v5.4.1：上下留白收窄（40/24 → 24/16），列表更快进入视野 */
+  margin: var(--sp-3) 0 var(--sp-2);
 }
 
 /* 状态筛选 chips（v5.4） */
@@ -271,7 +272,7 @@ onMounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-1);
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-3);
 }
 
 .filter-chip {
