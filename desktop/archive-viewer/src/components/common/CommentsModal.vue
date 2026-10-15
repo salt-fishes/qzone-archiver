@@ -78,7 +78,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import ModalDialog from './ModalDialog.vue'
-import MediaGrid, { type MediaItem } from './MediaGrid.vue'
+import MediaGrid from './MediaGrid.vue'
+import type { MediaItem } from './MediaViewer.vue'
 import { formatContent, resolveModulePath, buildQzoneAvatarUrl, resolveCommonImagePath } from '@/utils/formatContent'
 import type { Comment } from '@/types'
 

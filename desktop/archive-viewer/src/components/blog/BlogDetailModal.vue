@@ -124,7 +124,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
-import MediaGrid, { type MediaItem } from '@/components/common/MediaGrid.vue'
+import MediaGrid from '@/components/common/MediaGrid.vue'
+import type { MediaItem } from '@/components/common/MediaViewer.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
 import type { Blog, BlogIndex, LikeItem, MediaImage } from '@/types'

@@ -164,30 +164,8 @@
       :count="likeCount"
     />
 
-    <!-- 内嵌媒体预览：图片点击切换大图，视频点击就地播放，再次点击关闭 -->
-    <Teleport to="body">
-      <Transition name="modal">
-        <div v-if="previewSrc" class="photo-preview-overlay" @click="closePreview">
-          <video
-            v-if="previewIsVideo && !videoPreviewError"
-            :src="previewSrc"
-            controls
-            autoplay
-            playsinline
-            class="photo-preview-video"
-            @error="handlePreviewVideoError"
-          ></video>
-          <div
-            v-else-if="previewIsVideo && videoPreviewError"
-            class="photo-preview-error"
-          >
-            <VideoHevcTip :hevc="hevcUnsupported" />
-          </div>
-          <img v-else :src="previewSrc" class="photo-preview-img" :alt="previewAlt" />
-          <span class="photo-preview-tip">{{ previewIndex + 1 }} / {{ photoList.length }} · 点击关闭</span>
-        </div>
-      </Transition>
-    </Teleport>
+    <!-- 内嵌媒体预览：缩放 / 左右切换 / 视频播放由公共查看器承载 -->
+    <MediaViewer :items="viewerItems" v-model:index="previewIndex" />
   </ModalDialog>
 </template>
 
@@ -195,9 +173,9 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
 import VideoCover from '@/components/common/VideoCover.vue'
-import VideoHevcTip from '@/components/common/VideoHevcTip.vue'
+import MediaViewer from '@/components/common/MediaViewer.vue'
+import type { MediaItem } from '@/components/common/MediaViewer.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
-import { detectHevcSupport, isCodecUnsupportedError } from '@/utils/videoCompat'
 import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
@@ -357,40 +335,30 @@ function videoSrc(photo: Photo): string {
   return local || info.video_url || info.play_url || ''
 }
 
-// 内嵌媒体预览状态
-const previewSrc = ref('')
-const previewAlt = ref('')
+// ============ 内嵌媒体预览（公共查看器：缩放 / 左右切换） ============
 const previewIndex = ref(-1)
-const previewIsVideo = ref(false)
 
-// H.265 / HEVC 视频无法解码时展示引导提示
-const hevcSupported = detectHevcSupport()
-const videoPreviewError = ref(false)
-const hevcUnsupported = ref(false)
-
-function handlePreviewVideoError(e: Event) {
-  videoPreviewError.value = true
-  hevcUnsupported.value = !hevcSupported && isCodecUnsupportedError(e.target as HTMLVideoElement)
-}
+/** 预览条目：整册照片预计算为查看器条目，左右切换可跨分批渲染边界 */
+const viewerItems = computed<MediaItem[]>(() =>
+  photoList.value.map((p, i): MediaItem => {
+    const video = isVideoPhoto(p)
+    return {
+      src: video ? videoSrc(p) : photoSrc(p),
+      thumb: photoSrc(p),
+      caption: p.name || `照片 ${i + 1}`,
+      type: video ? 'video' : 'image'
+    }
+  })
+)
 
 function previewPhoto(item: PhotoMedia) {
   const src = item.isVideo ? item.videoSrc : item.src
   if (!src) return
-  previewSrc.value = src
-  previewAlt.value = item.photo.name || `照片 ${item.index + 1}`
   previewIndex.value = item.index
-  previewIsVideo.value = item.isVideo
-  videoPreviewError.value = false
-  hevcUnsupported.value = false
 }
 
 function closePreview() {
-  previewSrc.value = ''
-  previewAlt.value = ''
   previewIndex.value = -1
-  previewIsVideo.value = false
-  videoPreviewError.value = false
-  hevcUnsupported.value = false
 }
 
 function openLikes() {
@@ -791,50 +759,7 @@ watch([visible, () => photoList.value.length], ([v]) => {
   color: var(--ink-3);
 }
 
-/* 内嵌图片预览：层级高于主模态（1000） */
-.photo-preview-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(26, 22, 18, 0.92);
-  z-index: 1100;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  cursor: zoom-out;
-  padding: var(--sp-5);
-}
-
-.photo-preview-img {
-  max-width: 92vw;
-  max-height: 82vh;
-  object-fit: contain;
-  border: var(--rule);
-  background: var(--paper);
-}
-
-.photo-preview-video {
-  max-width: 92vw;
-  max-height: 82vh;
-  background: #000;
-  border: var(--rule);
-}
-
-/* H.265 等无法解码时的引导提示容器 */
-.photo-preview-error {
-  max-width: min(560px, 92vw);
-  background: var(--paper);
-  border: var(--rule);
-  padding: var(--sp-1);
-}
-
-.photo-preview-tip {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--paper);
-  letter-spacing: 0.1em;
-}
+/* 内嵌媒体预览：由 MediaViewer 承载（层级高于主模态 1000） */
 
 @media (max-width: 720px) {
   .detail-actions {
