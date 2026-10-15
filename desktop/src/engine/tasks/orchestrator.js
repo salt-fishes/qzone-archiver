@@ -86,7 +86,7 @@
       // 用户信息 / 头像 / 配置 / 备份清单 / index.html 首页与 SPA 入口
       P.notify.log({ level: 'info', message: `开始模块：${modName(mod)}` });
       await API.Common.exportOthers();
-      P.notify.log({ level: 'info', message: `模块完成：${modName(mod)}` });
+      // 完成日志由主进程 module-done 轨道统一落（UI「模块完成」+ 任务日志），此处不再重复
       P.notify.moduleDone({ module: mod });
       return;
     }
@@ -98,7 +98,6 @@
     }
     P.notify.log({ level: 'info', message: `开始模块：${modName(mod)}` });
     await fn();
-    P.notify.log({ level: 'info', message: `模块完成：${modName(mod)}` });
     P.notify.moduleDone({ module: mod });
   }
 
@@ -192,8 +191,6 @@
         s._suppressProgress = prevSuppress;
       }
 
-      P.notify.state({ taskId, state: 'running', modules });
-
       const results = {};
       let moduleList = modules || [];
       // v4.6 他人模式：剔除隐私模块（日记/好友/收藏，对方空间不可见）+ 强制开启照片详情（取原图/免权限地址）
@@ -212,6 +209,10 @@
         photos.Images.Info.isGet = true;
       }
       s.modules = moduleList;
+      // running 状态携带**实际执行清单**（过滤后）：UI 模块清单与总进度分母据此计算，
+      // 此前发送未过滤的 modules —— 他人模式下被剔除的隐私模块在界面上永远转圈、
+      // 总进度永远到不了 100%（2026-10-11 实机复核）
+      P.notify.state({ taskId, state: 'running', modules: moduleList });
       for (const mod of moduleList) {
         if (s.cancelled) break;
         s.currentModule = mod;
@@ -501,6 +502,8 @@
           pre: a.pre,
           url: a.url,
           desc: a.desc,
+          // 无权限相册（allowAccess=0）：选择器置灰不可选（备份时会跳过采集）
+          allowAccess: a.allowAccess,
         }));
       } finally {
         s._suppressProgress = prevSuppress;

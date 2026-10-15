@@ -155,3 +155,49 @@ describe('v4.9.2 槽位记账与队列清理', () => {
     expect(stateById()['cur-a']).toBeDefined();
   });
 });
+
+describe('v5.4 收尾等待可见化（waitIdle）', () => {
+  it('队列排空：onTick 收到 0/0，返回 true', async () => {
+    // 前置：上一条用例遗留的退避重试（cancelRequested）≤2s 转 failed，等队列真正排空
+    await vi.waitFor(() => {
+      const busy = downloadManager.getState().queue
+        .filter((q) => q.state === 'pending' || q.state === 'running').length;
+      expect(busy).toBe(0);
+    }, { timeout: 4000, interval: 100 });
+
+    // 下载直接成功（避免 mock 网络抛错触发的退避重试与手动置态竞争）
+    const spy = vi.spyOn(downloadManager, '_attempt').mockImplementation(async (record) => {
+      record.state = 'done';
+    });
+    try {
+      mocks.activeCtx = { taskId: 'task-w', targetDir: tmpDir };
+      await enqueueTask('w-done');
+      await vi.waitFor(() => expect(stateById()['w-done']).toBe('done'));
+
+      const ticks = [];
+      const ok = await downloadManager.waitIdle(1000, (c) => ticks.push(c));
+      expect(ok).toBe(true);
+      expect(ticks.at(-1)).toMatchObject({ pending: 0, running: 0 });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('队列未排空：超时返回 false，onTick 携带剩余计数，收尾提示同时进 UI 日志', async () => {
+    mocks.activeCtx = { taskId: 'task-w2', targetDir: tmpDir };
+    await enqueueTask('w-slow'); // mock net.fetch 抛错 → 退避重试中，保持 pending/running
+
+    const ticks = [];
+    const ok = await downloadManager.waitIdle(600, (c) => ticks.push(c));
+    expect(ok).toBe(false);
+    expect(ticks.length).toBeGreaterThan(0);
+    const last = ticks.at(-1);
+    expect(last.pending + last.running).toBeGreaterThan(0);
+    // 收尾生命周期行双轨：任务日志（downloadLog）+ UI 日志（backup:log 推送）
+    const uiLogs = mocks.sendToUi.mock.calls
+      .filter(([ch]) => ch === 'backup:log')
+      .map(([, p]) => p.message);
+    expect(uiLogs.some((m) => /等待下载队列落盘/.test(m))).toBe(true);
+    expect(uiLogs.some((m) => /下载收尾等待超时/.test(m))).toBe(true);
+  });
+});

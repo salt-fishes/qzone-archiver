@@ -244,28 +244,62 @@ export const downloadManager = {
    * - 只等 pending/running 归零（done/failed/skipped 均为终态）
    * - 超时保底（默认 120s）：个别死链的重试不能无限拖住完成页
    * - 用户暂停态立即返回（completed 不会在暂停态触发，防御性处理）
+   * - onTick({pending, running, total})：计数变化时回调（收尾状态透传 UI，
+   *   队列很大时用户能看到"还剩多少"，不再只停在进度面板干等）
+   * - 开始/收尾/超时三行同时写任务日志与 UI 日志（此前只有任务日志轨道，
+   *   且上下文过早清理导致落到 main.log —— 见 ipc/engine.js 收尾链）
    *
+   * @param {number} [timeoutMs] 等待上限
+   * @param {(counts: {pending:number, running:number, total:number}) => void} [onTick] 计数变化回调
    * @returns {Promise<boolean>} true=队列已排空；false=超时/暂停退出
    */
-  async waitIdle(timeoutMs = 120_000) {
+  async waitIdle(timeoutMs = 120_000, onTick) {
     const startedAt = Date.now();
     let announced = false;
+    let lastPending = -1;
+    let lastRunning = -1;
+    /** 计数变化才推送（500ms 轮询 × 大量完成事件，去重避免 IPC 洪水） */
+    const emitTick = () => {
+      if (typeof onTick !== 'function') return;
+      let pending = 0;
+      let runningCount = 0;
+      for (const q of queue) {
+        if (q.state === 'pending') pending += 1;
+        else if (q.state === 'running') runningCount += 1;
+      }
+      if (pending === lastPending && runningCount === lastRunning) return;
+      lastPending = pending;
+      lastRunning = runningCount;
+      try {
+        onTick({ pending, running: runningCount, total: queue.length });
+      } catch {
+        /* UI 推送失败不影响收尾 */
+      }
+    };
+    /** 收尾生命周期行：任务日志 + UI 日志双轨（其余逐条重试流水仍只进任务日志） */
+    const logBoth = (level, msg) => {
+      downloadLog(level, msg);
+      sendToUi(PushChannels.backupLog, { level, message: msg });
+    };
     while (Date.now() - startedAt < timeoutMs) {
       // 用户主动暂停：completed 流程不会在暂停态触发，避免死等
       if (pausedTaskId && pausedTaskId === pauseKey()) return false;
       const left = queue.filter((q) => q.state === 'pending' || q.state === 'running');
       if (left.length === 0) {
-        if (announced) downloadLog('info', '下载队列已收尾，全部媒体/头像落盘完成');
+        if (announced) logBoth('info', '下载队列已收尾，全部媒体/头像落盘完成');
+        emitTick();
         return true;
       }
       if (!announced) {
         announced = true;
-        downloadLog('info', `备份收尾：等待下载队列落盘（剩余 ${left.length} 项，上限 ${Math.round(timeoutMs / 1000)}s）…`);
+        logBoth('info', `备份收尾：等待下载队列落盘（剩余 ${left.length} 项，上限 ${Math.round(timeoutMs / 1000)}s）…`);
       }
+      emitTick();
       await new Promise((r) => setTimeout(r, 500));
     }
     const left = queue.filter((q) => q.state === 'pending' || q.state === 'running').length;
-    downloadLog('warn', `下载收尾等待超时（${Math.round(timeoutMs / 1000)}s），仍有 ${left} 项未落盘，备份继续完成（缺失文件可增量补采）`);
+    logBoth('warn', `下载收尾等待超时（${Math.round(timeoutMs / 1000)}s），仍有 ${left} 项未落盘，备份继续完成（缺失文件可增量补采）`);
+    emitTick();
     return false;
   },
 

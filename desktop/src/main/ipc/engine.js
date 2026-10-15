@@ -221,19 +221,27 @@ export function registerEngineIpc() {
             const ensureAvatar = targetUin
               ? avatarStore.ensure(targetUin).catch(() => false)
               : Promise.resolve(false);
+            // 收尾可见状态（2026-10-11 实机反馈）：收尾最长 120s，此前界面只停在
+            // 进度面板干等，看起来像死机。每次计数变化推 backup:finalizing，完成页
+            // 出现前 UI 明确显示「收尾中（剩余 N 项）」。
+            const pushFinalizing = (payload) => sendToUi(PushChannels.backupFinalizing, payload);
+            pushFinalizing({ active: true, phase: 'downloads', pending: 0, running: 0, total: 0 });
             // v5.2 兜底：宣告完成前等下载队列收尾——头像等尾部媒体落盘后再进完成页，
             // 避免用户立刻打包/关机导致归档缺文件（hasAvatar:true 却无文件）
-            const drainDownloads = downloadManager.waitIdle().catch((e) => {
-              logger.warn(`[download-manager] waitIdle 异常，跳过收尾等待：${e && e.message}`);
-              return false;
-            });
+            const drainDownloads = downloadManager
+              .waitIdle(120_000, (counts) => pushFinalizing({ active: true, phase: 'downloads', ...counts }))
+              .catch((e) => {
+                logger.warn(`[download-manager] waitIdle 异常，跳过收尾等待：${e && e.message}`);
+                return false;
+              });
             // v5.0 修复：backup:completed 推送移到 recordBackup **之后**，并携带
             // 本次备份的完整记录。此前先推 completed、渲染层再回查历史，
             // 拿到的是【上一次】备份的记录 —— 完成页显示上一次备份的数据。
             ensureAvatar
               .then(() => drainDownloads)
-              .then(() =>
-                backupStats.recordBackup({
+              .then(() => {
+                pushFinalizing({ active: true, phase: 'stats', pending: 0, running: 0 });
+                return backupStats.recordBackup({
                   taskId: data.taskId || active?.taskId,
                   targetDir: active?.targetDir,
                   modules: active?.modules || [],
@@ -241,8 +249,8 @@ export function registerEngineIpc() {
                   errors: data.errors,
                   target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
                   startedAt: taskMachine.getSnapshot().startedAt, // v5.0：只统计本次任务写入的文件
-                })
-              )
+                });
+              })
               .then((rec) => {
                 if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
                 sendToUi(PushChannels.backupCompleted, { ...data, record: rec });
@@ -251,19 +259,29 @@ export function registerEngineIpc() {
                 console.error('[backup-stats] 记录历史失败', e);
                 // 落库失败也要推完成（数据可从 completed 事件本身构造）
                 sendToUi(PushChannels.backupCompleted, data);
+              })
+              .finally(() => {
+                pushFinalizing({ active: false });
+                // P5.2：终态清理任务上下文——必须等收尾链结束再清理：
+                // 此前在 completed 事件同步块里立即清理，收尾期间（最长 120s）的
+                // 下载重试/收尾结论日志因 activeTaskId 已置空而落到 main.log，
+                // 任务日志从「任务结束」到收尾完成之间整段缺失（2026-10-11 实机定位）。
+                dropTaskContext(data.taskId);
               });
+          } else {
+            // cancelled：无收尾流程，直接清理
+            dropTaskContext(data.taskId);
           }
-          // P5.2：终态清理任务上下文
-          dropTaskContext(data.taskId);
         }
         break;
       }
       case 'module-done': {
         sendToUi(PushChannels.backupModuleDone, data);
         // §K4：模块结束 → 任务日志（模块粒度的时间点；与"模块完成"日志行共同给出模块耗时）
+        // 用词与 UI 日志一致（渲染层同事件也显示「模块完成」）
         const doneTaskId = getActiveTaskContext()?.taskId;
         if (doneTaskId) {
-          logger.task(doneTaskId).info(`模块结束：${data?.module ?? '?'}`);
+          logger.task(doneTaskId).info(`模块完成：${data?.module ?? '?'}`);
         }
         break;
       }

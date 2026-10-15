@@ -44,6 +44,19 @@ export type DownloadItem = {
 /** v4.7：下载队列汇总（主进程 download:state-changed state=summary 推送） */
 export type DownloadSummary = { pending: number; running: number; done: number; failed: number; total: number };
 
+/**
+ * 收尾可见状态（主进程 backup:finalizing 推送）：
+ * 引擎已采集完、主进程还在等媒体下载落盘 / 统计归档——完成页出现前的过渡态。
+ * phase: downloads=等待下载队列；stats=统计归档信息
+ */
+export type FinalizeState = {
+  active: boolean;
+  phase: string;
+  pending: number;
+  running: number;
+  total: number;
+};
+
 export const DL_STATES: { key: string; label: string }[] = [
   { key: 'all', label: '全部' },
   { key: 'pending', label: '排队' },
@@ -121,6 +134,20 @@ export const useBackupStore = defineStore('backup', () => {
   let moduleOverallBase = 0;
   let moduleOverallFor = '';
 
+  /* -------- 收尾可见状态（备份完成页出现前的过渡态） -------- */
+
+  const finalizing = ref<FinalizeState | null>(null);
+  const finalizingActive = computed(() => finalizing.value?.active === true);
+
+  /**
+   * 实际执行的模块清单（主进程 backup:state-changed 携带）：
+   * 他人模式下引擎会剔除隐私模块（日记/好友/收藏），清单须以引擎为准，
+   * 否则被剔除的模块在界面上永远转圈、总进度永远到不了 100%。
+   * 缺省（旧主进程/首次推送前）回退为所选模块。
+   */
+  const activeModules = ref<string[]>([]);
+  const moduleList = computed(() => (activeModules.value.length ? activeModules.value : cfg.selectedModules));
+
   /* -------- 用时计时器 --------
    * 放在 store 而非组件内：备份跨路由/跨组件实例时计时不中断；
    * watch 加 immediate，组件在任何时机挂载都能按当前 busy/paused 正确启动。
@@ -146,10 +173,11 @@ export const useBackupStore = defineStore('backup', () => {
     }, 500);
   }
   watch(
-    [busy, paused],
-    ([b, p]) => {
+    [busy, paused, finalizingActive],
+    ([b, p, f]) => {
       tickStop();
-      if (b && !p) tickStartRun();
+      // 收尾阶段（引擎已完成、等待下载落盘）也在工作，计时不停
+      if ((b || f) && !p) tickStartRun();
     },
     { immediate: true }
   );
@@ -346,6 +374,7 @@ export const useBackupStore = defineStore('backup', () => {
     // P3-1：不再乐观置位 busy——状态由主进程 backup:state-changed 派生
     progress.value = { module: modules[0] || '', phase: '启动', percent: 0 };
     doneModules.value = [];
+    activeModules.value = []; // 新任务清单以主进程推送为准（prepare 推送立即携带所选模块）
     moduleOverall.value = 0;
     moduleOverallBase = 0;
     moduleOverallFor = '';
@@ -419,9 +448,13 @@ export const useBackupStore = defineStore('backup', () => {
         }
         // P3-1：状态机快照是唯一事实源，渲染层只派生（idle 之外全量采纳）
         if (p.state) taskState.value = p.state;
+        // 模块清单以主进程推送为准（他人模式为引擎过滤后的实际执行清单）
+        if (Array.isArray(p.modules) && p.modules.length) activeModules.value = [...p.modules];
         if (p.state === 'running') {
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
-          pushLog('info', '开始备份');
+          finalizing.value = null;
+          // 注意：此处不再重复推「开始备份」日志——startBackup 已推详细行（含目标/模块/目录），
+          // 且 resume 也会进入 running，通用文案会把「已恢复」误导成「开始备份」
           // v5.0：新任务的 running（区别于同任务 resume）→ 清空下载列表，
           // 上一任务的媒体不再出现在本次列表里（主进程已同步清理终态记录）
           if (p.taskId && p.taskId !== lastDownloadTaskId) {
@@ -433,6 +466,23 @@ export const useBackupStore = defineStore('backup', () => {
         }
         if (p.state === 'paused') {
           pushLog('warn', '已暂停，可点击「恢复」继续');
+        }
+        if (p.state === 'completed' || p.state === 'cancelled' || p.state === 'failed') {
+          finalizing.value = null;
+        }
+      }),
+      // 收尾可见状态：引擎已完成、等待下载落盘/统计归档期间持续推送剩余计数
+      window.api.on('backup:finalizing', (p) => {
+        if (p?.active) {
+          finalizing.value = {
+            active: true,
+            phase: p.phase || 'downloads',
+            pending: Number(p.pending) || 0,
+            running: Number(p.running) || 0,
+            total: Number(p.total) || 0,
+          };
+        } else {
+          finalizing.value = null;
         }
       }),
       // §B：引擎窗状态广播——关窗/崩溃/重连成功自动更新，无需手动刷新
@@ -472,6 +522,8 @@ export const useBackupStore = defineStore('backup', () => {
       }),
       window.api.on('backup:completed', async (p) => {
         // P3-1：busy/paused 复位已由 state-changed(completed) 派生，此处只处理结果数据
+        // 收尾态随完成事件必然结束（finalizing:active=false 可能先到，这里再兜底一次）
+        finalizing.value = null;
         // P0-3：模块失败不再静默——日志面板与成功页均显著可见
         const errs: BackupModuleError[] = Array.isArray(p?.errors) ? p.errors : [];
         if (errs.length) {
@@ -572,7 +624,7 @@ export const useBackupStore = defineStore('backup', () => {
   return {
     // 状态
     taskState, busy, paused, engineReady, engineFailed, engineState, engineStateReason, progress, moduleOverall, elapsedSec, logs, downloads,
-    lastResult, resetResult, doneModules,
+    lastResult, resetResult, doneModules, finalizing, finalizingActive, activeModules, moduleList,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,
     // 函数

@@ -7,37 +7,50 @@ import { computed, ref } from 'vue';
 import { NButton, NProgress, NDrawer, NDrawerContent, NTag, useDialog } from 'naive-ui';
 import { AnimatePresence, Motion } from 'motion-v';
 import { useBackupStore, DL_STATES } from '../../stores/backup';
-import { useConfigStore, MODULE_META, MODULE_ICONS } from '../../stores/config';
+import { MODULE_META, MODULE_ICONS } from '../../stores/config';
 import VirtualList from '../common/VirtualList.vue';
 
 const bk = useBackupStore();
-const cfg = useConfigStore();
 const dialog = useDialog();
 
 const paused = computed(() => bk.paused);
 /** 当前阶段进度（0-100，阶段内原始百分比，子条显示用） */
 const modulePercent = computed(() => bk.progress?.percent ?? 0);
+/** 收尾可见状态（引擎已完成、等待下载落盘/统计归档） */
+const finalizingActive = computed(() => bk.finalizingActive);
+const finalizeTip = computed(() => {
+  const f = bk.finalizing;
+  if (!f) return '';
+  if (f.phase === 'stats') return '正在统计归档信息…';
+  const left = (f.pending || 0) + (f.running || 0);
+  return left > 0
+    ? `等待媒体下载落盘（剩余 ${left} 项），完成后自动进入结果页`
+    : '正在准备完成页…';
+});
 /**
  * 总体进度：已完成模块数 + 当前模块加权进度（v5.0：阶段内单调不回退），
- * 按所选模块总数折算。此前直接用当前阶段百分比——列表取完进入全文阶段时
- * 阶段百分比回 0，总进度跟着倒退。
+ * 按**实际执行的模块清单**（bk.moduleList：他人模式为引擎过滤后的清单）折算。
+ * 此前用所选模块数——被剔除的隐私模块永远完不成，总进度到不了 100%。
  */
 const overallPercent = computed(() => {
-  const total = cfg.selectedModules.length;
+  const list = bk.moduleList;
+  const total = list.length;
   if (!total) return modulePercent.value;
-  const done = bk.doneModules.length;
+  const done = bk.doneModules.filter((m) => list.includes(m)).length;
   const frac = Math.min(100, Math.max(0, bk.moduleOverall)) / 100;
   return Math.min(99, Math.round(((done + frac) / total) * 100));
 });
+/** 环形进度：收尾阶段采集已 100% 完成，明确显示满环 + 「收尾中」 */
+const ringPercent = computed(() => (finalizingActive.value ? 100 : overallPercent.value));
 const currentLabel = computed(() => {
   const m = bk.progress?.module || '';
   return MODULE_META[m]?.label || m || '正在启动';
 });
 const extra = computed(() => bk.progress?.extra || {});
 
-/** 模块清单（含完成态） */
+/** 模块清单（含完成态；以主进程推送的实际执行清单为准） */
 const moduleItems = computed(() =>
-  cfg.selectedModules.map((m) => ({
+  bk.moduleList.map((m) => ({
     key: m,
     label: MODULE_META[m]?.label || m,
     icon: MODULE_ICONS[m] || '',
@@ -78,7 +91,7 @@ function fmtElapsed(sec?: number) {
       <div class="run-progress">
         <NProgress
           type="circle"
-          :percentage="overallPercent"
+          :percentage="ringPercent"
           :stroke-width="8"
           :size="132"
           :color="paused ? '#c9a227' : '#b5432a'"
@@ -86,10 +99,10 @@ function fmtElapsed(sec?: number) {
         >
           <div class="rp-center">
             <div class="rp-pct">
-              {{ overallPercent }}%
+              {{ ringPercent }}%
             </div>
             <div class="rp-state">
-              总体进度{{ paused ? ' · 已暂停' : '' }}
+              {{ finalizingActive ? '收尾中' : '总体进度' }}{{ paused ? ' · 已暂停' : '' }}
             </div>
           </div>
         </NProgress>
@@ -97,12 +110,16 @@ function fmtElapsed(sec?: number) {
 
       <div class="run-info">
         <div class="ri-current">
-          <span class="ri-module">{{ currentLabel }}</span>
-          <span class="ri-tip">{{ bk.progress?.tip || bk.progress?.phase || '' }}</span>
-          <span class="ri-modpct">{{ modulePercent }}%</span>
+          <span class="ri-module">{{ finalizingActive ? '收尾整理' : currentLabel }}</span>
+          <span class="ri-tip">{{ finalizingActive ? finalizeTip : (bk.progress?.tip || bk.progress?.phase || '') }}</span>
+          <span
+            v-if="!finalizingActive"
+            class="ri-modpct"
+          >{{ modulePercent }}%</span>
         </div>
-        <!-- 当前模块副进度条 -->
+        <!-- 当前模块副进度条（收尾阶段隐藏：阶段进度已无意义） -->
         <NProgress
+          v-if="!finalizingActive"
           type="line"
           :percentage="modulePercent"
           :show-indicator="false"
@@ -111,7 +128,7 @@ function fmtElapsed(sec?: number) {
           :color="paused ? '#c9a227' : '#b5432a'"
         />
         <div class="ri-stats">
-          <span>完成模块 <b>{{ bk.doneModules.length }}/{{ cfg.selectedModules.length }}</b></span>
+          <span>完成模块 <b>{{ bk.doneModules.filter((m) => bk.moduleList.includes(m)).length }}/{{ bk.moduleList.length }}</b></span>
           <span>成功 <b>{{ extra.success ?? 0 }}</b></span>
           <span v-if="(extra.skip ?? 0) > 0">跳过 <b>{{ extra.skip }}</b></span>
           <span
@@ -122,32 +139,35 @@ function fmtElapsed(sec?: number) {
           <span>用时 <b>{{ fmtElapsed(bk.elapsedSec) }}</b></span>
         </div>
         <div class="ri-actions">
-          <NButton
-            v-if="!paused"
-            size="small"
-            round
-            @click="bk.pause()"
-          >
-            暂停
-          </NButton>
-          <NButton
-            v-else
-            size="small"
-            type="primary"
-            round
-            @click="bk.resume()"
-          >
-            恢复
-          </NButton>
-          <NButton
-            size="small"
-            quaternary
-            type="error"
-            round
-            @click="onCancel"
-          >
-            取消
-          </NButton>
+          <!-- 收尾阶段隐藏暂停/取消：状态机已进入终态，操作会被拒绝，避免误导 -->
+          <template v-if="!finalizingActive">
+            <NButton
+              v-if="!paused"
+              size="small"
+              round
+              @click="bk.pause()"
+            >
+              暂停
+            </NButton>
+            <NButton
+              v-else
+              size="small"
+              type="primary"
+              round
+              @click="bk.resume()"
+            >
+              恢复
+            </NButton>
+            <NButton
+              size="small"
+              quaternary
+              type="error"
+              round
+              @click="onCancel"
+            >
+              取消
+            </NButton>
+          </template>
           <span class="flex1" />
           <NButton
             size="small"

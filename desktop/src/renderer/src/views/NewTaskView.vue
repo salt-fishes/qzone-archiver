@@ -133,8 +133,8 @@ function pickDir() {
 
 <template>
   <section class="new-task">
-    <!-- 进行中 -->
-    <RunningPanel v-if="busy" />
+    <!-- 进行中（含收尾阶段：引擎已采集完、等待媒体下载落盘/统计归档） -->
+    <RunningPanel v-if="busy || bk.finalizingActive" />
 
     <!-- 结果 -->
     <ResultPanel

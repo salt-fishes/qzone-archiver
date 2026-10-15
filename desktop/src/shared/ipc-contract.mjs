@@ -115,6 +115,13 @@ export const PushChannels = {
   backupStateChanged: 'backup:state-changed',
   backupCompleted: 'backup:completed',
   backupHistoryChanged: 'backup:history-changed',
+  /**
+   * 只增：备份收尾可见状态（引擎已采集完、主进程还在等媒体下载落盘/统计归档）。
+   * payload { active, phase: 'downloads'|'stats', pending, running, total }；
+   * active:false 表示收尾结束（随后 backup:completed 到达）。
+   * 背景：收尾最长 120s，此前界面只停在进度面板干等，看起来像死机（2026-10-11 实机反馈）。
+   */
+  backupFinalizing: 'backup:finalizing',
 
   downloadProgress: 'download:progress',
   downloadItemFailed: 'download:item-failed',

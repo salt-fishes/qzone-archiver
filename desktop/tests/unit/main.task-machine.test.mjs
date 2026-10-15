@@ -59,8 +59,8 @@ describe('状态转移表', () => {
     expect(m.getSnapshot().completedAt).toBeGreaterThan(0);
     // 终态清除 checkpoint
     expect(cleared).toEqual(['task-1']);
-    // 每次成功转移推送 {taskId, state}
-    expect(pushed.at(-1)).toEqual({ taskId: 'task-1', state: 'completed' });
+    // 每次成功转移推送 {taskId, state, modules}（modules 供渲染层模块清单/进度分母对齐）
+    expect(pushed.at(-1)).toEqual({ taskId: 'task-1', state: 'completed', modules: ['Blogs'] });
   });
 
   it('引擎 running 事件统一入口：preparing→running 与 paused→running', () => {
@@ -72,6 +72,19 @@ describe('状态转移表', () => {
     m.dispatch('pause');
     expect(m.dispatch('engineRunning', {}).ok).toBe(true);
     expect(m.getSnapshot().state).toBe('running');
+  });
+
+  it('running 态收到引擎过滤后的 modules：同态也同步清单并推送（他人模式分母对齐）', () => {
+    const { m, pushed } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', { ...CTX, modules: ['Blogs', 'Friends'] }); // 所选清单
+    expect(pushed.at(-1).modules).toEqual(['Blogs', 'Friends']);
+
+    // 引擎 running 事件携带过滤后的实际执行清单（同态：主进程已 running）
+    const r = m.dispatch('engineRunning', { taskId: 'task-1', modules: ['Blogs'] });
+    expect(r.ok).toBe(true);
+    expect(r.idempotent).toBe(true);
+    expect(pushed.at(-1).modules).toEqual(['Blogs']);
   });
 });
 

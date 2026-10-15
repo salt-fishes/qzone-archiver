@@ -73,7 +73,9 @@ export function createTaskMachine(deps = {}) {
   }
 
   function emit() {
-    push({ taskId: snap.taskId, state: snap.state });
+    // modules 随每次推送携带：引擎 running 事件会把它覆盖为「过滤后的实际执行清单」，
+    // 渲染层模块清单与总进度分母据此对齐（他人模式剔除隐私模块的场景）
+    push({ taskId: snap.taskId, state: snap.state, modules: [...(snap.modules || [])] });
   }
 
   /** 非终态持久化最小恢复上下文 */
@@ -101,7 +103,13 @@ export function createTaskMachine(deps = {}) {
       return { ok: false, snapshot: getSnapshot(), error: `未知事件 ${event}` };
     }
     if (rule.to === snap.state) {
-      // 同态幂等：如主进程已 pause，引擎 paused 事件随后到达
+      // 同态幂等：如主进程已 pause，引擎 paused 事件随后到达。
+      // 例外：引擎 running 事件携带的 modules 是过滤后的实际执行清单——状态虽已
+      // running（start 先行），清单仍需同步并推送，否则他人模式的 UI 分母对不上。
+      if (event === 'engineRunning' && Array.isArray(payload.modules)) {
+        snap.modules = payload.modules;
+        emit();
+      }
       return { ok: true, idempotent: true, snapshot: getSnapshot() };
     }
     if (!rule.from.includes(snap.state)) {
