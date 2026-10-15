@@ -266,6 +266,10 @@ QZoneCollectors.Photos = {
                   // 已备份相册
                   continue;
               }
+              if (item.allowAccess === 0) {
+                  // 无权限相册（他人空间设为私密/仅好友可见）：不发请求，跳过
+                  continue;
+              }
 
               await indicator.setIndex(++count);
               tasks.push(API.Common.getModulesLikeList(item, QZone_Config.Photos).then((likes) => {
@@ -422,6 +426,10 @@ QZoneCollectors.Photos = {
               const item = list[j];
               if (!API.Photos.isNewAlbum(item.id)) {
                   // 已备份跳过
+                  continue;
+              }
+              if (item.allowAccess === 0) {
+                  // 无权限相册（他人空间设为私密/仅好友可见）：不发请求，跳过
                   continue;
               }
               await indicator.setIndex(++count);
@@ -956,6 +964,13 @@ QZoneCollectors.Photos = {
    */
   addAlbumsDownloadTasks: async(albums) => {
     for (const album of albums) {
+        // 无权限相册（他人空间设为私密/仅好友可见）：照片、评论、封面全部不下载，
+        // 只保留元信息供档案侧展示「未备份」条目（2026-10-11 需求）
+        if (album.allowAccess === 0) {
+            console.info('无权限相册，跳过全部下载任务：', album.name || album.id);
+            continue;
+        }
+
         const photos = album.photoList || [];
 
         // 新备份数据才添加预览图与评论图下载任务
@@ -1146,25 +1161,31 @@ QZoneCollectors.Photos = {
 
   /**
    * 初始化相册列表（迁移自 modules/photos.js initAlbums）
+   *
+   * v5.4 修复（2026-10-11 实机复核）：
+   * 1) 重复导出：此前 albumList 直接引用 QZone.Photos.Album.Data，而"备份全部"路径下
+   *    Select 与 Data 是同一个数组 → push(...selects) 变成数组自推，相册每条重复两遍
+   *    （D:\ic6464 索引 12 条 = 6 相册 ×2），且污染 Data 影响统计/清单计数。
+   *    现改为构建独立数组并按 id 去重，不再改 Data 本体。
+   * 2) 无权限相册（allowAccess=0，他人空间设为私密/仅好友可见）：保留在清单中以便
+   *    档案侧展示「未备份」条目，但照片/评论/赞/访客/封面均不采集（见各采集函数守卫）。
    */
   initAlbums: async() => {
-    // 备份的相册清单
-    const albumList = QZone.Photos.Album.Data || [];
     // 用户挑选的相册清单；三态：null/undefined = 未配置（全部），[] = 明确不备份，非空 = 按选择
     const selects = QZone.Photos.Album.Select;
+    let candidates = [];
     if (selects === null || selects === undefined) {
         // 用户没有选择（未配置/预取失败回退）时，默认获取所有相册列表
-        albumList.push(...await API.Photos.getAllAlbumList());
+        candidates = await API.Photos.getAllAlbumList();
     } else if (selects.length === 0) {
-        // 明确空数组 = 不备份相册（albumList 保持为空，后续相册导出自然跳过）
+        // 明确空数组 = 不备份相册（候选保持为空，后续相册导出自然跳过）
         console.info('未选择相册，本次不备份相册');
     } else {
         // 如果用户选择了备份指定的相册
-        // 合并数据
-        albumList.push(...selects);
+        candidates = selects;
     }
 
-    // 处理增量相册
+    // 处理增量相册（保持原语义：同名旧相册沿用旧对象并拷贝新属性；改名则重新备份）
     if (!API.Common.isFullBackup(QZone_Config.Photos)) {
         // 已备份相册
         const oldAlbumList = QZone.Photos.Album.OLD_Data || [];
@@ -1172,28 +1193,35 @@ QZoneCollectors.Photos = {
         // 需要拷贝的属性
         const attrs = ['desc', 'createtime', 'modifytime', 'lastuploadtime', 'order', 'total', 'viewtype'];
 
-        // 最新相册中，移除已备份的相册
-        _.remove(albumList, newAlbum => {
-            // 找到历史备份相册
-            const oldIdx = _.findIndex(oldAlbumList, ['id', newAlbum.id]);
-            if (oldIdx === -1) {
-                return false;
+        const merged = [];
+        const reusedOldIds = new Set();
+        for (const newAlbum of candidates) {
+            const oldAlbum = _.find(oldAlbumList, ['id', newAlbum.id]);
+            if (oldAlbum && newAlbum.name == oldAlbum.name) {
+                // 拷贝新相册的部分属性到旧相册，沿用旧对象（保留其 photoList 等已备份数据）
+                for (const attr of attrs) {
+                    oldAlbum[attr] = newAlbum[attr]
+                }
+                merged.push(oldAlbum);
+                reusedOldIds.add(oldAlbum.id);
+            } else {
+                merged.push(newAlbum);
             }
-            const oldAlbum = oldAlbumList[oldIdx]
-            if (newAlbum.name != oldAlbum.name) {
-                // 如果相册改名，则重新备份，因为文件名都是按相册名归类的。
-                return false;
-            }
+        }
+        // 历史相册（本次接口未返回的）仍保留
+        for (const oldAlbum of oldAlbumList) {
+            if (!reusedOldIds.has(oldAlbum.id)) merged.push(oldAlbum);
+        }
+        candidates = merged;
+    }
 
-            // 拷贝新相册的部分属性到旧相册
-            for (const attr of attrs) {
-                oldAlbum[attr] = newAlbum[attr]
-            }
-            return true;
-        })
-
-        // 合并
-        albumList.push(...oldAlbumList);
+    // 按 id 去重（防御：candidates 可能来自与 Data 同引用的数组或历史残留）
+    const seen = new Set();
+    const albumList = [];
+    for (const item of candidates) {
+        if (!item || !item.id || seen.has(item.id)) continue;
+        seen.add(item.id);
+        albumList.push(item);
     }
 
     // 重新排序
