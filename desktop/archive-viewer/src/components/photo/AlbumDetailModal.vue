@@ -176,7 +176,8 @@ import VideoCover from '@/components/common/VideoCover.vue'
 import MediaViewer from '@/components/common/MediaViewer.vue'
 import type { MediaItem } from '@/components/common/MediaViewer.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
-import { formatContent, formatUnixTime, resolveModulePath } from '@/utils/formatContent'
+import { formatContent, formatUnixTime } from '@/utils/formatContent'
+import { isAlbumVideo, albumPhotoThumb, albumVideoSrc } from '@/utils/albumPhoto'
 import type { Album, AlbumIndex, Photo, LikeItem } from '@/types'
 
 /** 相册评论（结构沿用扩展端，与 ShareComment/VideoComment 兼容） */
@@ -206,8 +207,6 @@ const visible = computed({
 })
 
 const likesVisible = ref(false)
-
-const MODULE = 'Albums'
 
 /** 照片加载失败状态：按索引跟踪，文件缺失时显示「无图」占位符 */
 const photoErrors = ref<Record<number, boolean>>({})
@@ -261,9 +260,9 @@ const mediaList = computed<PhotoMedia[]>(() => {
     out.push({
       index: i,
       photo: p,
-      isVideo: isVideoPhoto(p),
-      src: photoSrc(p),
-      videoSrc: videoSrc(p)
+      isVideo: isAlbumVideo(p),
+      src: albumPhotoThumb(p),
+      videoSrc: albumVideoSrc(p)
     })
   }
   return out
@@ -306,34 +305,9 @@ const likeList = computed<LikeItem[]>(() => props.album?.likes || props.album?.l
 const likeCount = computed(() => props.album?.like?.total || props.index?.likeCount || likeList.value.length)
 
 /**
- * 是否为视频条目（相册视频：photo.is_video + video_info）
+ * 条目路径解析统一走 utils/albumPhoto（相册列表卡片与本网格共用）：
+ * 视频条目取封面图（custom_pre_filepath），图片条目取原图（custom_filepath）
  */
-function isVideoPhoto(photo: Photo): boolean {
-  return !!(photo.is_video && (photo.video_info || photo.custom_filepath))
-}
-
-/**
- * 缩略图可访问 URL：
- * - 视频条目：封面用本地预览图 custom_pre_filepath，回退在线预览图 custom_url
- * - 图片条目：本地原图 custom_filepath，回退 s_url / t_url
- */
-function photoSrc(photo: Photo): string {
-  if (isVideoPhoto(photo)) {
-    const cover = photo.custom_pre_filepath || photo.custom_url || ''
-    return cover ? resolveModulePath(cover, MODULE) : ''
-  }
-  const raw = photo.custom_filepath || photo.s_url || photo.t_url || ''
-  return raw ? resolveModulePath(raw, MODULE) : ''
-}
-
-/**
- * 视频源：优先本地已下载 .mp4（custom_filepath），回退 video_info 在线地址
- */
-function videoSrc(photo: Photo): string {
-  const info = photo.video_info || {}
-  const local = photo.custom_filepath ? resolveModulePath(photo.custom_filepath, MODULE) : ''
-  return local || info.video_url || info.play_url || ''
-}
 
 // ============ 内嵌媒体预览（公共查看器：缩放 / 左右切换） ============
 const previewIndex = ref(-1)
@@ -341,10 +315,10 @@ const previewIndex = ref(-1)
 /** 预览条目：整册照片预计算为查看器条目，左右切换可跨分批渲染边界 */
 const viewerItems = computed<MediaItem[]>(() =>
   photoList.value.map((p, i): MediaItem => {
-    const video = isVideoPhoto(p)
+    const video = isAlbumVideo(p)
     return {
-      src: video ? videoSrc(p) : photoSrc(p),
-      thumb: photoSrc(p),
+      src: video ? albumVideoSrc(p) : albumPhotoThumb(p),
+      thumb: albumPhotoThumb(p),
       caption: p.name || `照片 ${i + 1}`,
       type: video ? 'video' : 'image'
     }

@@ -20,7 +20,7 @@
         <span class="seal-sub">无权限访问</span>
       </div>
 
-      <!-- 多图拼图：1 大 + N 小 -->
+      <!-- 多图拼图：1 大 + N 小（视频条目显示其封面图 + ▶ 角标） -->
       <div v-else-if="previews.length > 1" class="album-mosaic" :class="`album-mosaic-${Math.min(previews.length, 4)}`">
         <span
           v-for="(p, i) in previews"
@@ -28,9 +28,17 @@
           class="mosaic-cell"
           :class="`mosaic-cell-${i}`"
         >
+          <VideoCover
+            v-if="p.video"
+            :src="p.src"
+            :video-src="p.videoSrc"
+            size="fill"
+            placeholder-icon="▶"
+            :alt="index.name || '相册视频'"
+          />
           <img
-            v-if="!photoErrors[i]"
-            :src="p"
+            v-else-if="!photoErrors[i]"
+            :src="p.src"
             class="mosaic-img"
             :alt="index.name || '相册照片'"
             loading="lazy"
@@ -38,18 +46,31 @@
             @error="photoErrors[i] = true"
           />
           <span v-else class="mosaic-fallback">▣</span>
+          <span v-if="p.video" class="cover-video-tag" aria-hidden="true">▶</span>
         </span>
       </div>
 
-      <!-- 单图封面 -->
-      <img
-        v-else-if="previews.length === 1"
-        :src="previews[0]"
-        class="album-single"
-        :alt="index.name || '相册照片'"
-        loading="lazy"
-        decoding="async"
-      />
+      <!-- 单图封面（视频条目显示封面图 + ▶ 角标） -->
+      <template v-else-if="previews.length === 1">
+        <VideoCover
+          v-if="previews[0].video"
+          :src="previews[0].src"
+          :video-src="previews[0].videoSrc"
+          size="fill"
+          placeholder-icon="▶"
+          :alt="index.name || '相册视频'"
+          class="album-single"
+        />
+        <img
+          v-else
+          :src="previews[0].src"
+          class="album-single"
+          :alt="index.name || '相册照片'"
+          loading="lazy"
+          decoding="async"
+        />
+        <span v-if="previews[0].video" class="cover-video-tag" aria-hidden="true">▶</span>
+      </template>
 
       <!-- 无照片（空相册 / 旧档案无封面） -->
       <div v-else class="album-blank">
@@ -99,8 +120,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import ArchiveEntry from '@/components/common/ArchiveEntry.vue'
+import VideoCover from '@/components/common/VideoCover.vue'
 import { usePhotosStore } from '@/stores/photos'
 import { stripFormatting, resolveModulePath } from '@/utils/formatContent'
+import { isAlbumVideo, albumPhotoThumb, albumVideoSrc } from '@/utils/albumPhoto'
 import type { AlbumIndex } from '@/types'
 
 const props = withDefaults(defineProps<{
@@ -131,8 +154,16 @@ const coverSrc = computed(() => {
   return resolveModulePath(props.index.coverUrl, MODULE)
 })
 
+/** 预览单元：src 为可访问 URL，video 标记视频条目（需封面图与 ▶ 角标） */
+interface PreviewCell {
+  src: string
+  video: boolean
+  /** 视频源（黑帧封面修复用；图片条目为空串） */
+  videoSrc: string
+}
+
 /** 多照片预览（前 4 张）；未备份相册不加载分片 */
-const previews = ref<string[]>([])
+const previews = ref<PreviewCell[]>([])
 const photoErrors = ref<boolean[]>([])
 
 /** 封面形态 class（拼图按张数选布局） */
@@ -142,6 +173,7 @@ const coverClass = computed(() => ({
 }))
 
 // 相册切换时按需加载详情取前 4 张；详情缺失时回退单张封面
+// 视频条目必须走封面图（custom_pre_filepath）——直接取 custom_filepath 会拿到 .mp4
 let reqId = 0
 watch(() => props.index.albumId, async (id) => {
   const cur = ++reqId
@@ -152,12 +184,11 @@ watch(() => props.index.albumId, async (id) => {
   if (cur !== reqId) return // 快速滚动时丢弃过期结果
   const list = album?.photoList || []
   if (list.length) {
-    previews.value = list.slice(0, 4).map(p => {
-      const raw = p.custom_filepath || p.s_url || p.t_url || p.custom_url || ''
-      return raw ? resolveModulePath(raw, MODULE) : ''
-    }).filter(Boolean)
+    previews.value = list.slice(0, 4)
+      .map(p => ({ src: albumPhotoThumb(p), video: isAlbumVideo(p), videoSrc: albumVideoSrc(p) }))
+      .filter(c => c.src)
   } else if (props.index.hasCover && coverSrc.value) {
-    previews.value = [coverSrc.value]
+    previews.value = [{ src: coverSrc.value, video: false, videoSrc: '' }]
   }
 }, { immediate: true })
 
@@ -280,9 +311,34 @@ function handleClick() {
   font-size: 1rem;
 }
 
+/* 视频封面复用 VideoCover（含黑帧修复）：去掉组件自带描边，融入封面容器 */
+.album-cover :deep(.video-cover),
+.album-cover :deep(.video-cover-fallback) {
+  border: 0;
+}
+
+.album-cover :deep(.video-cover) {
+  transition: transform var(--dur-2) var(--ease-out);
+}
+
+/* 视频角标（封面左下）：与右下照片数角标同款视觉 */
+.cover-video-tag {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  line-height: 1;
+  color: var(--paper);
+  background: rgba(33, 29, 23, 0.72);
+  padding: 3px 7px;
+  pointer-events: none;
+}
+
 /* 悬停：整组封面轻微推近（仅悬停态，静止无动效） */
 .archive-entry.clickable:hover .album-single,
-.archive-entry.clickable:hover .mosaic-img {
+.archive-entry.clickable:hover .mosaic-img,
+.archive-entry.clickable:hover :deep(.video-cover) {
   transform: scale(1.03);
 }
 
