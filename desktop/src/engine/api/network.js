@@ -280,12 +280,22 @@ const API_NETWORK_METHODS = {
      * @param {string} url 请求URL
      */
     get(url, params) {
+        // 引擎日志 → UI 日志（重试/放弃是长耗时阶段唯一的"还活着"证据：
+        // 2026-10-11 实机，说说列表首屏重试 8 分钟期间界面无任何输出，被当成死机）
+        const notifyLog = (level, message) => {
+            try {
+                if (typeof window !== 'undefined' && window.QZonePlatform && window.QZonePlatform.notify) {
+                    window.QZonePlatform.notify.log({ level, message });
+                }
+            } catch (_) { /* 日志推送失败不影响请求流程 */ }
+        };
         // 重试
         const retryRequest = (ajax, reject, error) => {
             // 纯文本版（给 console 用，去 HTML 标签）
             const msgText = (ajax.customMessage || '未知错误').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
             if (ajax.retries > 0) {
                 console.warn('请求接口异常，正在重试，接口：%s，参数：%o，剩余重试次数：%i，错误：%s', url, params, ajax.retries, msgText);
+                notifyLog('warn', `接口请求失败，${Math.round(ajax.retryInterval / 1000)}s 后重试（剩余 ${ajax.retries} 次）：${msgText.slice(0, 160)}`);
                 $('#errorTips').show();
                 $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，将会在{1}重试，剩余次数：{2}</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
                 ajax.retries--;
@@ -295,7 +305,8 @@ const API_NETWORK_METHODS = {
                 }, ajax.retryInterval);
                 return;
             }
-            console.warn('重试次数已用完，准备回调，接口：%s，参数：%o，错误：%s', this.url, params, msgText);
+            console.warn('重试次数已用完，准备回调，接口：%s，参数：%o，错误：%s', url, params, msgText);
+            notifyLog('error', `接口请求重试次数已用完，已放弃：${msgText.slice(0, 160)}`);
             $('#errorTips').show();
             $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，重试次数用完，已取消</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
             reject(error);
