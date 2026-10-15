@@ -106,6 +106,8 @@ export type AlbumItem = {
   total?: number;
   pre?: string;
   desc?: string;
+  /** 接口访问标记：0=无权限（他人空间设为私密/仅好友可见，采集时跳过） */
+  allowAccess?: number;
 };
 
 export const useConfigStore = defineStore('config', () => {
@@ -130,6 +132,13 @@ export const useConfigStore = defineStore('config', () => {
   const albumError = ref('');
   /** 勾选的相册 ID（字符串），联动 settings.Photos.albumSelect */
   const albumSel = ref<string[]>([]);
+
+  /** 可备份的相册 ID（无权限相册置灰不可选——备份时同样会跳过采集） */
+  const selectableAlbumIds = computed(() =>
+    albums.value.filter((a) => a.allowAccess !== 0).map((a) => String(a.id))
+  );
+  /** 无权限相册（选择器单独分组展示，不可勾选） */
+  const albumsNoAccess = computed(() => albums.value.filter((a) => a.allowAccess === 0));
 
   const albumClassNames = computed(() => {
     const map = new Map<string, AlbumItem[]>();
@@ -158,8 +167,9 @@ export const useConfigStore = defineStore('config', () => {
       const ids = new Set((albums.value || []).map((a) => String(a.id)));
       albumSel.value = albumSel.value.filter((id) => ids.has(id));
       // 默认全选：从未配置过相册选择（albumSelect 非数组）时，首次加载自动全选并写入设置
+      // （无权限相册不勾选：接口标记 allowAccess=0，备份时也会跳过采集）
       if (!Array.isArray(getPath(settings.value.Photos, 'albumSelect'))) {
-        albumSel.value = [...ids];
+        albumSel.value = [...selectableAlbumIds.value];
       }
     } catch (e: any) {
       albumError.value = e?.message || String(e);
@@ -169,7 +179,8 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   function albumSelAll() {
-    albumSel.value = albums.value.map((a) => String(a.id));
+    // 全选 = 可备份相册（无权限相册置灰，不参与全选）
+    albumSel.value = [...selectableAlbumIds.value];
   }
   function albumSelNone() {
     albumSel.value = [];
@@ -347,6 +358,7 @@ export const useConfigStore = defineStore('config', () => {
     backupMode, moduleIncrementCustomized, backupCustomTime,
     // 相册
     albums, albumsLoading, albumError, albumSel, albumClassNames,
+    selectableAlbumIds, albumsNoAccess,
     loadAlbums, albumSelAll, albumSelNone,
     // 函数
     moduleSummary, buildEngineConfig, pickDir, openFolder, initConfig,

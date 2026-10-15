@@ -27,7 +27,9 @@ QZoneExporters.Photos = {
    * 索引保留相册元信息 + 相片数量 + 封面图，不含相片列表。
    *
    * 索引字段：albumId, name, desc, className, classid, createTime, modifyTime,
-   *           photoCount, commentCount, likeCount, hasCover, coverUrl
+   *           photoCount, commentCount, likeCount, hasCover, coverUrl,
+   *           noAccess（无权限相册=未备份：他人空间设为私密/仅好友可见，
+   *           照片/评论/赞/封面均未采集，档案侧展示「未备份」条目而非空壳相册）
    *
    * 全量数据保留扩展端原始相册结构（含 photoList, comments, likes, custom_visitor），
    * SPA 端点击相册后按需加载对应分片。
@@ -75,7 +77,9 @@ QZoneExporters.Photos = {
                 commentCount,
                 likeCount,
                 hasCover,
-                coverUrl: album.custom_filepath || album.custom_pre_filepath || ''
+                coverUrl: album.custom_filepath || album.custom_pre_filepath || '',
+                // 无权限相册（allowAccess=0）：档案侧显示「未备份（无权限访问）」
+                noAccess: album.allowAccess === 0,
             };
         });
         await API.Common.writeJsonToJs('photosIndex', index, dataFolder + '/photos-index.js');

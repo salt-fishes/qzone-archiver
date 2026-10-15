@@ -744,6 +744,12 @@ export interface AlbumIndex {
   hasCover: boolean
   /** 封面图相对路径（相对 Albums/ 模块根） */
   coverUrl: string
+  /**
+   * 无权限相册（接口 allowAccess=0：他人空间设为私密/仅好友可见）：
+   * 照片/评论/赞/封面均未采集，档案侧显示「未备份」条目与原因。
+   * 旧档案无此字段 → undefined，按普通相册处理（photoCount=0 显示「空相册」）。
+   */
+  noAccess?: boolean
 }
 
 /** 单张相片项 —— 来自 photoList */

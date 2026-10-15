@@ -3,7 +3,7 @@
  * 设置（v4.6 精简重写）：通用 / 内容默认设置 / 相册选择 / 高级
  * 全部数据源为 config store（settings + albums），自动保存；schema 由 config-spec.json 生成
  */
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import {
   NTabs, NTabPane, NCollapse, NCollapseItem, NButton, NSelect, NAlert, NInput,
   useDialog, useMessage,
@@ -67,17 +67,43 @@ function openLogsDir() {
 const albumOptions = ref<{ type: string; label: string; children?: { label: string; value: string }[] }[]>([]);
 const albumSelectLoading = ref(false);
 
+/** 相册选择提示文案（无权限相册单独说明） */
+const albumHint = computed(() => {
+  const noAccess = cfg.albumsNoAccess.length;
+  const extra = noAccess ? `${noAccess} 个相册无权限访问（已置灰，备份时自动跳过）；` : '';
+  return `已选 ${cfg.albumSel.length} / ${cfg.selectableAlbumIds.length} 个相册；${extra}不选择任何相册时备份全部。`;
+});
+
 async function loadAlbumsForSelect() {
   if (albumSelectLoading.value) return;
   albumSelectLoading.value = true;
   cfg.albumError = '';
   await cfg.loadAlbums();
-  albumOptions.value = cfg.albumClassNames.map((g) => ({
+  // 分组选项：分类分组（可备份）+「无权限」单独一组（置灰不可选，备份时会跳过采集）
+  const groups = cfg.albumClassNames.map((g) => ({
     type: 'group',
     label: g.cls,
     key: g.cls,
-    children: g.items.map((a) => ({ label: `${a.name}${a.total != null ? `（${a.total}）` : ''}`, value: String(a.id) })),
-  })) as any;
+    children: g.items.map((a) => ({
+      label: `${a.name}${a.total != null ? `（${a.total}）` : ''}`,
+      value: String(a.id),
+      disabled: a.allowAccess === 0,
+    })),
+  }));
+  const noAccess = cfg.albumsNoAccess;
+  if (noAccess.length) {
+    groups.push({
+      type: 'group',
+      label: '无权限（不可备份）',
+      key: '__noaccess__',
+      children: noAccess.map((a) => ({
+        label: `${a.name}（无权限访问）`,
+        value: String(a.id),
+        disabled: true,
+      })),
+    });
+  }
+  albumOptions.value = groups as any;
   albumSelectLoading.value = false;
 }
 
@@ -233,7 +259,7 @@ async function exportConfig() {
               v-else
               class="st-tip"
             >
-              已选 {{ cfg.albumSel.length }} / {{ cfg.albums.length }} 个相册；不选择任何相册时备份全部。
+              {{ albumHint }}
             </p>
             <NSelect
               v-model:value="cfg.albumSel"

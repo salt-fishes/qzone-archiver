@@ -50,7 +50,7 @@ declare global {
             target?: { uin: string; nickname?: string };
           }[];
         }>;
-        listAlbums(): Promise<{ ok: boolean; albums?: { id: string | number; name: string; classid?: string | number; className?: string; total?: number; desc?: string }[]; error?: string }>;
+        listAlbums(): Promise<{ ok: boolean; albums?: { id: string | number; name: string; classid?: string | number; className?: string; total?: number; desc?: string; allowAccess?: number }[]; error?: string }>;
         /** v5.2 N1/N3：nickname 已由接口 nick 映射；searchField 供选择器拼音/缩写整串搜索（只增） */
         listFriends(): Promise<{ ok: boolean; friends?: { uin: string; nickname?: string; remark?: string; searchField?: string; avatar?: string }[]; error?: string }>;
         validateTarget(uin: string): Promise<{ ok: boolean; isOwner?: boolean; uin?: string; nickname?: string; avatar?: string; code?: number; notice?: string; error?: string }>;

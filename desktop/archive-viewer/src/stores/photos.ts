@@ -23,13 +23,26 @@ export const usePhotosStore = defineStore('photos', () => {
     index.value.reduce((sum, a) => sum + (a.photoCount || 0), 0)
   )
 
+  /** 状态计数（v5.4「相册分开」浏览：有照片 / 空相册 / 未备份） */
+  const withPhotosCount = computed(() => index.value.filter((a) => !a.noAccess && (a.photoCount || 0) > 0).length)
+  const emptyCount = computed(() => index.value.filter((a) => !a.noAccess && (a.photoCount || 0) === 0).length)
+  const noAccessCount = computed(() => index.value.filter((a) => a.noAccess).length)
+
   /** 启动时加载索引 */
   async function init() {
     if (index.value.length > 0 || loading.value) return
     loading.value = true
     error.value = ''
     try {
-      index.value = await loadPhotosIndex()
+      const raw = await loadPhotosIndex()
+      // v5.4 防御：旧档案索引可能含重复条目（导出 bug 已修，旧产物按 albumId 去重）
+      const seen = new Set<string>()
+      index.value = (raw || []).filter((a) => {
+        const id = a?.albumId
+        if (!id || seen.has(id)) return false
+        seen.add(id)
+        return true
+      })
     } catch (e: any) {
       error.value = e?.message || '相册索引加载失败'
       console.warn('[photosStore] 相册索引加载失败，可能尚未导出', e)
@@ -79,6 +92,9 @@ export const usePhotosStore = defineStore('photos', () => {
     error,
     total,
     totalPhotos,
+    withPhotosCount,
+    emptyCount,
+    noAccessCount,
     init,
     loadAlbum,
     getAlbumById

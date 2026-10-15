@@ -21,8 +21,22 @@
       <p>暂无相册数据</p>
     </div>
 
-    <!-- 主视图：搜索结果 + 虚拟滚动列表 -->
+    <!-- 主视图：状态筛选 + 搜索结果 + 虚拟滚动列表 -->
     <template v-else>
+      <!-- 状态筛选（v5.4「相册分开」：有照片 / 空相册 / 未备份一眼分清） -->
+      <div class="album-filters">
+        <button
+          v-for="f in filterChips"
+          :key="f.key"
+          type="button"
+          class="filter-chip"
+          :class="{ active: filter === f.key }"
+          @click="filter = f.key"
+        >
+          {{ f.label }} <span class="chip-num">{{ f.count }}</span>
+        </button>
+      </div>
+
       <!-- 搜索结果元信息 -->
       <div class="search-meta">
         <span class="meta">{{ searchMeta }}</span>
@@ -31,8 +45,9 @@
 
       <!-- 无结果 -->
       <div v-if="results.length === 0" class="empty-tip">
-        <p>未找到匹配「{{ query }}」的相册</p>
-        <p class="hint">试试其他关键字，或清除搜索查看全部。</p>
+        <p v-if="query">未找到匹配「{{ query }}」的相册</p>
+        <p v-else>当前筛选下没有相册</p>
+        <p class="hint">试试其他关键字、切换筛选，或清除搜索查看全部。</p>
       </div>
 
       <!-- 虚拟滚动列表 -->
@@ -92,14 +107,35 @@ const detailIndex = ref<AlbumIndex | null>(null)
 const headMeta = computed(() => {
   if (photosStore.loading) return 'Loading…'
   if (photosStore.error) return 'Error'
-  return `${photosStore.total} 个相册 · ${photosStore.totalPhotos} 张照片`
+  const noAccess = photosStore.noAccessCount
+  return `${photosStore.total} 个相册 · ${photosStore.totalPhotos} 张照片${noAccess ? ` · ${noAccess} 个未备份` : ''}`
 })
 
+/** 状态筛选（v5.4「相册分开」） */
+type AlbumFilter = 'all' | 'photos' | 'empty' | 'noaccess'
+const filter = ref<AlbumFilter>('all')
+const filterChips = computed<{ key: AlbumFilter; label: string; count: number }[]>(() => [
+  { key: 'all', label: '全部', count: photosStore.total },
+  { key: 'photos', label: '有照片', count: photosStore.withPhotosCount },
+  { key: 'empty', label: '空相册', count: photosStore.emptyCount },
+  { key: 'noaccess', label: '未备份', count: photosStore.noAccessCount },
+])
+
+function matchFilter(item: AlbumIndex): boolean {
+  switch (filter.value) {
+    case 'photos': return !item.noAccess && (item.photoCount || 0) > 0
+    case 'empty': return !item.noAccess && (item.photoCount || 0) === 0
+    case 'noaccess': return item.noAccess === true
+    default: return true
+  }
+}
+
 const results = computed<AlbumIndex[]>(() => {
+  const byFilter = photosStore.index.filter(matchFilter)
   const kw = query.value.trim()
-  if (!kw) return photosStore.index
+  if (!kw) return byFilter
   const lower = kw.toLowerCase()
-  return photosStore.index.filter(item => {
+  return byFilter.filter(item => {
     const name = (item.name || '').toLowerCase()
     const desc = stripFormatting(item.desc || '').toLowerCase()
     const className = (item.className || '').toLowerCase()
@@ -115,7 +151,9 @@ const searchMeta = computed(() => {
   if (query.value) {
     return `查询「${query.value}」 · 命中 ${results.value.length} 个相册`
   }
-  return `共 ${photosStore.total} 个相册 · ${photosStore.totalPhotos} 张照片`
+  const f = filterChips.value.find(c => c.key === filter.value)
+  const prefix = f && f.key !== 'all' ? `${f.label} · ` : ''
+  return `${prefix}共 ${results.value.length} 个相册 · ${photosStore.totalPhotos} 张照片`
 })
 
 // 路由 query → 搜索框
@@ -226,6 +264,42 @@ onMounted(() => {
   align-items: center;
   gap: var(--sp-3);
   margin: var(--sp-4) 0 var(--sp-3);
+}
+
+/* 状态筛选 chips（v5.4） */
+.album-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: var(--sp-4);
+}
+
+.filter-chip {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--ink-3);
+  background: transparent;
+  border: var(--rule-dot);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s var(--ease-out);
+}
+
+.filter-chip:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
+.filter-chip.active {
+  color: var(--paper);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.filter-chip .chip-num {
+  opacity: 0.65;
+  margin-left: 2px;
 }
 
 .clear-btn {

@@ -14,7 +14,7 @@
         <span class="meta">{{ index?.createTime || formatUnixTime(album.createtime || 0) }}</span>
         <span v-if="displayClassName" class="meta meta-tag">{{ displayClassName }}</span>
         <span v-if="modifyTimeText" class="meta">修改于 {{ modifyTimeText }}</span>
-        <span class="meta">照片 {{ photoList.length }}</span>
+        <span class="meta">{{ isNoAccess ? '未采集' : `照片 ${photoList.length}` }}</span>
       </div>
 
       <!-- 标题 -->
@@ -26,6 +26,25 @@
         class="detail-text"
         v-html="formatContent(album.desc)"
       ></div>
+
+      <!-- 未备份（无权限相册）：明确说明原因，不再显示空白网格 -->
+      <div v-if="isNoAccess" class="album-notice album-notice-noaccess">
+        <span class="notice-seal">未备份</span>
+        <p class="notice-text">
+          该相册无权限访问（对方空间设为私密，或仅好友可见）——照片、评论、点赞与封面均未采集。
+        </p>
+        <p class="notice-sub">
+          保留此条目是为了标明「这个相册曾经存在」，避免被误认为已完整备份或没有照片。
+        </p>
+      </div>
+
+      <!-- 空相册：有权限但确实没有照片 -->
+      <div v-else-if="isEmptyAlbum" class="album-notice">
+        <span class="notice-seal notice-seal-plain">空相册</span>
+        <p class="notice-text">
+          相册内没有照片（对方可能创建后未上传，或照片已全部删除）。
+        </p>
+      </div>
 
       <!-- 照片网格（分批渲染：先渲染前 BATCH 张，滚动到末尾自动加载下一批） -->
       <section v-if="photoList.length" class="detail-section">
@@ -231,6 +250,11 @@ const modifyTimeText = computed(() => {
 
 const photoList = computed<Photo[]>(() => props.album?.photoList || [])
 
+/** 无权限相册（未备份）：索引标记或原始数据 allowAccess=0 */
+const isNoAccess = computed(() => props.index?.noAccess === true || props.album?.allowAccess === 0)
+/** 空相册：有权限但 0 张照片 */
+const isEmptyAlbum = computed(() => !isNoAccess.value && photoList.value.length === 0)
+
 // ============ 分批渲染（大相册性能优化） ============
 /** 每批渲染的照片数量 */
 const BATCH = 120
@@ -435,6 +459,60 @@ watch([visible, () => photoList.value.length], ([v]) => {
   color: var(--ink);
   margin: 0 0 var(--sp-3);
   word-break: break-word;
+}
+
+/* 未备份 / 空相册说明块（v5.4：消除「无图」歧义） */
+.album-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: var(--rule-dot);
+  background: var(--paper-raised);
+}
+
+.album-notice-noaccess {
+  border: 1px dashed var(--ink-muted);
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0 12px,
+      rgba(138, 129, 114, 0.08) 12px 13px
+    ),
+    var(--paper-raised);
+}
+
+.notice-seal {
+  align-self: flex-start;
+  font-family: var(--font-serif-cn);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  color: var(--vermilion);
+  border: 2px solid var(--vermilion);
+  padding: 2px 10px 2px 13px;
+  transform: rotate(-3deg);
+}
+
+.notice-seal-plain {
+  color: var(--ink-3);
+  border-color: var(--ink-muted);
+}
+
+.notice-text {
+  font-family: var(--font-serif-cn);
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--ink);
+  margin: 0;
+}
+
+.notice-sub {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.7;
+  color: var(--ink-muted);
+  margin: 0;
 }
 
 .detail-text {
