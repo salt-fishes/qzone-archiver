@@ -19,11 +19,31 @@
       <!-- 引用块（转发说说） -->
       <blockquote v-if="message.rt_con?.content" class="detail-quote">
         <span class="quote-author">@ 转发 · {{ message.rt_tid || '原说说' }}</span>
-        <div class="quote-text" v-html="formatContent(message.rt_con.content)"></div>
+        <div
+          ref="quoteRef"
+          class="quote-text"
+          :class="{ 'is-clamped': !contentExpanded }"
+          v-html="formatContent(message.rt_con.content)"
+        ></div>
       </blockquote>
 
-      <!-- 说说正文 -->
-      <div class="detail-text" v-html="formatContent(message.content || '（无内容）')"></div>
+      <!-- 说说正文（超长截断显示省略号，点「展开全文」看完整内容） -->
+      <div
+        ref="contentRef"
+        class="detail-text"
+        :class="{ 'is-clamped': !contentExpanded }"
+        v-html="formatContent(message.content || '（无内容）')"
+      ></div>
+
+      <button
+        v-if="showExpandToggle"
+        type="button"
+        class="detail-expand"
+        @click="toggleExpand"
+      >
+        {{ contentExpanded ? '收起全文' : '展开全文' }}
+        <span class="expand-arrow">{{ contentExpanded ? '↑' : '↓' }}</span>
+      </button>
 
       <!-- 媒体网格 -->
       <MediaGrid
@@ -96,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import ModalDialog from '@/components/common/ModalDialog.vue'
 import MediaGrid, { type MediaItem } from '@/components/common/MediaGrid.vue'
 import LikesModal from '@/components/common/LikesModal.vue'
@@ -122,6 +142,40 @@ const visible = computed({
 // 子模态控制
 const likesVisible = ref(false)
 const commentsVisible = ref(false)
+
+// ============ 长文截断（v5.4）============
+// 说说正文/转发引用过长时截断显示省略号，仅当实际溢出才显示「展开全文」；
+// 展开状态在切换说说/关闭弹窗时复位。
+const contentRef = ref<HTMLElement | null>(null)
+const quoteRef = ref<HTMLElement | null>(null)
+const contentExpanded = ref(false)
+const contentOverflow = ref(false)
+const quoteOverflow = ref(false)
+const showExpandToggle = computed(() => contentOverflow.value || quoteOverflow.value)
+
+/** 截断态下测量是否溢出（展开态不测量，保持按钮可点「收起全文」） */
+async function measureOverflow() {
+  await nextTick()
+  if (contentExpanded.value) return
+  const c = contentRef.value
+  const q = quoteRef.value
+  contentOverflow.value = !!c && c.scrollHeight > c.clientHeight + 4
+  quoteOverflow.value = !!q && q.scrollHeight > q.clientHeight + 4
+}
+
+function toggleExpand() {
+  contentExpanded.value = !contentExpanded.value
+  if (!contentExpanded.value) measureOverflow()
+}
+
+watch(
+  [() => props.message, () => props.modelValue],
+  () => {
+    contentExpanded.value = false
+    measureOverflow()
+  },
+  { immediate: true }
+)
 
 const titleText = computed(() => {
   if (!props.message) return '说说详情'
@@ -285,6 +339,44 @@ watch(visible, v => {
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ===== 长文截断（v5.4）：超出显示省略号，配合「展开全文」按钮 ===== */
+.detail-text.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 12;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.quote-text.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.detail-expand {
+  align-self: flex-start;
+  margin-top: calc(var(--sp-2) * -1);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--vermilion);
+  background: transparent;
+  border: 1px solid var(--vermilion);
+  padding: 3px 12px;
+  cursor: pointer;
+  transition: all var(--dur-1) var(--ease-out);
+}
+
+.detail-expand:hover {
+  color: var(--paper);
+  background: var(--vermilion);
+}
+
+.expand-arrow {
+  margin-left: 4px;
 }
 
 .detail-text :deep(.mention),
