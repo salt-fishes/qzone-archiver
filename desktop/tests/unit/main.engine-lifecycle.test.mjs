@@ -129,6 +129,8 @@ vi.mock('../../src/main/services/engine-bridge.js', () => {
     engineBridge: bridge,
     sendToUi: sendToUiMock,
     getActiveTaskContext: () => null,
+    registerTaskContext: () => {},
+    dropTaskContext: () => {},
     pushEngineStatus: (state, reason) => {
       engineInjectMock.ready = state === 'ready';
       sendToUiMock('engine:status-changed', { state, ...(reason ? { reason } : {}) });

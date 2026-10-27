@@ -19,17 +19,20 @@ const panelSrc = readFileSync(
   path.join(rootDir, 'src/renderer/src/components/task/RunningPanel.vue'),
   'utf8'
 );
-const backupIpcSrc = readFileSync(path.join(rootDir, 'src/main/ipc/backup.js'), 'utf8');
+const runnerSrc = readFileSync(
+  path.join(rootDir, 'src/main/services/task-runner.js'),
+  'utf8'
+);
 
-describe('非用户暂停的恢复守卫（v5.5 M0 补）', () => {
+describe('非用户暂停的恢复守卫（v5.5 M0 补 / M1 收敛到 TaskRunner）', () => {
   it('RunningPanel：只有 user/rate_limited 允许显示恢复按钮', () => {
     expect(panelSrc).toContain('const canResume = computed');
     expect(panelSrc).toMatch(/r === 'user' \|\| r === 'rate_limited'/);
     expect(panelSrc).toContain('v-else-if="canResume"');
   });
 
-  it('主进程 resume：engine_lost/auth_lost 必须被拒绝', () => {
-    expect(backupIpcSrc).toContain('canResumePaused(snap.pausedReason)');
-    expect(backupIpcSrc).toContain('引擎会话已丢失，请取消本任务后重新发起备份');
+  it('TaskRunner resume：engine_lost/auth_lost 必须被拒绝', () => {
+    expect(runnerSrc).toContain('canResumePaused(snap.pausedReason)');
+    expect(runnerSrc).toContain('引擎会话已丢失，请取消本任务后重新发起备份');
   });
 });

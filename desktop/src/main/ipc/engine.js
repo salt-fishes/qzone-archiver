@@ -13,6 +13,7 @@ import { resolveWithin } from '../services/path-guard.js';
 import { engineStorage } from '../services/config-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { taskRuntime } from '../services/task-runtime.js';
+import { taskRunner } from '../services/task-runner.js';
 import { engineClient } from '../services/engine-client.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
@@ -208,17 +209,14 @@ export function registerEngineIpc() {
         break;
       }
       case 'state': {
-        // P3-1：引擎状态事件 → 状态机裁决（非法转移拒绝、同态幂等、统一推送 backup:state-changed）
-        const ev = {
-          running: 'engineRunning',
-          paused: 'pause',
-          completed: 'complete',
-          cancelled: 'cancel',
-        }[data?.state];
-        const verdict = ev ? taskMachine.dispatch(ev, data) : { ok: true, snapshot: taskMachine.getSnapshot() };
+        // v5.5 M1：引擎状态事实 → TaskRunner（状态机裁决 + journal/summary 统一入口）
+        const isState = ['running', 'paused', 'completed', 'cancelled'].includes(data?.state);
+        const verdict = isState
+          ? taskRunner.handleEngineState(data || {})
+          : { ok: true, snapshot: taskMachine.getSnapshot() };
         // v5.5 M0：收尾门——状态机拒绝（如用户已取消后引擎仍上报 completed）时不执行
         // 收尾/完成推送，杜绝"取消后仍走完成流程"（RFC 复核确认的缺陷路径）
-        if (ev && !verdict.ok) {
+        if (isState && !verdict.ok) {
           logger.warn(
             `[engine] 引擎 ${data?.state} 事件被状态机拒绝（当前 ${verdict.snapshot.state}），跳过对应处理`
           );
@@ -292,6 +290,8 @@ export function registerEngineIpc() {
         break;
       }
       case 'module-done': {
+        // v5.5 M1：模块完成写 phase-end（TaskRunner journal）
+        taskRunner.handleModuleDone(data || {});
         sendToUi(PushChannels.backupModuleDone, data);
         // §K4：模块结束 → 任务日志（模块粒度的时间点；与"模块完成"日志行共同给出模块耗时）
         // 用词与 UI 日志一致（渲染层同事件也显示「模块完成」）
@@ -303,8 +303,9 @@ export function registerEngineIpc() {
       }
       case 'heartbeat': {
         // v5.5 M0：引擎存活心跳（orchestrator 每 2s）→ task-runtime 记录；30s 无心跳由看门狗推 backup:stalled
-        // v5.5 M1：心跳携带协议版本，主进程据此完成握手（不匹配时 start 拒绝）
+        // v5.5 M1：心跳携带协议版本 + module/phase，TaskRunner 据此写阶段检查点
         if (data?.v) engineClient.setProtocolVersion(data.v);
+        taskRunner.onHeartbeat(data || {});
         taskRuntime.recordHeartbeat(data || {});
         break;
       }

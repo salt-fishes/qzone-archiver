@@ -6,11 +6,11 @@ import { ipcMain } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { engineBridge, registerTaskContext, dropTaskContext, pushEngineStatus, sendToUi } from '../services/engine-bridge.js';
+import { engineBridge, registerTaskContext, pushEngineStatus, sendToUi } from '../services/engine-bridge.js';
 import { createEngineWindow, waitForEngineLoad } from '../windows.js';
 import { stateStore } from '../services/state-store.js';
-import { taskMachine, canResumePaused } from '../services/task-machine.js';
 import { taskRuntime } from '../services/task-runtime.js';
+import { taskRunner } from '../services/task-runner.js';
 import { engineClient } from '../services/engine-client.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
@@ -157,12 +157,6 @@ export function registerBackupIpc() {
         (targetUin ? ` target=${targetUin}` : '（本人空间）')
     );
     const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir, targetUin: targetUin ? String(targetUin) : undefined };
-    // P3-1：状态机裁决——上一任务未终态时拒绝并发启动
-    const pre = taskMachine.dispatch('prepare', ctx);
-    if (!pre.ok) {
-      tl.warn(`启动被拒：${pre.error}`);
-      return { ok: false, error: `已有备份任务${pre.snapshot.state === 'paused' ? '处于暂停' : '进行中'}，请先完成或取消` };
-    }
     registerTaskContext(ctx);
     // 内置表情库复制到目标目录（表情无需网络下载）
     try {
@@ -171,8 +165,6 @@ export function registerBackupIpc() {
     } catch (e) {
       tl.warn(`复制内置表情失败（不影响备份）：${e?.message || e}`);
     }
-    // P3-1：preparing → running 由状态机统一持久化 checkpoint 并推送 UI（迁移流水由状态机写任务日志）
-    taskMachine.dispatch('start', ctx);
 
     // v5.0：清理历史任务的已完成/失败下载记录（下载列表不再重现旧任务的媒体）
     try {
@@ -190,107 +182,38 @@ export function registerBackupIpc() {
     }
 
     try {
-      await engineClient.start(ctx);
-      tl.info('引擎 start 已确认（started ack）');
+      const started = await taskRunner.start(ctx);
+      tl.info(`引擎 start 已确认（started ack，runId=${started.runId}）`);
       return { ok: true, taskId: id };
     } catch (e) {
-      logger.error(`[backup] 引擎 start 失败：${e?.stack || e}`);
-      tl.error(`引擎 start 调用失败：${e.message}`);
-      taskMachine.dispatch('fail', { taskId: id, error: e.message });
-      dropTaskContext(id); // P5.2：终态清理任务上下文
+      logger.error(`[backup] 任务启动失败：${e?.stack || e}`);
+      tl.error(`任务启动失败：${e.message}`);
       return { ok: false, error: e.message };
     }
   });
 
-  ipcMain.handle(Channels.backup.pause, async () => {
-    // v5.5 M0：先下发引擎命令、ack 成功后才改状态机——此前先 dispatch('pause') 再调引擎，
-    // 引擎侧失败（命令缺失/窗口已毁）时状态机已 paused，UI 与引擎实际状态脱节。
-    const snap = taskMachine.getSnapshot();
-    if (snap.state !== 'running') {
-      return { ok: false, error: `当前状态 ${snap.state} 不可暂停` };
-    }
-    try {
-      await engineClient.command('pause');
-    } catch (e) {
-      logger.task(snap.taskId).error(`暂停下发失败：${e.message}`);
-      return { ok: false, error: e.message };
-    }
-    const r = taskMachine.dispatch('pause', { reason: 'user' });
-    if (!r.ok) return { ok: false, error: r.error };
-    // 联动下载管理器：停止调度 + 中断运行中任务（.part 保留断点）——否则引擎挂起后下载仍继续，CPU/网络持续占用
-    try {
-      await downloadManager.pause();
-    } catch (e) {
-      logger.task(snap.taskId).warn(`下载暂停联动失败（不影响引擎暂停）：${e.message}`);
-    }
-    logger.task(snap.taskId).info('暂停已下发：引擎挂起 + 下载中断（.part 保留断点）');
-    return { ok: true };
-  });
+  ipcMain.handle(Channels.backup.pause, async () => taskRunner.pause());
 
-  ipcMain.handle(Channels.backup.resume, async () => {
-    // v5.5 M0：同 pause——引擎 ack 成功后才 dispatch('resume')
-    const snap = taskMachine.getSnapshot();
-    if (snap.state !== 'paused') {
-      return { ok: false, error: `当前状态 ${snap.state} 不可恢复` };
-    }
-    // v5.5 M0 补：engine_lost/auth_lost 的引擎会话已失效，恢复只会把状态误置回
-    // running（新引擎没有运行中的任务）。明确拒绝，UI 引导取消后重新发起。
-    if (!canResumePaused(snap.pausedReason)) {
-      logger.task(snap.taskId).warn(`恢复被拒绝：暂停原因 ${snap.pausedReason} 不可续跑`);
-      return {
-        ok: false,
-        error: '引擎会话已丢失，请取消本任务后重新发起备份（已采集的文件保留在目标目录）',
-      };
-    }
-    try {
-      await engineClient.command('resume');
-    } catch (e) {
-      logger.task(snap.taskId).error(`恢复下发失败：${e.message}`);
-      return { ok: false, error: e.message };
-    }
-    const r = taskMachine.dispatch('resume');
-    if (!r.ok) return { ok: false, error: r.error };
-    try {
-      await downloadManager.resume();
-    } catch (e) {
-      logger.task(snap.taskId).warn(`下载恢复联动失败（不影响引擎恢复）：${e.message}`);
-    }
-    logger.task(snap.taskId).info('恢复已下发：引擎继续 + 下载续传');
-    return { ok: true };
-  });
+  ipcMain.handle(Channels.backup.resume, async () => taskRunner.resume());
 
-  ipcMain.handle(Channels.backup.cancel, async () => {
-    const r = taskMachine.dispatch('cancel');
-    if (!r.ok) return { ok: false, error: r.error };
-    const taskId = taskMachine.getSnapshot().taskId;
-    // v5.5 M0：引擎命令失败不再阻断清理——取消语义必须保证下载清空与上下文回收，
-    // 此前 engineBridge.cancel 抛错时 finally 外的清理被跳过，残留上下文与运行中下载
-    try {
-      await engineClient.command('cancel');
-    } catch (e) {
-      logger.task(taskId).warn(`引擎取消命令未送达（继续本地清理）：${e.message}`);
-    } finally {
-      try {
-        await downloadManager.cancel();
-      } catch (e) {
-        logger.task(taskId).warn(`下载清空失败（忽略）：${e.message}`);
-      }
-      dropTaskContext(taskId); // P5.2：终态清理任务上下文
-    }
-    logger.task(taskId).info('取消已下发：引擎中止 + 下载清空 pending');
-    return { ok: true };
-  });
+  ipcMain.handle(Channels.backup.cancel, async () => taskRunner.cancel());
 
   ipcMain.handle(Channels.backup.getState, () => {
     const checkpoints = stateStore.listCheckpoints();
     const active = checkpoints.find((c) => c.state === 'running' || c.state === 'paused') || null;
-    // P3-1：状态机快照为唯一事实源（taskId 字段保留兼容旧消费）
-    return { taskId: taskMachine.getSnapshot().taskId || active?.taskId || null, task: taskMachine.getSnapshot(), checkpoints };
+    // v5.5 M1：TaskRunner 快照为唯一事实源（taskId 字段保留兼容旧消费）
+    const runnerState = taskRunner.getState();
+    return {
+      taskId: runnerState.task.taskId || active?.taskId || null,
+      task: runnerState.task,
+      runId: runnerState.runId,
+      checkpoints,
+    };
   });
 
   // v5.5 M0：任务运行时快照（状态机 + 心跳/停滞）——渲染层初始化/重载后恢复 stalled 与任务态
   ipcMain.handle(Channels.task.getState, () => ({
-    task: taskMachine.getSnapshot(),
+    ...taskRunner.getState(),
     runtime: taskRuntime.getSnapshot(),
   }));
 
