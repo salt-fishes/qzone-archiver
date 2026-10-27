@@ -11,6 +11,7 @@ import { stateStore } from './state-store.js';
 import { sendToUi } from './engine-bridge.js';
 import { logger } from './logger.js';
 import { PushChannels } from '../../shared/ipc-contract.mjs';
+import { PAUSED_REASONS, canResumePaused } from '../../shared/task-protocol.mjs';
 
 export const TASK_STATES = [
   'idle',
@@ -23,24 +24,11 @@ export const TASK_STATES = [
 ];
 
 /**
- * paused 原因（v5.5 M0）：
- *  user          用户手动暂停
- *  engine_lost   引擎窗口被关闭/崩溃/加载失败（checkpoint 保留，重连后可重新发起）
- *  auth_lost     引擎窗离开 qzone（登录态失效/跳登录页），采集上下文失效
- *  rate_limited  接口限流保护（重试耗尽/熔断），建议等待后恢复
+ * paused 原因与恢复判定（v5.5 M1 起收敛到 shared/task-protocol.mjs）：
+ *  user / engine_lost / auth_lost / rate_limited；engine_lost/auth_lost 不可直接 resume。
+ * 这里 re-export 保持 M0 调用方（ipc/backup.js、单测）的 import 路径不变。
  */
-export const PAUSED_REASONS = ['user', 'engine_lost', 'auth_lost', 'rate_limited'];
-
-/**
- * paused 是否可直接恢复（v5.5 M0 补）：
- * - engine_lost / auth_lost 时引擎会话已失效（窗口重建或页面离开 qzone），
- *   新引擎里没有运行中的任务；直接 resume 只会把状态机误置回 running。
- * - user / rate_limited 时引擎上下文仍在，可以继续。
- * @param {string|null|undefined} reason
- */
-export function canResumePaused(reason) {
-  return reason == null || reason === 'user' || reason === 'rate_limited';
-}
+export { PAUSED_REASONS, canResumePaused };
 
 /**
  * 事件转移表：event → { from[], to }
