@@ -12,6 +12,7 @@ import { BrowserWindow, shell } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { engineBridge, pushEngineStatus, getActiveTaskContext } from './services/engine-bridge.js';
+import { taskMachine } from './services/task-machine.js';
 import { logger } from './services/logger.js';
 import { capLog } from '../shared/log-cap.mjs';
 
@@ -19,6 +20,27 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 应用图标（沿用扩展 icon-128.png）
 const APP_ICON = path.join(__dirname, 'icon.png');
+
+/**
+ * v5.5 M0：引擎生命周期事实 → 任务状态机。
+ * 引擎崩溃/关窗/加载失败/离开 qzone 时，若有活跃任务则转入 paused(reason)——
+ * 此前任务停在 running，UI 显示"备份中"但引擎已死（2026-10-22 现场事件根因之一）。
+ * 无活跃任务时状态机 from 守卫会拒绝（静默），不影响空闲态。
+ */
+function noteEngineLost(reason) {
+  // v5.5 M0：仅活跃任务需要落态；空闲/终态下引擎关窗是正常操作，不再刷“非法转移”日志
+  const st = taskMachine.getSnapshot().state;
+  if (st === 'preparing' || st === 'running') {
+    taskMachine.dispatch('engineLost', { reason: reason || undefined });
+  }
+}
+
+function noteAuthLost(reason) {
+  const st = taskMachine.getSnapshot().state;
+  if (st === 'preparing' || st === 'running') {
+    taskMachine.dispatch('authLost', { reason: reason || undefined });
+  }
+}
 
 export const windows = {
   main: null,
@@ -112,6 +134,10 @@ export function createEngineWindow() {
       contextIsolation: true,
       sandbox: false,
       partition: 'persist:qzone',
+      // v5.5 M0：关闭后台节流——引擎窗隐藏（而非最小化）后，qzone 页面定时器/网络采集
+      // 不再被 Chromium 降频（2026-10-22 备份 30 分钟无日志卡死的直接根因）。
+      // 配合 auth.js 登录成功后 hide()（不再 minimize()）。
+      backgroundThrottling: false,
     },
   });
   windows.engine.loadURL('https://user.qzone.qq.com');
@@ -162,6 +188,8 @@ function attachEngineLifecycle(engine) {
     // 离开 qzone 页面（如跳转登录页扫码）→ 引擎上下文失效，广播连接中（回 qzone 后重新注入）
     if (!url.startsWith('https://user.qzone.qq.com') && engineBridge.ready) {
       pushEngineStatus('loading', '已离开 qzone 页面');
+      // v5.5 M0：采集上下文失效（登录态丢失/跳登录页）→ 任务转 paused(auth_lost)
+      noteAuthLost('已离开 qzone 页面（登录态失效或页面跳转）');
     }
   });
   wc.on('did-finish-load', () => {
@@ -178,11 +206,13 @@ function attachEngineLifecycle(engine) {
   wc.on('render-process-gone', (_event, details) => {
     logger.error(`[windows] 引擎渲染进程崩溃：${details?.reason || 'unknown'}`);
     pushEngineStatus('crashed', `渲染进程崩溃（${details?.reason || 'unknown'}）`);
+    noteEngineLost(`渲染进程崩溃（${details?.reason || 'unknown'}）`);
   });
   wc.on('did-fail-load', (_event, code, desc, url, isMainFrame) => {
     if (!isMainFrame) return;
     logger.error(`[windows] 引擎窗页面加载失败：${code} ${desc} ${url || ''}`);
     pushEngineStatus('crashed', `页面加载失败（${code} ${desc}）`);
+    noteEngineLost(`页面加载失败（${code} ${desc}）`);
   });
   engine.on('closed', () => {
     if (windows.engine === engine) {
@@ -190,6 +220,8 @@ function attachEngineLifecycle(engine) {
     }
     engineDismissed = true;
     pushEngineStatus('closed');
+    // v5.5 M0：引擎窗被关（用户手动/注销）= 采集载体消失 → 任务转 paused(engine_lost)
+    noteEngineLost('引擎窗口已关闭');
   });
 }
 

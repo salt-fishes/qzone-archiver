@@ -11,7 +11,7 @@
  *  ④ 退出登录：备份进行中拒绝；空闲时关引擎窗并广播
  *  ⑤ 按需创建：登录态轮询发现已登录且引擎窗不存在 → 自动拉起（用户手动关窗后不拉起）
  */
-import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -62,6 +62,7 @@ const { FakeWindow, ipcHandlers, engineInjectMock, sendToUiMock } = vi.hoisted((
       this.show = () => {};
       this.focus = () => {};
       this.minimize = () => {};
+      this.hide = () => {}; // v5.5 M0：登录成功后 hide()（不再 minimize()）
       this.close = () => this.emit('closed');
       this.setWindowOpenHandler = () => {};
       this._url = '';
@@ -94,6 +95,8 @@ vi.mock('electron', () => ({
   BrowserWindow: FakeWindow,
   shell: { openExternal: async () => {}, openPath: async () => '' },
   net: { fetch: async () => ({ ok: false }) },
+  // v5.5 M0：task-runtime（backup.js 传递引入）的电源锁 stub
+  powerSaveBlocker: { start: () => 1, stop: () => {} },
   session: {
     fromPartition: vi.fn(() => ({
       clearStorageData: async () => {},
@@ -279,6 +282,72 @@ describe('§B③ 重连=重建', () => {
     expect(r.ok).toBe(false);
     expect(lastPush().p.state).toBe('crashed');
     expect(lastPush().p.reason).toContain('脚本注入中断');
+  });
+});
+
+/**
+ * v5.5 M0：引擎生命周期事实 → 任务 paused(reason)（plans/v5.5.md §4.3）
+ *  - running 任务中引擎窗被关/崩溃 → paused(engine_lost)，checkpoint 保留（可重建继续）
+ *  - running 中离开 qzone → paused(auth_lost)
+ *  - 空闲态这些事实被状态机 guard 静默拒绝，不影响 idle
+ *  - 引擎窗创建即 show:false + backgroundThrottling:false（隐藏窗口不被节流）
+ */
+describe('v5.5 M0 引擎生命周期 → 任务 paused(reason)', () => {
+  afterEach(() => {
+    const st = taskMachine.getSnapshot().state;
+    if (st !== 'idle' && st !== 'completed' && st !== 'cancelled' && st !== 'failed') {
+      taskMachine.dispatch('cancel');
+    }
+    if (windows.engine && !windows.engine.isDestroyed()) {
+      windows.engine = null;
+    }
+  });
+
+  it('running 任务中引擎窗被关 → paused(engine_lost) + checkpoint 文件保留', () => {
+    taskMachine.dispatch('prepare', { taskId: 'task-lost', targetDir: 'X:/bk', modules: [] });
+    taskMachine.dispatch('start', {});
+    createEngineWindow();
+    windows.engine.emit('closed');
+
+    const snap = taskMachine.getSnapshot();
+    expect(snap.state).toBe('paused');
+    expect(snap.pausedReason).toBe('engine_lost');
+    // 非终态：checkpoint 保留（M2 恢复的前提；M0 由用户重新发起备份复用）
+    expect(fs.existsSync(path.join(tmpDir, 'state', 'checkpoints', 'task-lost.json'))).toBe(true);
+  });
+
+  it('render-process-gone → paused(engine_lost)', () => {
+    taskMachine.dispatch('prepare', { taskId: 'task-crash', targetDir: 'X:/bk', modules: [] });
+    taskMachine.dispatch('start', {});
+    const w = createEngineWindow();
+    w.webContents.emit('render-process-gone', {}, { reason: 'oom' });
+    expect(taskMachine.getSnapshot().state).toBe('paused');
+    expect(taskMachine.getSnapshot().pausedReason).toBe('engine_lost');
+  });
+
+  it('running 中离开 qzone 页面 → paused(auth_lost)', () => {
+    taskMachine.dispatch('prepare', { taskId: 'task-auth', targetDir: 'X:/bk', modules: [] });
+    taskMachine.dispatch('start', {});
+    const w = createEngineWindow();
+    engineInjectMock.ready = true;
+    w.webContents.emit('did-navigate', {}, 'https://xui.ptlogin2.qq.com/cgi-bin/xlogin');
+    expect(taskMachine.getSnapshot().state).toBe('paused');
+    expect(taskMachine.getSnapshot().pausedReason).toBe('auth_lost');
+  });
+
+  it('非运行态关窗不改任务状态（dispatch 被 guard 静默拒绝）', () => {
+    // 前序用例残留的终态（cancelled）也不应被 closed 事件改动
+    const before = taskMachine.getSnapshot().state;
+    createEngineWindow();
+    windows.engine.emit('closed');
+    expect(taskMachine.getSnapshot().state).toBe(before);
+    expect(taskMachine.getSnapshot().pausedReason).toBe(null);
+  });
+
+  it('引擎窗创建即 show:false + backgroundThrottling:false（隐藏窗口不被节流）', () => {
+    const w = createEngineWindow();
+    expect(w.opts.show).toBe(false);
+    expect(w.opts.webPreferences.backgroundThrottling).toBe(false);
   });
 });
 

@@ -112,7 +112,50 @@ function pushSummary(force) {
 }
 
 function persist() {
+  // v5.5 M0：立即落盘（终态/清理/退出路径用），同时取消挂起的节流写避免旧数据覆盖
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   stateStore.saveDownloads(queue);
+}
+
+/**
+ * v5.5 M0：入队/派发高频路径的持久化节流——500ms 合并写一次。
+ * 此前每条入队/派发都全量同步写 downloads.json（1 万条媒体 = 2 万次全量写盘），
+ * 是主进程事件循环卡顿来源之一。终态转换仍走 persist() 立即落盘（M1 换 journal）。
+ */
+const PERSIST_DEBOUNCE_MS = 500;
+let persistTimer = null;
+function persistSoon() {
+  if (persistTimer) return;
+  persistTimer = setTimeout(() => {
+    persistTimer = null;
+    stateStore.saveDownloads(queue);
+  }, PERSIST_DEBOUNCE_MS);
+}
+
+/** 立即冲刷挂起的节流写（退出前调用，防丢最近 500ms 变更） */
+function flushPersist() {
+  persist();
+}
+
+/**
+ * v5.5 M0：可中断退避 sleep——pause()/cancel() 经 record._wakeSleep 立即唤醒，
+ * 重试退避不再拖住暂停/取消（配合 AbortController 实现秒级中断在途任务）
+ */
+function interruptibleSleep(record, ms) {
+  return new Promise((resolve) => {
+    const done = () => {
+      record._wakeSleep = null;
+      resolve();
+    };
+    const timer = setTimeout(done, ms);
+    record._wakeSleep = () => {
+      clearTimeout(timer);
+      done();
+    };
+  });
 }
 
 /** §K4：下载事件写任务日志（重试/放弃须含 URL 与原因）；无活跃任务落 main.log */
@@ -194,7 +237,7 @@ export const downloadManager = {
       if (candidate.slotBig) bigRunning += 1;
       else running += 1;
       dispatched += 1;
-      persist();
+      persistSoon(); // v5.5 M0：派发高频路径合并写盘
       sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'running', module: candidate.module, media: candidate.media });
       pushSummary();
       this._run(candidate)
@@ -330,7 +373,7 @@ export const downloadManager = {
       logger.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
     }
     queue.push(record);
-    persist();
+    persistSoon(); // v5.5 M0：入队高频路径合并写盘（派发/进度仍即时可见，落盘合并 500ms）
     sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'pending', module: record.module, media: record.media });
     pushSummary();
     this.pump();
@@ -364,7 +407,8 @@ export const downloadManager = {
         sendToUi(PushChannels.downloadStateChanged, {
           taskId: record.id, state: 'pending', module: record.module, media: record.media, retry: attempt,
         });
-        await new Promise((r) => setTimeout(r, delay));
+        // v5.5 M0：退避 sleep 可被 pause()/cancel() 立即唤醒（record._wakeSleep）
+        await interruptibleSleep(record, delay);
         if (record.cancelRequested || record.pauseInterrupted) throw e;
       }
     }
@@ -395,7 +439,10 @@ export const downloadManager = {
 
     // v4.7 P1：建连/首字节超时。此前 net.fetch 无 signal —— 请求若卡在
     // 连接/TLS/等响应头，会一直占着并发槽位（1 万条媒体场景下整个队列静止）。
+    // v5.5 M0：controller 挂到 record 上——pause()/cancel() 立即 abort 在途请求，
+    // 不再只依赖 data 回调的标志位检查（流静默无数据时旧机制永远等不到检查点）。
     const controller = new AbortController();
+    record.abortController = controller;
     let headerTimer = setTimeout(() => controller.abort(), HEADER_TIMEOUT);
     let response;
     try {
@@ -471,6 +518,7 @@ export const downloadManager = {
       throw e;
     } finally {
       if (idleTimer) clearTimeout(idleTimer);
+      record.abortController = null; // v5.5 M0：本次尝试结束，引用随手清理
     }
 
     // 完成：校验长度后 .part → 目标
@@ -502,6 +550,9 @@ export const downloadManager = {
       if (q.state === 'running') {
         q.pauseInterrupted = true;
         q.cancelRequested = true;
+        // v5.5 M0：立即中断在途请求 + 唤醒退避 sleep（秒级生效，不再等下一个 data 事件）
+        try { q.abortController?.abort(); } catch (_) { /* ignore */ }
+        if (typeof q._wakeSleep === 'function') q._wakeSleep();
       }
     }
   },
@@ -522,9 +573,13 @@ export const downloadManager = {
       q.error = '已取消';
     }
     persist();
-    // 运行中任务标记 cancelRequested，data 回调发现后销毁流
+    // 运行中任务标记 cancelRequested，abort 在途请求并销毁流（v5.5 M0：立即生效）
     for (const q of queue) {
-      if (q.state === 'running') q.cancelRequested = true;
+      if (q.state === 'running') {
+        q.cancelRequested = true;
+        try { q.abortController?.abort(); } catch (_) { /* ignore */ }
+        if (typeof q._wakeSleep === 'function') q._wakeSleep();
+      }
     }
     sendToUi(PushChannels.downloadStateChanged, { state: 'cancelled' });
   },
@@ -535,5 +590,13 @@ export const downloadManager = {
     queue = queue.filter((q) => q.state === 'pending' || q.state === 'running');
     if (queue.length !== before) persist();
     sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
+  },
+
+  /**
+   * v5.5 M0：立即冲刷挂起的节流持久化写（before-quit 调用）。
+   * 只冲盘不改队列状态，失败由调用方兜底（退出路径不阻断）。
+   */
+  flushPersist() {
+    flushPersist();
   },
 };

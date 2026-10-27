@@ -8,6 +8,7 @@ import { registerIpc } from './ipc/index.js';
 import { registerEngineIpc } from './ipc/engine.js';
 import { watchAuthStatus } from './ipc/auth.js';
 import { downloadManager } from './services/download-manager.js';
+import { taskRuntime } from './services/task-runtime.js';
 import { logger } from './services/logger.js';
 
 // stdout/stderr 断管保护（§K：日志失败不得打断主流程）——2026-09-22 实机踩到：
@@ -36,6 +37,9 @@ if (!gotLock) {
     downloadManager.load();
     createMainWindow();
 
+    // v5.5 M0：任务运行时（心跳看门狗 + powerSaveBlocker）——停滞可发现、系统不挂起
+    taskRuntime.start();
+
     // 登录态自动监听（扫码登录后 UI 自动更新，无需手动刷新）。
     // §B/R2：引擎窗不再于启动时创建——轮询发现已登录（含持久化 session）时按需拉起，
     // 或用户点「扫码登录」时经 showEngineWindow() 拉起；注入/状态广播随窗口生命周期走。
@@ -44,6 +48,16 @@ if (!gotLock) {
     app.on('activate', () => {
       ensureWindows();
     });
+  });
+
+  // v5.5 M0：退出前冲刷下载队列的节流写（500ms 合并窗内的变更不能丢）
+  app.on('before-quit', () => {
+    try {
+      downloadManager.flushPersist();
+    } catch {
+      /* 退出路径日志/写盘失败不阻断退出 */
+    }
+    taskRuntime.stop();
   });
 
   app.on('window-all-closed', () => {

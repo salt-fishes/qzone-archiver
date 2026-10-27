@@ -28,6 +28,8 @@ vi.mock('electron', () => ({
   net: { fetch: vi.fn() },
   shell: { openExternal: vi.fn() },
   BrowserWindow: class {},
+  // v5.5 M0：task-runtime（backup.js 传递引入）的电源锁 stub
+  powerSaveBlocker: { start: () => 1, stop: () => {} },
   ipcMain: {
     handle: (channel, fn) => handlers.set(channel, fn),
     on: () => {},

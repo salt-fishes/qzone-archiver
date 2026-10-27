@@ -16,7 +16,7 @@ import { logger } from '../services/logger.js';
 import { taskMachine } from '../services/task-machine.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
 
-/** 登录成功后延迟最小化引擎窗口的秒数（对齐 UI 提示文案，v4.7 反馈 ④） */
+/** 登录成功后延迟隐藏引擎窗口的秒数（对齐 UI 提示文案，v4.7 反馈 ④；v5.5 M0 最小化改隐藏） */
 const LOGIN_MINIMIZE_DELAY_SEC = 3;
 /** §A③：昵称补齐重试参数（扫码后引擎窗跳回 qzone 并完成注入才有昵称，1.5s × 8 ≈ 12s） */
 const NICK_RETRY_INTERVAL_MS = 1500;
@@ -24,22 +24,23 @@ const NICK_RETRY_MAX = 8;
 
 /**
  * §E：扫码前合并提示（用户拍板）——原本是两条被引擎窗盖住的 toast：
- *  ① 会自动最小化 ② 请勿切换页面/手动刷新。合并为一个原生模态、
+ *  ① 会自动隐藏到后台 ② 请勿切换页面/手动刷新。合并为一个原生模态、
  * 挂在 QQ 空间窗口正上方（居中、置前、必须点掉），用户确认后再扫码。
  * 文案单一来源在本文件，由 main.login-notice.test.mjs 守护两条信息齐备。
+ * v5.5 M0：最小化 → 隐藏（最小化窗口会被 Chromium 定时器节流，备份静默挂死的根因）。
  */
 const BEFORE_LOGIN_NOTICE = {
   title: '扫码前请注意',
   message:
     '即将打开 QQ 空间窗口扫码登录：\n\n' +
-    '1. 登录成功后会自动最小化 QQ 空间窗口并进入备份流程；\n' +
+    '1. 登录成功后 QQ 空间窗口会自动隐藏到后台并进入备份流程；\n' +
     '2. 请勿在该窗口切换页面或手动刷新 —— 引擎脚本注入在空间页面上，' +
     '页面一旦变更多半需要重新注入，可能导致备份失败。',
   buttons: ['我知道了'],
 };
 
-/** §E：登录成功并最小化引擎窗后，主窗口再弹出提示（此时不再被引擎窗遮挡） */
-const LOGIN_MINIMIZED_NOTICE = '登录成功，QQ 空间窗口已最小化，可以开始备份了';
+/** §E：登录成功并隐藏引擎窗后，主窗口再弹出提示（此时不再被引擎窗遮挡） */
+const LOGIN_MINIMIZED_NOTICE = '登录成功，QQ 空间窗口已隐藏到后台，可以开始备份了';
 
 /** 去掉值为 undefined 的键（IPC 结构化克隆会保留 undefined 属性，防旧值被空值覆盖） */
 function stripUndefined(obj) {
@@ -179,6 +180,17 @@ export function watchAuthStatus(intervalMs = 5000) {
   authTimer = setInterval(async () => {
     try {
       const status = await getAuthStatus();
+      // §B/R2 按需创建（v5.5 M0 修复：移到签名早退之前）——冷启动已登录（持久化 session）
+      // 时签名首轮即建立，旧实现先 early-return，引擎窗永远不会被拉起。
+      // 用户手动关窗（isEngineDismissed）时不自动重开，尊重操作。
+      if (
+        status.loggedIn &&
+        !isEngineDismissed() &&
+        (!windows.engine || windows.engine.isDestroyed())
+      ) {
+        logger.info('[auth] 检测到登录态且引擎窗不存在，按需创建引擎窗口');
+        createEngineWindow();
+      }
       const sig = statusSignature(status);
       if (sig === lastSignature) return; // §A②：签名不变不重复推
       const wasLoggedIn = lastSignature.startsWith('1|');
@@ -187,7 +199,7 @@ export function watchAuthStatus(intervalMs = 5000) {
       sendToUi(PushChannels.authStatusChanged, stripUndefined(status));
       if (loggedIn && !wasLoggedIn) {
         // v4.7 反馈 ④：扫码成功后先给 UI 一个明确的倒计时提示，
-        // 再自动最小化引擎窗口（此前是静默 2 秒最小化，用户不知道发生了什么）。
+        // 再自动隐藏引擎窗口（v5.5 M0：最小化 → 隐藏，避免后台节流掐死采集定时器）。
         sendToUi(PushChannels.authStatusChanged, {
           ...stripUndefined(status),
           loginJustSucceeded: true,
@@ -195,20 +207,14 @@ export function watchAuthStatus(intervalMs = 5000) {
         });
         setTimeout(() => {
           if (windows.engine && !windows.engine.isDestroyed()) {
-            windows.engine.minimize();
-            logger.info('[auth] 登录成功，已自动最小化 QQ 空间窗口');
+            windows.engine.hide();
+            logger.info('[auth] 登录成功，已自动隐藏 QQ 空间窗口（后台节流已关闭，采集不受影响）');
           }
-          // §E：提示改在引擎窗最小化之后弹（此前 3 秒 toast 被引擎窗整个盖住）
+          // §E：提示改在引擎窗隐藏之后弹（此前 3 秒 toast 被引擎窗整个盖住）
           sendToUi(PushChannels.authLoginNotice, { message: LOGIN_MINIMIZED_NOTICE });
         }, LOGIN_MINIMIZE_DELAY_SEC * 1000);
         // §A③：昵称仍为空 → 启动补齐重试
         if (!status.nickname) scheduleNicknameRetry();
-      }
-      // §B/R2 按需创建：检测到登录态（含持久化 session 的冷启动场景）但引擎窗不存在
-      // → 自动拉起并注入。用户手动关窗（isEngineDismissed）时不自动重开，尊重操作。
-      if (loggedIn && !isEngineDismissed() && (!windows.engine || windows.engine.isDestroyed())) {
-        logger.info('[auth] 检测到登录态且引擎窗不存在，按需创建引擎窗口');
-        createEngineWindow();
       }
     } catch {
       // 引擎窗口未就绪等瞬时错误忽略，下轮重试
@@ -244,6 +250,14 @@ export function registerAuthIpc() {
       // 弹窗失败不阻塞登录（旧 toast 文案已废弃，不再回退）
       logger.warn(`[auth] 扫码前提示显示失败：${e?.message || e}`);
     }
+    return null;
+  });
+
+  // v5.5 M0：打开 QQ 空间页面（用户菜单「打开 QQ 空间页面」）——引擎窗置前即返回，
+  // 不弹扫码前提示（那是「扫码登录」入口的语义）；备份中窗口隐藏，用户借此查看页面。
+  ipcMain.handle(Channels.auth.openEngine, async () => {
+    showEngineWindow();
+    logger.info('[auth] 用户请求打开 QQ 空间页面（引擎窗置前）');
     return null;
   });
 

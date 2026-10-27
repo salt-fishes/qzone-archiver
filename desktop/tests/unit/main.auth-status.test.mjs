@@ -48,6 +48,8 @@ vi.mock('electron', () => ({
     focus() {}
     close() {}
     minimize() {}
+    // v5.5 M0：登录成功后 hide()（不再 minimize()）
+    hide() {}
   },
   shell: { openExternal: async () => {} },
 }));

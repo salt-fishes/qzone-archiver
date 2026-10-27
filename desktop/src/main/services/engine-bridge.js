@@ -39,8 +39,10 @@ function execInEngine(wc, code, opts = {}) {
   );
 }
 
-/** 注入顺序（依赖关系：适配器 → 运行时库 → 基础工具 → 五层 → runner） */
-export const ENGINE_SCRIPTS = [
+/** v5.5 M0：pause/resume/cancel 等控制命令的执行超时——引擎节流/挂死时命令不能无限等 ack */
+const COMMAND_TIMEOUT_MS = 15_000;
+
+/** 注入顺序（依赖关系：适配器 → 运行时库 → 基础工具 → 五层 → runner） */export const ENGINE_SCRIPTS = [
   'desktop-adapters.js',
   'vendor/jquery/jquery.min.js',
   'vendor/lodash/lodash.min.js',
@@ -197,13 +199,38 @@ export const engineBridge = {
     sendToUi(PushChannels.backupStateChanged, { state: 'engine-ready', message: '引擎已就绪' });
   },
 
-  /** 执行一段引擎侧 JS（隔离世界；returnValue=true 时返回末值/Promise 结果） */
+  /** 执行一段引擎侧 JS（隔离世界；returnValue=true 时返回末值/Promise 结果；timeoutMs 可选超时） */
   async exec(code, opts = {}) {
     const wc = windows.engine?.webContents;
     if (!wc || wc.isDestroyed()) {
       throw new Error('引擎窗口不存在');
     }
-    return execInEngine(wc, code, opts);
+    const p = execInEngine(wc, code, opts);
+    if (!opts.timeoutMs) return p;
+    // 超时竞速：迟到拒绝不再上抛（避免 unhandled rejection），首个 settle 结果为准
+    p.catch(() => {});
+    return Promise.race([
+      p,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`引擎命令执行超时（${Math.round(opts.timeoutMs / 1000)}s）`)), opts.timeoutMs)
+      ),
+    ]);
+  },
+
+  /**
+   * v5.5 M0：执行 __engineCommands 控制命令（pause/resume/cancel）。
+   * 命令面缺失时明确抛错——此前 `window.__engineCommands && ...` 静默返回 undefined，
+   * 调用方误以为已下发（pause/resume ack 假成功），任务状态与引擎实际状态脱节。
+   */
+  async command(name, argJson = '') {
+    const wc = windows.engine?.webContents;
+    if (!wc || wc.isDestroyed()) {
+      throw new Error('引擎窗口不存在');
+    }
+    return this.exec(
+      `window.__engineCommands ? window.__engineCommands.${name}(${argJson}) : (() => { throw new Error('引擎任务层未就绪（__engineCommands 缺失），请确认已登录 QQ 空间') })()`,
+      { returnValue: true, timeoutMs: COMMAND_TIMEOUT_MS }
+    );
   },
 
   /** 启动备份（runner.__engineCommands.start）；targetUin 为可选他人模式参数（v4.6 只增） */
@@ -217,13 +244,13 @@ export const engineBridge = {
   },
 
   pause() {
-    return this.exec('window.__engineCommands && window.__engineCommands.pause()');
+    return this.command('pause');
   },
   resume() {
-    return this.exec('window.__engineCommands && window.__engineCommands.resume()');
+    return this.command('resume');
   },
   cancel() {
-    return this.exec('window.__engineCommands && window.__engineCommands.cancel()');
+    return this.command('cancel');
   },
   getLoginStatus() {
     return this.exec('window.__engineCommands ? window.__engineCommands.getLoginStatus() : null', { returnValue: true });

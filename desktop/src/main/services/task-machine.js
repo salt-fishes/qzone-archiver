@@ -23,9 +23,31 @@ export const TASK_STATES = [
 ];
 
 /**
+ * paused 原因（v5.5 M0）：
+ *  user          用户手动暂停
+ *  engine_lost   引擎窗口被关闭/崩溃/加载失败（checkpoint 保留，重连后可重新发起）
+ *  auth_lost     引擎窗离开 qzone（登录态失效/跳登录页），采集上下文失效
+ *  rate_limited  接口限流保护（重试耗尽/熔断），建议等待后恢复
+ */
+export const PAUSED_REASONS = ['user', 'engine_lost', 'auth_lost', 'rate_limited'];
+
+/**
+ * paused 是否可直接恢复（v5.5 M0 补）：
+ * - engine_lost / auth_lost 时引擎会话已失效（窗口重建或页面离开 qzone），
+ *   新引擎里没有运行中的任务；直接 resume 只会把状态机误置回 running。
+ * - user / rate_limited 时引擎上下文仍在，可以继续。
+ * @param {string|null|undefined} reason
+ */
+export function canResumePaused(reason) {
+  return reason == null || reason === 'user' || reason === 'rate_limited';
+}
+
+/**
  * 事件转移表：event → { from[], to }
  * engineRunning 统一承接引擎 running 事件（start 后首次 / resume 后恢复）；
  * prepare 允许自终态发起：新任务自动覆盖旧终态（复位上下文）
+ * v5.5 M0：engineLost / authLost / rateLimited 是引擎生命周期与网络层上报的事实事件，
+ * 全部转入 paused(reason)；无活跃任务时被 from 守卫拒绝（静默），不会误伤空闲态
  */
 const TRANSITIONS = {
   prepare: { from: ['idle', 'completed', 'cancelled', 'failed'], to: 'preparing' },
@@ -36,6 +58,9 @@ const TRANSITIONS = {
   complete: { from: ['running', 'paused'], to: 'completed' },
   cancel: { from: ['preparing', 'running', 'paused'], to: 'cancelled' },
   fail: { from: ['preparing', 'running', 'paused'], to: 'failed' },
+  engineLost: { from: ['preparing', 'running'], to: 'paused' },
+  authLost: { from: ['preparing', 'running'], to: 'paused' },
+  rateLimited: { from: ['preparing', 'running'], to: 'paused' },
 };
 
 /**
@@ -59,6 +84,8 @@ export function createTaskMachine(deps = {}) {
   let snap = {
     taskId: null,
     state: 'idle',
+    /** v5.5 M0：paused 原因（user/engine_lost/auth_lost/rate_limited），非 paused 态为 null */
+    pausedReason: null,
     targetDir: null,
     modules: [],
     config: null,
@@ -75,7 +102,13 @@ export function createTaskMachine(deps = {}) {
   function emit() {
     // modules 随每次推送携带：引擎 running 事件会把它覆盖为「过滤后的实际执行清单」，
     // 渲染层模块清单与总进度分母据此对齐（他人模式剔除隐私模块的场景）
-    push({ taskId: snap.taskId, state: snap.state, modules: [...(snap.modules || [])] });
+    // v5.5 M0：paused 携带 pausedReason（渲染层据此显示原因卡，区分用户暂停与引擎丢失）
+    push({
+      taskId: snap.taskId,
+      state: snap.state,
+      modules: [...(snap.modules || [])],
+      ...(snap.state === 'paused' ? { pausedReason: snap.pausedReason || 'user' } : {}),
+    });
   }
 
   /** 非终态持久化最小恢复上下文 */
@@ -135,6 +168,7 @@ export function createTaskMachine(deps = {}) {
         snap.errors = [];
         snap.error = null;
         snap.completedAt = null;
+        snap.pausedReason = null;
         persistCheckpoint();
         break;
       case 'engineRunning':
@@ -142,21 +176,36 @@ export function createTaskMachine(deps = {}) {
         persistCheckpoint();
         break;
       case 'pause':
+        snap.pausedReason = payload.reason || 'user';
+        persistCheckpoint();
+        break;
       case 'resume':
+        snap.pausedReason = null;
+        persistCheckpoint();
+        break;
+      case 'engineLost':
+      case 'authLost':
+      case 'rateLimited':
+        // v5.5 M0：事实事件统一转 paused(reason)；进入 paused 的迁移保留 checkpoint
+        snap.pausedReason =
+          event === 'engineLost' ? 'engine_lost' : event === 'authLost' ? 'auth_lost' : 'rate_limited';
         persistCheckpoint();
         break;
       case 'complete':
         snap.completedAt = Date.now();
         snap.errors = Array.isArray(payload.errors) ? payload.errors : [];
+        snap.pausedReason = null;
         clear(snap.taskId);
         break;
       case 'cancel':
         snap.completedAt = Date.now();
+        snap.pausedReason = null;
         clear(snap.taskId);
         break;
       case 'fail':
         snap.completedAt = Date.now();
         snap.error = payload.error || '未知错误';
+        snap.pausedReason = null;
         clear(snap.taskId);
         break;
       default:

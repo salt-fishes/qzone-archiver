@@ -12,7 +12,9 @@ vi.mock('electron', () => ({
   shell: { openExternal: async () => {} },
 }));
 
-const { createTaskMachine, TASK_STATES } = await import('../../src/main/services/task-machine.js');
+const { createTaskMachine, TASK_STATES, canResumePaused } = await import(
+  '../../src/main/services/task-machine.js'
+);
 
 function makeMachine() {
   const persisted = [];
@@ -167,6 +169,91 @@ describe('失败明细与错误记录', () => {
     expect(snap.state).toBe('failed');
     expect(snap.error).toBe('引擎未就绪');
     expect(cleared).toContain('task-1');
+  });
+});
+
+/**
+ * v5.5 M0：paused reason 与引擎生命周期事实事件（plans/v5.5.md §4.3）
+ *  - pause 默认 user；引擎崩溃/关窗 → engineLost → paused(engine_lost)，checkpoint 保留
+ *  - 离开 qzone → authLost；限流 → rateLimited
+ *  - 空闲态这些事件被 from 守卫拒绝；resume 清原因；终态清原因
+ */
+describe('v5.5 M0 paused reason 与生命周期事件', () => {
+  it('手动 pause 携带 user 原因并随推送透传；resume 清除', () => {
+    const { m, pushed } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    expect(m.dispatch('pause', { reason: 'user' }).ok).toBe(true);
+    expect(m.getSnapshot().pausedReason).toBe('user');
+    expect(pushed.at(-1).pausedReason).toBe('user');
+    m.dispatch('resume');
+    expect(m.getSnapshot().pausedReason).toBe(null);
+  });
+
+  it('无 reason 的 pause 默认 user（渲染层兼容旧推送）', () => {
+    const { m } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('pause');
+    expect(m.getSnapshot().pausedReason).toBe('user');
+  });
+
+  it('engineLost：running → paused(engine_lost)，checkpoint 保留（可重建继续）', () => {
+    const { m, persisted, cleared } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    const r = m.dispatch('engineLost', { reason: '渲染进程崩溃' });
+    expect(r.ok).toBe(true);
+    const snap = m.getSnapshot();
+    expect(snap.state).toBe('paused');
+    expect(snap.pausedReason).toBe('engine_lost');
+    // 非终态：checkpoint 持续保留（最后一份 = paused 迁移写入）
+    expect(cleared).toEqual([]);
+    expect(persisted.at(-1).data.state).toBe('paused');
+  });
+
+  it('authLost / rateLimited → paused(对应原因)', () => {
+    const { m } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('authLost', { reason: '已离开 qzone 页面' });
+    expect(m.getSnapshot().state).toBe('paused');
+    expect(m.getSnapshot().pausedReason).toBe('auth_lost');
+
+    // 回 running 后再次因限流暂停
+    m.dispatch('resume');
+    m.dispatch('rateLimited');
+    expect(m.getSnapshot().pausedReason).toBe('rate_limited');
+  });
+
+  it('空闲态 engineLost/authLost/rateLimited 被 from 守卫拒绝', () => {
+    const { m } = makeMachine();
+    expect(m.dispatch('engineLost').ok).toBe(false);
+    expect(m.dispatch('authLost').ok).toBe(false);
+    expect(m.dispatch('rateLimited').ok).toBe(false);
+    expect(m.getSnapshot().state).toBe('idle');
+  });
+
+  it('终态清空 pausedReason；cancelled 后可重新 prepare', () => {
+    const { m } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('engineLost');
+    m.dispatch('cancel');
+    expect(m.getSnapshot().pausedReason).toBe(null);
+    expect(m.dispatch('prepare', CTX).ok).toBe(true);
+    expect(m.getSnapshot().pausedReason).toBe(null);
+  });
+});
+
+describe('paused 恢复守卫（v5.5 M0 补）', () => {
+  it('engine_lost / auth_lost 不可直接恢复；user / rate_limited 可恢复', () => {
+    expect(canResumePaused('engine_lost')).toBe(false);
+    expect(canResumePaused('auth_lost')).toBe(false);
+    expect(canResumePaused('user')).toBe(true);
+    expect(canResumePaused('rate_limited')).toBe(true);
+    expect(canResumePaused(null)).toBe(true);
+    expect(canResumePaused(undefined)).toBe(true);
   });
 });
 

@@ -12,6 +12,7 @@ import { resolveEnginePath, sendToUi, getActiveTaskContext, dropTaskContext } fr
 import { resolveWithin } from '../services/path-guard.js';
 import { engineStorage } from '../services/config-store.js';
 import { taskMachine } from '../services/task-machine.js';
+import { taskRuntime } from '../services/task-runtime.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
@@ -163,8 +164,12 @@ export function registerEngineIpc() {
   // ---------- network（主进程带 Referer 请求，等价 background 侧） ----------
   guardInvoke(Channels.engine.networkMimetype, async (e, { url, timeout = 15000 } = {}) => {
     try {
+      // v5.5 M0 补：调用方统一传毫秒；这里再夹紧 1s–120s，防止单位误传导致 30ms 级 abort
+      const ms = Number.isFinite(Number(timeout))
+        ? Math.min(120_000, Math.max(1_000, Number(timeout)))
+        : 15_000;
       const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeout);
+      const timer = setTimeout(() => controller.abort(), ms);
       const res = await net.fetch(url, { signal: controller.signal, headers: { Referer: REFERER, 'User-Agent': UA } });
       clearTimeout(timer);
       return res.headers.get('content-type') || '';
@@ -209,9 +214,18 @@ export function registerEngineIpc() {
           completed: 'complete',
           cancelled: 'cancel',
         }[data?.state];
-        if (ev) taskMachine.dispatch(ev, data);
+        const verdict = ev ? taskMachine.dispatch(ev, data) : { ok: true, snapshot: taskMachine.getSnapshot() };
+        // v5.5 M0：收尾门——状态机拒绝（如用户已取消后引擎仍上报 completed）时不执行
+        // 收尾/完成推送，杜绝"取消后仍走完成流程"（RFC 复核确认的缺陷路径）
+        if (ev && !verdict.ok) {
+          logger.warn(
+            `[engine] 引擎 ${data?.state} 事件被状态机拒绝（当前 ${verdict.snapshot.state}），跳过对应处理`
+          );
+          break;
+        }
         if (data?.state === 'completed' || data?.state === 'cancelled') {
           if (data?.state === 'completed') {
+            taskRuntime.holdPowerSave(); // v5.5 M0：收尾期（等下载落盘/统计）维持电源锁
             // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
             // P3-4：目录统计已异步化，fire-and-forget 不阻塞状态机推送
             const active = getActiveTaskContext();
@@ -262,6 +276,7 @@ export function registerEngineIpc() {
               })
               .finally(() => {
                 pushFinalizing({ active: false });
+                taskRuntime.releasePowerSave(); // v5.5 M0：收尾结束释放电源锁（与 holdPowerSave 配对）
                 // P5.2：终态清理任务上下文——必须等收尾链结束再清理：
                 // 此前在 completed 事件同步块里立即清理，收尾期间（最长 120s）的
                 // 下载重试/收尾结论日志因 activeTaskId 已置空而落到 main.log，
@@ -283,6 +298,11 @@ export function registerEngineIpc() {
         if (doneTaskId) {
           logger.task(doneTaskId).info(`模块完成：${data?.module ?? '?'}`);
         }
+        break;
+      }
+      case 'heartbeat': {
+        // v5.5 M0：引擎存活心跳（orchestrator 每 2s）→ task-runtime 记录；30s 无心跳由看门狗推 backup:stalled
+        taskRuntime.recordHeartbeat(data || {});
         break;
       }
       default:

@@ -25,6 +25,8 @@ const api = {
     showLogin: () => invoke(Channels.auth.showLogin),
     getOverview: () => invoke(Channels.auth.getOverview),
     logout: () => invoke(Channels.auth.logout),
+    // v5.5 M0：打开 QQ 空间页面（引擎窗置前，不弹扫码前提示）
+    openEngine: () => invoke(Channels.auth.openEngine),
   },
   config: {
     get: () => invoke(Channels.config.get),
@@ -76,6 +78,10 @@ const api = {
   },
   viewer: {
     open: (backupPath) => invoke(Channels.viewer.open, { backupPath }),
+  },
+  // v5.5 M0：任务运行时快照（状态机 + 心跳/停滞）
+  task: {
+    getState: () => invoke(Channels.task.getState),
   },
   /** 订阅主进程推送事件，返回取消订阅函数 */
   on(channel, cb) {

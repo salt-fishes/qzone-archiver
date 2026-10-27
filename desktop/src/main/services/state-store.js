@@ -34,10 +34,10 @@ function readJson(file, fallback) {
   return fallback;
 }
 
-function writeJson(file, data) {
+function writeJson(file, data, replacer) {
   ensureDir(path.dirname(file));
   const tmp = file + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  fs.writeFileSync(tmp, JSON.stringify(data, replacer ?? null, 2), 'utf8');
   fs.renameSync(tmp, file);
 }
 
@@ -70,9 +70,17 @@ export const stateStore = {
       return [];
     }
   },
-  /** 下载队列 */
+  /**
+   * 下载队列。
+   * v5.5 M0：过滤运行时瞬态字段（abortController/_wakeSleep 等下划线前缀）——
+   * 这些字段不可克隆、重启后无意义，落盘会让 JSON 膨胀且加载出垃圾对象。
+   */
   saveDownloads(queue) {
-    writeJson(downloadsFile(), { queue: queue || [] });
+    writeJson(
+      downloadsFile(),
+      { queue: queue || [] },
+      (key, value) => (key === 'abortController' || key.startsWith('_') ? undefined : value)
+    );
   },
   loadDownloads() {
     return readJson(downloadsFile(), { queue: [] });

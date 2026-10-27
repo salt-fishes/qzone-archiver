@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { engineBridge, registerTaskContext, dropTaskContext, pushEngineStatus, sendToUi } from '../services/engine-bridge.js';
 import { createEngineWindow, waitForEngineLoad } from '../windows.js';
 import { stateStore } from '../services/state-store.js';
-import { taskMachine } from '../services/task-machine.js';
+import { taskMachine, canResumePaused } from '../services/task-machine.js';
+import { taskRuntime } from '../services/task-runtime.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
@@ -201,48 +202,82 @@ export function registerBackupIpc() {
   });
 
   ipcMain.handle(Channels.backup.pause, async () => {
-    // P3-1：命令由状态机 guard——非 running 状态拒绝（引擎/下载管理器不被误触发）
-    const r = taskMachine.dispatch('pause');
-    if (!r.ok) return { ok: false, error: r.error };
+    // v5.5 M0：先下发引擎命令、ack 成功后才改状态机——此前先 dispatch('pause') 再调引擎，
+    // 引擎侧失败（命令缺失/窗口已毁）时状态机已 paused，UI 与引擎实际状态脱节。
+    const snap = taskMachine.getSnapshot();
+    if (snap.state !== 'running') {
+      return { ok: false, error: `当前状态 ${snap.state} 不可暂停` };
+    }
     try {
       await engineBridge.pause();
-      // 联动下载管理器：停止调度 + 中断运行中任务（.part 保留断点）——否则引擎挂起后下载仍继续，CPU/网络持续占用
-      await downloadManager.pause();
-      logger.task(taskMachine.getSnapshot().taskId).info('暂停已下发：引擎挂起 + 下载中断（.part 保留断点）');
-      return { ok: true };
     } catch (e) {
-      logger.task(taskMachine.getSnapshot().taskId).error(`暂停下发失败：${e.message}`);
+      logger.task(snap.taskId).error(`暂停下发失败：${e.message}`);
       return { ok: false, error: e.message };
     }
+    const r = taskMachine.dispatch('pause', { reason: 'user' });
+    if (!r.ok) return { ok: false, error: r.error };
+    // 联动下载管理器：停止调度 + 中断运行中任务（.part 保留断点）——否则引擎挂起后下载仍继续，CPU/网络持续占用
+    try {
+      await downloadManager.pause();
+    } catch (e) {
+      logger.task(snap.taskId).warn(`下载暂停联动失败（不影响引擎暂停）：${e.message}`);
+    }
+    logger.task(snap.taskId).info('暂停已下发：引擎挂起 + 下载中断（.part 保留断点）');
+    return { ok: true };
   });
 
   ipcMain.handle(Channels.backup.resume, async () => {
+    // v5.5 M0：同 pause——引擎 ack 成功后才 dispatch('resume')
+    const snap = taskMachine.getSnapshot();
+    if (snap.state !== 'paused') {
+      return { ok: false, error: `当前状态 ${snap.state} 不可恢复` };
+    }
+    // v5.5 M0 补：engine_lost/auth_lost 的引擎会话已失效，恢复只会把状态误置回
+    // running（新引擎没有运行中的任务）。明确拒绝，UI 引导取消后重新发起。
+    if (!canResumePaused(snap.pausedReason)) {
+      logger.task(snap.taskId).warn(`恢复被拒绝：暂停原因 ${snap.pausedReason} 不可续跑`);
+      return {
+        ok: false,
+        error: '引擎会话已丢失，请取消本任务后重新发起备份（已采集的文件保留在目标目录）',
+      };
+    }
+    try {
+      await engineBridge.resume();
+    } catch (e) {
+      logger.task(snap.taskId).error(`恢复下发失败：${e.message}`);
+      return { ok: false, error: e.message };
+    }
     const r = taskMachine.dispatch('resume');
     if (!r.ok) return { ok: false, error: r.error };
     try {
-      await engineBridge.resume();
       await downloadManager.resume();
-      logger.task(taskMachine.getSnapshot().taskId).info('恢复已下发：引擎继续 + 下载续传');
-      return { ok: true };
     } catch (e) {
-      logger.task(taskMachine.getSnapshot().taskId).error(`恢复下发失败：${e.message}`);
-      return { ok: false, error: e.message };
+      logger.task(snap.taskId).warn(`下载恢复联动失败（不影响引擎恢复）：${e.message}`);
     }
+    logger.task(snap.taskId).info('恢复已下发：引擎继续 + 下载续传');
+    return { ok: true };
   });
 
   ipcMain.handle(Channels.backup.cancel, async () => {
     const r = taskMachine.dispatch('cancel');
     if (!r.ok) return { ok: false, error: r.error };
+    const taskId = taskMachine.getSnapshot().taskId;
+    // v5.5 M0：引擎命令失败不再阻断清理——取消语义必须保证下载清空与上下文回收，
+    // 此前 engineBridge.cancel 抛错时 finally 外的清理被跳过，残留上下文与运行中下载
     try {
       await engineBridge.cancel();
-      await downloadManager.cancel();
-      logger.task(taskMachine.getSnapshot().taskId).info('取消已下发：引擎中止 + 下载清空 pending');
-      dropTaskContext(taskMachine.getSnapshot().taskId); // P5.2：终态清理任务上下文
-      return { ok: true };
     } catch (e) {
-      logger.task(taskMachine.getSnapshot().taskId).error(`取消下发失败：${e.message}`);
-      return { ok: false, error: e.message };
+      logger.task(taskId).warn(`引擎取消命令未送达（继续本地清理）：${e.message}`);
+    } finally {
+      try {
+        await downloadManager.cancel();
+      } catch (e) {
+        logger.task(taskId).warn(`下载清空失败（忽略）：${e.message}`);
+      }
+      dropTaskContext(taskId); // P5.2：终态清理任务上下文
     }
+    logger.task(taskId).info('取消已下发：引擎中止 + 下载清空 pending');
+    return { ok: true };
   });
 
   ipcMain.handle(Channels.backup.getState, () => {
@@ -251,6 +286,12 @@ export function registerBackupIpc() {
     // P3-1：状态机快照为唯一事实源（taskId 字段保留兼容旧消费）
     return { taskId: taskMachine.getSnapshot().taskId || active?.taskId || null, task: taskMachine.getSnapshot(), checkpoints };
   });
+
+  // v5.5 M0：任务运行时快照（状态机 + 心跳/停滞）——渲染层初始化/重载后恢复 stalled 与任务态
+  ipcMain.handle(Channels.task.getState, () => ({
+    task: taskMachine.getSnapshot(),
+    runtime: taskRuntime.getSnapshot(),
+  }));
 
   // 备份历史（概览累计统计/上次备份；由 backup-stats 在备份完成时自动记录）
   ipcMain.handle(Channels.backup.getHistory, () => {

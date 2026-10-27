@@ -26,6 +26,8 @@ export const Channels = {
     showLogin: 'auth:show-login',
     getOverview: 'auth:get-overview',
     logout: 'auth:logout',
+    /** v5.5 M0 只增：打开 QQ 空间页面（引擎窗置前，不弹扫码前提示） */
+    openEngine: 'auth:open-engine',
   },
   config: {
     get: 'config:get',
@@ -83,6 +85,11 @@ export const Channels = {
     open: 'viewer:open',
   },
 
+  /** v5.5 M0 只增：任务运行时快照（渲染层初始化/重载后恢复 stalled 与任务态） */
+  task: {
+    getState: 'task:get-state',
+  },
+
   /** 引擎窗通道（隔离世界 engineBridge → main） */
   engine: {
     notify: 'engine:notify',
@@ -122,6 +129,13 @@ export const PushChannels = {
    * 背景：收尾最长 120s，此前界面只停在进度面板干等，看起来像死机（2026-10-11 实机反馈）。
    */
   backupFinalizing: 'backup:finalizing',
+
+  /**
+   * v5.5 M0 只增：备份任务停滞告警（running 态 30s 无引擎心跳）。
+   * payload { taskId, lastHeartbeatAt, silentMs, lastModule, lastPhase }。
+   * 只推事实，不改状态机状态（v5.5 M1 TaskRunner 才引入 stalled 终态）。
+   */
+  backupStalled: 'backup:stalled',
 
   downloadProgress: 'download:progress',
   downloadItemFailed: 'download:item-failed',
