@@ -123,6 +123,7 @@ const COMMAND_TIMEOUT_MS = 15_000;
   'tasks/task-context.js',
   'tasks/progress.js',
   'tasks/downloader.js',
+  'tasks/plan-executor.js',
   'tasks/orchestrator.js',
   'desktop-runner.js',
 ];
@@ -247,9 +248,9 @@ export const engineBridge = {
   },
 
   /** 启动备份（runner.__engineCommands.start）；targetUin 为可选他人模式参数（v4.6 只增） */
-  async start({ taskId, config, modules, targetDir, targetUin }) {
+  async start({ taskId, config, modules, targetDir, targetUin, resumeFrom }) {
     registerTaskContext({ taskId, config, modules, targetDir });
-    const payload = { taskId, config: config || null, modules: modules || [], targetDir, targetUin: targetUin || undefined };
+    const payload = { taskId, config: config || null, modules: modules || [], targetDir, targetUin: targetUin || undefined, resumeFrom: resumeFrom || undefined };
     // 守卫：__engineCommands 缺失时明确报错，避免静默失败导致 UI 卡 0%
     return this.exec(
       `window.__engineCommands ? window.__engineCommands.start(${JSON.stringify(payload)}) : (() => { throw new Error('引擎任务层未就绪，请确认已登录 QQ 空间') })()`

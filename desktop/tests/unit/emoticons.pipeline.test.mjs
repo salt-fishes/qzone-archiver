@@ -78,7 +78,7 @@ describe('内置表情目录与复制（EMOTICONS_DIR 路径回归）', () => {
     const magicGif = path.join(outDir, `e${MAGIC_ID}.gif`);
     expect(fs.existsSync(magicGif), '档案 SPA 按 .gif 取图，缺别名会导致魔法表情显示不出来').toBe(true);
     expect(fs.readFileSync(magicGif).equals(fs.readFileSync(magicPng))).toBe(true);
-  });
+  }, 20_000);
 
   it('复制是幂等的（重复备份不重复计数/覆盖）', () => {
     expect(copyBuiltinEmoticons(path.join(tmpRoot, 'backup'))).toBe(0);

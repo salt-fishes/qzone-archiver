@@ -108,10 +108,10 @@
 
     /**
      * 启动备份：装配配置 → 初始化身份 → 逐模块执行 export()
-     * @param {{taskId:string, config?:object, modules:string[], targetDir:string, targetUin?:string}} payload
+     * @param {{taskId:string, config?:object, modules:string[], targetDir:string, targetUin?:string, resumeFrom?:{module?:string,phase?:string}}} payload
      *        targetUin 为 v4.6 他人模式可选参数（缺省 = 备份本人空间，行为与旧版一致）
      */
-    async start({ taskId, config, modules, targetDir, targetUin }) {
+    async start({ taskId, config, modules, targetDir, targetUin, resumeFrom }) {
       P.setTargetDir(targetDir);
       // v5.5 M1：启动确认（ack）——必须在配置合并/相册预取之前发出，
       // 否则大账号预取超过 10s 会让主进程误判"引擎未接受任务"。
@@ -124,6 +124,12 @@
       // 主进程 30s 无心跳即推 backup:stalled（见 main/services/task-runtime.js）。
       // phase 捕获：包装 notify.progress，各采集层推送进度时顺带记录当前阶段。
       const s = window.__engineExportState;
+      // v5.5 M1：恢复上下文——suspended 表示因限流/登录失效主动挂起，
+      // lastPayload 保存原始模块清单供 resume 重新执行计划。
+      s.suspended = false;
+      s.suspendedReason = null;
+      s.resumeFrom = resumeFrom && typeof resumeFrom === 'object' ? resumeFrom : null;
+      s.lastPayload = { taskId, config: config || null, modules: modules || [], targetDir, targetUin };
       let lastPhase = '';
       const origProgressNotify = typeof P.notify.progress === 'function'
         ? P.notify.progress.bind(P.notify)
@@ -239,10 +245,28 @@
         photos.Images.Info.isGet = true;
       }
       s.modules = moduleList;
-      // running 状态携带**实际执行清单**（过滤后）：UI 模块清单与总进度分母据此计算，
-      // 此前发送未过滤的 modules —— 他人模式下被剔除的隐私模块在界面上永远转圈、
-      // 总进度永远到不了 100%（2026-10-11 实机复核）
-      P.notify.state({ taskId, state: 'running', modules: moduleList });
+      // v5.5 M1：按 resumeFrom 跳过已完成模块（模块级续跑；阶段信息用于 UI/诊断）
+      const fullModules = [...moduleList];
+      const planner = window.QZoneTasks && window.QZoneTasks.PlanExecutor;
+      const plan = planner
+        ? planner.buildPlan({ modules: fullModules, resumeFrom: s.resumeFrom })
+        : { modules: fullModules, skipped: [], invalidResume: false };
+      if (plan.invalidResume) {
+        P.notify.log({
+          level: 'warn',
+          message: `续跑模块 ${s.resumeFrom && s.resumeFrom.module} 不在本次清单，改为从头执行`,
+        });
+      }
+      if (plan.skipped.length) {
+        P.notify.log({
+          level: 'info',
+          message: `继续任务：跳过已完成模块 ${plan.skipped.map((m) => modName(m)).join('、')}`,
+        });
+      }
+      moduleList = plan.modules;
+      s.modules = moduleList;
+      // running 状态携带**实际执行清单**（过滤后/续跑后）：UI 模块清单与总进度分母据此计算。
+      P.notify.state({ taskId, state: 'running', modules: moduleList, skipped: plan.skipped });
       for (const mod of moduleList) {
         if (s.cancelled) break;
         s.currentModule = mod;
@@ -250,6 +274,33 @@
           await runModule(mod);
           results[mod] = 'ok';
         } catch (e) {
+          const kind = planner
+            ? planner.classifyModuleError(e)
+            : 'module';
+          if (kind === 'auth_lost' || kind === 'rate_limited') {
+            // 挂起整个计划：保留 checkpoint（module+phase），resume 时从该模块重跑
+            s.suspended = true;
+            s.suspendedReason = kind;
+            s.resumeFrom = { module: mod, phase: lastPhase || null };
+            P.notify.log({
+              level: 'warn',
+              message:
+                kind === 'auth_lost'
+                  ? `登录态失效，任务已暂停（停在 ${modName(mod)}）`
+                  : `QQ 空间限流，任务已暂停（停在 ${modName(mod)}），建议稍后继续`,
+            });
+            P.notify.state({ state: 'paused', reason: kind });
+            return;
+          }
+          if (kind === 'fatal') {
+            s.suspended = false;
+            P.notify.log({
+              level: 'error',
+              message: `模块 ${modName(mod)} 发生致命错误：${(e && e.message) || e}`,
+            });
+            P.notify.state({ state: 'failed', error: (e && e.message) || String(e) });
+            return;
+          }
           results[mod] = 'error';
           recordModuleError(s, mod, e);
           P.notify.log({
@@ -258,6 +309,7 @@
           });
         }
       }
+      if (s.suspended) return;
       // 收尾：未勾选 Statistics 时也补跑，确保生成 index.html 首页 / SPA 入口（等价扩展 OTHERS_INFO 阶段）
       if (!s.cancelled && !moduleList.includes('Statistics')) {
         s.currentModule = 'Statistics';
@@ -440,13 +492,30 @@
 
     async pause() {
       const s = window.__engineExportState;
-      if (s.cancelled || s.paused) return;
+      if (s.cancelled || s.paused || s.suspended) return;
       s.paused = true;
       P.notify.state({ state: 'paused' });
     },
 
     async resume() {
       const s = window.__engineExportState;
+      // v5.5 M1：限流/登录失效导致计划挂起——从 checkpoint 模块重新执行计划
+      if (s.suspended) {
+        const payload = s.lastPayload;
+        const nextResume = s.resumeFrom;
+        s.suspended = false;
+        s.suspendedReason = null;
+        s.paused = false;
+        if (!payload) return;
+        P.notify.state({ state: 'running' });
+        // 重新走 start：内部会重置状态并按 resumeFrom 跳过已完成模块
+        window.__engineCommands.start({ ...payload, resumeFrom: nextResume }).catch((e) => {
+          try {
+            P.notify.log({ level: 'error', message: `恢复执行失败：${(e && e.message) || e}` });
+          } catch (_) { /* ignore */ }
+        });
+        return;
+      }
       if (!s.paused) return;
       s.paused = false;
       // 唤醒全部挂起的检查点（并发任务可能同时撞上暂停，须逐个 resolve）
@@ -465,6 +534,8 @@
     async cancel() {
       const s = window.__engineExportState;
       s.cancelled = true;
+      s.suspended = false;
+      s.suspendedReason = null;
       // v5.5 M0：暂停中取消——清除暂停位并唤醒全部检查点等待者。
       // 此前 cancel 只置 cancelled 标志、不唤醒 pauseWaiters，暂停中的任务被取消后
       // 永远走不到下一个检查点 → checkExportState 永久挂起（2026-10-22 现场事件确认路径之一）。

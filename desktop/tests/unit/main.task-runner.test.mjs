@@ -121,6 +121,16 @@ describe('start', () => {
     const second = await runner.start(CTX);
     expect(second.runId).toBe('task-1-r2');
   });
+
+  it('resumeFrom 透传给引擎（从 checkpoint 模块继续）', async () => {
+    const runner = makeRunner();
+    await runner.start({ ...CTX, resumeFrom: { module: 'Photos', phase: 'Photos_Albums_Like' } });
+    expect(engine.start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resumeFrom: { module: 'Photos', phase: 'Photos_Albums_Like' },
+      })
+    );
+  });
 });
 
 describe('pause / resume', () => {
@@ -262,6 +272,26 @@ describe('checkpoint / 引擎事实', () => {
     expect(store.readJournal('task-1').at(-1)).toMatchObject({
       type: 'phase-end',
       data: { module: 'Messages' },
+    });
+  });
+
+  it('failed 事实 → 状态 failed + summary（fatal 错误）', async () => {
+    const runner = makeRunner();
+    await runner.start(CTX);
+    const verdict = runner.handleEngineState({
+      taskId: 'task-1',
+      state: 'failed',
+      error: '磁盘空间不足',
+    });
+    expect(verdict.ok).toBe(true);
+    expect(machine.getSnapshot().state).toBe('failed');
+    expect(store.loadSummary('task-1')).toMatchObject({
+      state: 'failed',
+      error: '磁盘空间不足',
+    });
+    expect(store.readJournal('task-1').at(-1)).toMatchObject({
+      type: 'finished',
+      data: { state: 'failed' },
     });
   });
 

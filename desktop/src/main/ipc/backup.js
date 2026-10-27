@@ -137,7 +137,7 @@ const emoticonsLogged = new Set();
 
 export function registerBackupIpc() {
   // targetUin（可选，v4.6 他人模式）：缺省/等于登录号 = 备份本人空间，行为与旧版完全一致
-  ipcMain.handle(Channels.backup.start, async (event, { taskId, modules, config, targetDir, targetUin }) => {
+  ipcMain.handle(Channels.backup.start, async (event, { taskId, modules, config, targetDir, targetUin, resumeFrom }) => {
     logger.info(
       `[backup] 收到备份启动请求 taskId=${taskId || '（自动生成）'} modules=[${(modules || []).join(',') || '无'}] targetDir=${targetDir || '（未选）'}${targetUin ? ` target=${targetUin}` : ''}`
     );
@@ -156,7 +156,7 @@ export function registerBackupIpc() {
       `任务开始 modules=[${(modules || []).join(',') || '无'}] targetDir=${targetDir}` +
         (targetUin ? ` target=${targetUin}` : '（本人空间）')
     );
-    const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir, targetUin: targetUin ? String(targetUin) : undefined };
+    const ctx = { taskId: id, modules: modules || [], config: config || null, targetDir, targetUin: targetUin ? String(targetUin) : undefined, resumeFrom: resumeFrom || undefined };
     registerTaskContext(ctx);
     // 内置表情库复制到目标目录（表情无需网络下载）
     try {

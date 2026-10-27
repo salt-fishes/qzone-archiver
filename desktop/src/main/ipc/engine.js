@@ -210,7 +210,7 @@ export function registerEngineIpc() {
       }
       case 'state': {
         // v5.5 M1：引擎状态事实 → TaskRunner（状态机裁决 + journal/summary 统一入口）
-        const isState = ['running', 'paused', 'completed', 'cancelled'].includes(data?.state);
+        const isState = ['running', 'paused', 'completed', 'cancelled', 'failed'].includes(data?.state);
         const verdict = isState
           ? taskRunner.handleEngineState(data || {})
           : { ok: true, snapshot: taskMachine.getSnapshot() };

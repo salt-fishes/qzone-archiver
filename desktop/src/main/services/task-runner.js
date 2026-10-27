@@ -271,6 +271,7 @@ export function createTaskRunner(deps = {}) {
       paused: 'pause',
       completed: 'complete',
       cancelled: 'cancel',
+      failed: 'fail',
     }[data?.state];
     if (!ev) return { ok: true, snapshot: machine.getSnapshot() };
     const verdict = machine.dispatch(ev, data);
@@ -296,6 +297,19 @@ export function createTaskRunner(deps = {}) {
       } else if (data.state === 'cancelled') {
         summary(taskId, { state: 'cancelled', runId: currentRunId });
         journal(taskId, { type: 'finished', runId: currentRunId, data: { state: 'cancelled' } });
+        currentRunId = null;
+      } else if (data.state === 'failed') {
+        summary(taskId, {
+          state: 'failed',
+          runId: currentRunId,
+          error: data.error || '引擎报告任务失败',
+          elapsedSec: snap.startedAt ? Math.round((Date.now() - snap.startedAt) / 1000) : null,
+        });
+        journal(taskId, {
+          type: 'finished',
+          runId: currentRunId,
+          data: { state: 'failed', error: data.error || null },
+        });
         currentRunId = null;
       }
     }
