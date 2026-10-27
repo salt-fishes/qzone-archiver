@@ -151,3 +151,58 @@ describe('recordBackup 异步落盘（P3-4 §5.4）', () => {
     expect(fs.existsSync(historyFileBefore)).toBe(false);
   });
 });
+
+describe('v5.5 M1 updateStats：下载排空后重算', () => {
+  it('尾部媒体落盘后按同一 startedAt 重算 files/size 并落盘', async () => {
+    const dir = makeTree(path.join(tmpRoot, 'recalc-1'));
+    const startedAt = Date.now() - 1000;
+    const entry = await backupStats.recordBackup({
+      taskId: 'task-recalc',
+      targetDir: dir,
+      modules: ['Photos'],
+      startedAt,
+    });
+    expect(entry.startedAt).toBe(startedAt);
+    const beforeFiles = entry.files;
+    const beforeSize = entry.size;
+
+    // 完成页已出现后，尾部媒体才落盘
+    fs.writeFileSync(path.join(dir, 'late-media.bin'), 'x'.repeat(2048));
+
+    const updated = await backupStats.updateStats('task-recalc');
+    expect(updated.files).toBe(beforeFiles + 1);
+    expect(updated.size).toBe(beforeSize + 2048);
+    expect(updated.updatedAt).toBeGreaterThanOrEqual(entry.completedAt);
+
+    const history = JSON.parse(fs.readFileSync(historyFileBefore, 'utf8'));
+    expect(history[0]).toMatchObject({
+      taskId: 'task-recalc',
+      files: beforeFiles + 1,
+      size: beforeSize + 2048,
+    });
+  });
+
+  it('旧文件不计入（与 recordBackup 的 sinceMs 口径一致）', async () => {
+    const dir = makeTree(path.join(tmpRoot, 'recalc-2'));
+    const old = path.join(dir, 'leftover.bin');
+    fs.writeFileSync(old, 'x'.repeat(1000));
+    const past = new Date(Date.now() - 60_000);
+    fs.utimesSync(old, past, past);
+
+    const startedAt = Date.now() - 30_000;
+    await backupStats.recordBackup({ taskId: 'task-old-file', targetDir: dir, startedAt });
+    const updated = await backupStats.updateStats('task-old-file');
+    // a.txt(3) + sub/b.txt(5) + sub/c.log(7)
+    expect(updated.size).toBe(15);
+    expect(updated.files).toBe(3);
+  });
+
+  it('记录不存在 / 目标目录已删除 → null', async () => {
+    expect(await backupStats.updateStats('task-missing')).toBeNull();
+
+    const dir = makeTree(path.join(tmpRoot, 'recalc-gone'));
+    await backupStats.recordBackup({ taskId: 'task-gone', targetDir: dir });
+    fs.rmSync(dir, { recursive: true, force: true });
+    expect(await backupStats.updateStats('task-gone')).toBeNull();
+  });
+});

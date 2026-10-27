@@ -51,6 +51,7 @@ beforeEach(async () => {
   await downloadManager.cancel();
   await downloadManager.clearDone();
   await downloadManager.resumeAll();
+  downloadManager.setDrainListener(null);
   mocks.sendToUi.mockClear();
   mocks.activeCtx = { taskId: null, targetDir: tmpDir };
 });
@@ -215,5 +216,62 @@ describe('v5.4 收尾等待可见化（waitIdle）', () => {
       .map(([, p]) => p.message);
     expect(uiLogs.some((m) => /等待下载队列落盘/.test(m))).toBe(true);
     expect(uiLogs.some((m) => /下载收尾等待超时/.test(m))).toBe(true);
+  });
+});
+
+describe('v5.5 M1 失败重试与排空通知', () => {
+  it('retryFailed 只重置指定任务的失败项，清空错误与重试计数', async () => {
+    mocks.activeCtx = { taskId: 'task-A', targetDir: tmpDir };
+    await downloadManager.pause(); // 保持 pending，避免 pump 立刻派发
+    await enqueueTask('rf-1');
+    await enqueueTask('rf-2');
+    const qs = downloadManager.getState().queue;
+    const q1 = qs.find((q) => q.id === 'rf-1');
+    q1.state = 'failed';
+    q1.error = 'HTTP 500';
+    q1.retries = 4;
+    // 其他任务的失败项：不应被 task-A 的重试影响
+    mocks.activeCtx = { taskId: 'task-B', targetDir: tmpDir };
+    await downloadManager.pause();
+    await enqueueTask('rf-other');
+    const other = downloadManager.getState().queue.find((q) => q.id === 'rf-other');
+    other.state = 'failed';
+    other.error = 'HTTP 503';
+
+    const n = await downloadManager.retryFailed('task-A');
+    expect(n).toBe(1);
+    const after = Object.fromEntries(downloadManager.getState().queue.map((q) => [q.id, q]));
+    expect(after['rf-1']).toMatchObject({ state: 'pending', error: null, retries: 0 });
+    expect(after['rf-other']).toMatchObject({ state: 'failed', error: 'HTTP 503' });
+  });
+
+  it('retryFailed 无失败项返回 0', async () => {
+    expect(await downloadManager.retryFailed()).toBe(0);
+  });
+
+  it('任务最后一条下载结束 → 排空回调触发一次；有 pending 时不触发', async () => {
+    mocks.activeCtx = { taskId: 'task-D', targetDir: tmpDir };
+    const onDrain = vi.fn();
+    downloadManager.setDrainListener(onDrain);
+    await downloadManager.pause();
+    await enqueueTask('drain-1');
+    await enqueueTask('drain-2');
+
+    expect(downloadManager.checkTaskDrained('task-D')).toBe(false); // 仍有 pending
+    const qs = downloadManager.getState().queue;
+    qs.find((q) => q.id === 'drain-1').state = 'done';
+    qs.find((q) => q.id === 'drain-2').state = 'done';
+
+    expect(downloadManager.checkTaskDrained('task-D')).toBe(true);
+    expect(onDrain).toHaveBeenCalledTimes(1);
+    expect(onDrain).toHaveBeenCalledWith('task-D');
+    // 同一排空周期不重复通知
+    expect(downloadManager.checkTaskDrained('task-D')).toBe(false);
+    expect(onDrain).toHaveBeenCalledTimes(1);
+  });
+
+  it('无注册回调 / 无记录时不触发', async () => {
+    downloadManager.setDrainListener(null);
+    expect(downloadManager.checkTaskDrained('task-none')).toBe(false);
   });
 });

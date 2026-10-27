@@ -32,5 +32,12 @@ export function registerDownloadIpc() {
     return { ok: true };
   });
 
+  // v5.5 M1：下载中心「重试失败」——失败条目重新入队（.part 断点保留）
+  ipcMain.handle(Channels.download.retryFailed, async (event, { taskId } = {}) => {
+    const count = await downloadManager.retryFailed(taskId);
+    logger.info(`[download] 失败重试入队 ${count} 条（taskId=${taskId || '全部'}）`);
+    return { ok: true, count };
+  });
+
   ipcMain.handle(Channels.download.getState, () => downloadManager.getState());
 }

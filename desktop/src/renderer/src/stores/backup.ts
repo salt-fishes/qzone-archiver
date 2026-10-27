@@ -37,7 +37,7 @@ export type BackupResult = {
 };
 
 export type DownloadItem = {
-  id: string; name?: string; url: string; state: string; module?: string; error?: string;
+  id: string; name?: string; url: string; state: string; module?: string; error?: string | null;
   received?: number; total?: number; percent?: number; skipped?: boolean; media?: boolean;
   /** v4.7：已重试次数（主进程重试中回置 pending 时携带） */
   retry?: number;

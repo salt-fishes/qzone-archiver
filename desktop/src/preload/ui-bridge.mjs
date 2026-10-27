@@ -55,6 +55,7 @@ const api = {
     resume: () => invoke(Channels.download.resume),
     cancel: () => invoke(Channels.download.cancel),
     clearDone: () => invoke(Channels.download.clearDone),
+    retryFailed: (taskId) => invoke(Channels.download.retryFailed, { taskId }),
     getState: () => invoke(Channels.download.getState),
   },
   fs: {

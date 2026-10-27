@@ -163,6 +163,18 @@ export function registerEngineIpc() {
     return downloadManager.enqueue(task || {});
   });
 
+  // v5.5 M1：某次备份的媒体全部落盘（done/failed）后重算历史记录的文件数/体积。
+  // 完成页不再等待下载（决策 D4），recordBackup 记录的是完成瞬间的快照；
+  // 尾部媒体稍后落盘，这里按同一 startedAt 重算并推送历史变更。
+  downloadManager.setDrainListener(async (taskId) => {
+    try {
+      const rec = await backupStats.updateStats(taskId);
+      if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
+    } catch (e) {
+      logger.warn(`[engine] 下载排空后重算历史统计失败 taskId=${taskId}: ${e?.message || e}`);
+    }
+  });
+
   // ---------- network（主进程带 Referer 请求，等价 background 侧） ----------
   guardInvoke(Channels.engine.networkMimetype, async (e, { url, timeout = 15000 } = {}) => {
     try {

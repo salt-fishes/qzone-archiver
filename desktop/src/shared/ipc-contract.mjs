@@ -56,6 +56,7 @@ export const Channels = {
     resume: 'download:resume',
     cancel: 'download:cancel',
     clearDone: 'download:clear-done',
+    retryFailed: 'download:retry-failed',
     getState: 'download:get-state',
   },
   fs: {

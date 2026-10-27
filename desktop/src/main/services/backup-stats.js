@@ -124,6 +124,8 @@ export const backupStats = {
     const entry = {
       taskId: taskId || null,
       completedAt: Date.now(),
+      // v5.5 M1：保留任务开始时间——后台下载排空后 updateStats 仍能按同一 sinceMs 重算
+      startedAt: startedAt || null,
       targetDir: dir,
       name: path.basename(dir),
       modules: Array.isArray(modules) ? modules : [],
@@ -161,6 +163,37 @@ export const backupStats = {
     // 同 taskId 去重后最新记录置顶
     const list = this.loadHistory().filter((x) => x.taskId !== entry.taskId);
     list.unshift(entry);
+    writeJson(historyFile(), list);
+    return entry;
+  },
+
+  /**
+   * v5.5 M1：下载排空后重算某次备份的「文件数/占用空间」。
+   *
+   * 背景：完成页不再等待媒体下载（决策 D4），recordBackup 记录的是完成瞬间的
+   * 目录统计；尾部媒体（头像/大图/视频）稍后落盘，档案列表里的体积会偏小。
+   * 下载队列排空时调用本方法，按同一条记录的 startedAt 重新扫描目标目录。
+   *
+   * @param {string} taskId
+   * @returns {Promise<object|null>} 更新后的记录；无记录/目录不存在时返回 null
+   */
+  async updateStats(taskId) {
+    const id = String(taskId || '');
+    if (!id) return null;
+    const list = this.loadHistory();
+    const entry = list.find((x) => String(x.taskId || '') === id);
+    if (!entry || !entry.targetDir) return null;
+    if (!fs.existsSync(entry.targetDir)) return null;
+    // 与 recordBackup 一致：startedAt 前 2s 余量；旧记录无 startedAt 时统计全目录
+    const sinceMs = entry.startedAt ? entry.startedAt - 2000 : 0;
+    try {
+      entry.size = await dirBytes(entry.targetDir, 5000, sinceMs);
+      entry.files = await countFiles(entry.targetDir, 0, 20000, sinceMs);
+    } catch (e) {
+      console.warn('[backup-stats] 重算目录统计失败', e);
+      return null;
+    }
+    entry.updatedAt = Date.now();
     writeJson(historyFile(), list);
     return entry;
   },

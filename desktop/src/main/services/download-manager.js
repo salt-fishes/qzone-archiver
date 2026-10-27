@@ -90,6 +90,29 @@ function isTaskPaused(taskId) {
 }
 
 /**
+ * v5.5 M1：任务下载排空回调。
+ * 完成与下载解耦后，历史统计在完成瞬间记录，尾部媒体稍后落盘；
+ * 队列排空时通知上层（ipc/engine 用它重算 files/size）。
+ * 每个任务在一个排空周期内只通知一次；该任务新增记录后重新武装。
+ */
+const drainedTasks = new Set();
+let drainListener = null;
+
+function notifyTaskDrained(taskId) {
+  if (!drainListener || !taskId || drainedTasks.has(taskId)) return false;
+  const records = queue.filter((q) => q.taskId === taskId);
+  if (!records.length) return false;
+  if (records.some((q) => q.state === 'pending' || q.state === 'running')) return false;
+  drainedTasks.add(taskId);
+  try {
+    drainListener(taskId);
+  } catch (e) {
+    logger.warn(`[download-manager] 任务下载排空回调失败：${e && e.message}`);
+  }
+  return true;
+}
+
+/**
  * 运行时设置（v4.7 P1）：并发与批间间隔改为从本次备份配置读取。
  * v4.6 之前这两个设置项只被无调用点的 downloadsByBrowser/downloadByAria2 读取，
  * 主进程下载器写死 10 并发且无间隔 —— 用户改设置无效（"哑巴设置"）。
@@ -279,6 +302,8 @@ export const downloadManager = {
           else running = Math.max(0, running - 1);
           pushSummary();
           this.pump();
+          // v5.5 M1：该任务最后一条下载结束（done/failed）→ 通知上层重算历史统计
+          this.checkTaskDrained(candidate.taskId);
         });
     }
     // 本轮槽位跑满：按「下载间隔」停顿后再续（v4.7：1 万条媒体需给 CDN 喘息）
@@ -387,6 +412,7 @@ export const downloadManager = {
       logger.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
     }
     queue.push(record);
+    if (record.taskId) drainedTasks.delete(record.taskId);
     persistSoon(); // v5.5 M0：入队高频路径合并写盘（派发/进度仍即时可见，落盘合并 500ms）
     sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'pending', module: record.module, media: record.media });
     pushSummary();
@@ -664,6 +690,58 @@ export const downloadManager = {
     queue = queue.filter((q) => q.state === 'pending' || q.state === 'running');
     if (queue.length !== before) persist();
     sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
+  },
+
+  /**
+   * v5.5 M1：失败条目重新入队。
+   * 保留 .part 断点（下次尝试续传），清空错误与重试计数后按正常调度重跑。
+   * @param {string} [taskId] 只重试某次备份的下载；缺省 = 全部失败项
+   * @returns {Promise<number>} 重置的条目数
+   */
+  async retryFailed(taskId) {
+    const owner = taskId ? String(taskId) : null;
+    const targets = queue.filter((q) => q.state === 'failed' && (!owner || q.taskId === owner));
+    if (!targets.length) return 0;
+    for (const q of targets) {
+      q.state = 'pending';
+      q.error = null;
+      q.retries = 0;
+      q.cancelRequested = false;
+      q.pauseInterrupted = false;
+      q.receivedBytes = 0;
+      if (q.taskId) drainedTasks.delete(q.taskId);
+      sendToUi(PushChannels.downloadStateChanged, {
+        taskId: q.id,
+        state: 'pending',
+        module: q.module,
+        media: q.media,
+        retry: 0,
+        // 清空渲染层残留的失败原因（合并更新不会自动删除旧字段）
+        error: null,
+      });
+    }
+    persist();
+    pushSummary();
+    this.pump();
+    logger.info(`[download-manager] 已重新入队失败下载 ${targets.length} 条`);
+    return targets.length;
+  },
+
+  /**
+   * v5.5 M1：注册「某任务下载队列排空」回调（ipc/engine 用它重算历史统计）。
+   * 传 null 取消注册。
+   */
+  setDrainListener(fn) {
+    drainListener = typeof fn === 'function' ? fn : null;
+  },
+
+  /**
+   * v5.5 M1：检查某任务是否已排空并触发回调。
+   * pump 的每条下载收尾都会调用；导出便于单测与诊断。
+   * @returns {boolean} 本次是否触发（同一排空周期只触发一次）
+   */
+  checkTaskDrained(taskId) {
+    return notifyTaskDrained(taskId);
   },
 
   /**

@@ -79,6 +79,18 @@ async function resumeAll() {
   message.success('下载已恢复');
 }
 
+/** v5.5 M1：失败条目重新入队（.part 断点保留，下一轮续传） */
+async function retryFailed() {
+  const r = await window.api.download.retryFailed();
+  const n = r?.count || 0;
+  if (!n) {
+    message.info('没有失败的下载');
+    return;
+  }
+  message.success(`已重新入队 ${n} 项`);
+  await refreshQueue();
+}
+
 function openFolder(id: string) {
   const dir = dirOf.value[id];
   if (dir) window.api.fs.showInFolder(dir);
@@ -173,6 +185,14 @@ function shortTask(taskId?: string) {
         style="width: 150px"
       />
       <span class="flex1" />
+      <NButton
+        size="small"
+        round
+        :disabled="summary.failed === 0"
+        @click="retryFailed"
+      >
+        重试失败{{ summary.failed ? ` (${summary.failed})` : '' }}
+      </NButton>
       <NButton
         size="small"
         quaternary

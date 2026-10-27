@@ -65,6 +65,7 @@ declare global {
         resume(): Promise<any>;
         cancel(): Promise<any>;
         clearDone(): Promise<any>;
+        retryFailed(taskId?: string): Promise<any>;
         getState(): Promise<any>;
       };
       fs: {
