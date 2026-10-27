@@ -13,6 +13,7 @@ import { resolveWithin } from '../services/path-guard.js';
 import { engineStorage } from '../services/config-store.js';
 import { taskMachine } from '../services/task-machine.js';
 import { taskRuntime } from '../services/task-runtime.js';
+import { engineClient } from '../services/engine-client.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
@@ -302,7 +303,18 @@ export function registerEngineIpc() {
       }
       case 'heartbeat': {
         // v5.5 M0：引擎存活心跳（orchestrator 每 2s）→ task-runtime 记录；30s 无心跳由看门狗推 backup:stalled
+        // v5.5 M1：心跳携带协议版本，主进程据此完成握手（不匹配时 start 拒绝）
+        if (data?.v) engineClient.setProtocolVersion(data.v);
         taskRuntime.recordHeartbeat(data || {});
+        break;
+      }
+      case 'started': {
+        // v5.5 M1：引擎已接受 start（早于预取）→ 解除 engineClient 的启动确认等待
+        if (data?.v) engineClient.setProtocolVersion(data.v);
+        const startedTaskId = data?.taskId || getActiveTaskContext()?.taskId;
+        if (startedTaskId) {
+          engineClient.onFact({ ...(data || {}), type: 'started', taskId: startedTaskId });
+        }
         break;
       }
       default:

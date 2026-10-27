@@ -11,6 +11,7 @@ import { createEngineWindow, waitForEngineLoad } from '../windows.js';
 import { stateStore } from '../services/state-store.js';
 import { taskMachine, canResumePaused } from '../services/task-machine.js';
 import { taskRuntime } from '../services/task-runtime.js';
+import { engineClient } from '../services/engine-client.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
@@ -189,8 +190,8 @@ export function registerBackupIpc() {
     }
 
     try {
-      await engineBridge.start(ctx);
-      tl.info('引擎 start 调用已返回');
+      await engineClient.start(ctx);
+      tl.info('引擎 start 已确认（started ack）');
       return { ok: true, taskId: id };
     } catch (e) {
       logger.error(`[backup] 引擎 start 失败：${e?.stack || e}`);
@@ -209,7 +210,7 @@ export function registerBackupIpc() {
       return { ok: false, error: `当前状态 ${snap.state} 不可暂停` };
     }
     try {
-      await engineBridge.pause();
+      await engineClient.command('pause');
     } catch (e) {
       logger.task(snap.taskId).error(`暂停下发失败：${e.message}`);
       return { ok: false, error: e.message };
@@ -242,7 +243,7 @@ export function registerBackupIpc() {
       };
     }
     try {
-      await engineBridge.resume();
+      await engineClient.command('resume');
     } catch (e) {
       logger.task(snap.taskId).error(`恢复下发失败：${e.message}`);
       return { ok: false, error: e.message };
@@ -265,7 +266,7 @@ export function registerBackupIpc() {
     // v5.5 M0：引擎命令失败不再阻断清理——取消语义必须保证下载清空与上下文回收，
     // 此前 engineBridge.cancel 抛错时 finally 外的清理被跳过，残留上下文与运行中下载
     try {
-      await engineBridge.cancel();
+      await engineClient.command('cancel');
     } catch (e) {
       logger.task(taskId).warn(`引擎取消命令未送达（继续本地清理）：${e.message}`);
     } finally {
@@ -362,6 +363,7 @@ export function registerBackupIpc() {
       const engine = createEngineWindow();
       await waitForEngineLoad(engine, 15000);
       await engineBridge.inject();
+      engineClient.setProtocolVersion(engineBridge.protocolVersion);
       pushEngineStatus('ready');
       logger.info('[backup] 手动重试连接完成');
       return { ok: true };

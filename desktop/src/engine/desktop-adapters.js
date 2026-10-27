@@ -256,6 +256,10 @@
       moduleDone(data) {
         bridge.post('engine:notify', { type: 'module-done', data });
       },
+      /** v5.5 M1：引擎已接受 start（早于配置/预取，避免 10s 启动确认被预取拖超时） */
+      started(data) {
+        bridge.post('engine:notify', { type: 'started', data });
+      },
       /** v5.5 M0：引擎心跳（orchestrator 每 2s 一次；主进程 30s 无心跳判 stalled） */
       heartbeat(data) {
         bridge.post('engine:notify', { type: 'heartbeat', data });

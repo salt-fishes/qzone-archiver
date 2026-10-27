@@ -174,6 +174,8 @@ export function resolveEnginePath(rawPath) {
 
 export const engineBridge = {
   ready: false,
+  /** v5.5 M1：引擎协议版本（inject 后从 __engineCommands.v 读取；0=未知） */
+  protocolVersion: 0,
   /** 注入全部引擎脚本到引擎窗口 */
   async inject() {
     const wc = windows.engine?.webContents;
@@ -196,6 +198,15 @@ export const engineBridge = {
       }
     }
     this.ready = true;
+    // v5.5 M1：握手版本（旧引擎无 v → 0；start 会因收不到 started 而超时）
+    try {
+      const v = await execInEngine(wc, 'window.__engineCommands && window.__engineCommands.v', {
+        returnValue: true,
+      });
+      this.protocolVersion = Number(v) || 0;
+    } catch {
+      this.protocolVersion = 0;
+    }
     sendToUi(PushChannels.backupStateChanged, { state: 'engine-ready', message: '引擎已就绪' });
   },
 

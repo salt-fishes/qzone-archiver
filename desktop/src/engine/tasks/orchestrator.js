@@ -103,6 +103,9 @@
 
   // ---------- __engineCommands ----------
   window.__engineCommands = {
+    /** 协议版本（v5.5 M1）：主进程启动任务前握手，不匹配拒绝 start */
+    v: 2,
+
     /**
      * 启动备份：装配配置 → 初始化身份 → 逐模块执行 export()
      * @param {{taskId:string, config?:object, modules:string[], targetDir:string, targetUin?:string}} payload
@@ -110,6 +113,11 @@
      */
     async start({ taskId, config, modules, targetDir, targetUin }) {
       P.setTargetDir(targetDir);
+      // v5.5 M1：启动确认（ack）——必须在配置合并/相册预取之前发出，
+      // 否则大账号预取超过 10s 会让主进程误判"引擎未接受任务"。
+      try {
+        if (P.notify.started) P.notify.started({ v: 2, taskId });
+      } catch (_) { /* 启动确认失败不影响任务，主进程会按超时处理 */ }
 
       // v5.5 M0：心跳——每 2s 通知主进程 task-runtime「引擎还活着」。
       // 背景：最小化窗口被 Chromium 定时器节流 / 引擎静默挂死时，界面停在 running 无任何证据；
@@ -126,7 +134,7 @@
       };
       const heartbeat = () => {
         try {
-          P.notify.heartbeat({ taskId, module: (s && s.currentModule) || '', phase: lastPhase });
+          P.notify.heartbeat({ v: 2, taskId, module: (s && s.currentModule) || '', phase: lastPhase });
         } catch (_) { /* 心跳失败不影响任务 */ }
       };
       let heartbeatTimer = null;
