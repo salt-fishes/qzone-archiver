@@ -119,6 +119,7 @@ const COMMAND_TIMEOUT_MS = 15_000;
   'modules/friends.js',
   'modules/visitors.js',
   'tasks/state.js',
+  'tasks/task-context.js',
   'tasks/progress.js',
   'tasks/downloader.js',
   'tasks/orchestrator.js',
