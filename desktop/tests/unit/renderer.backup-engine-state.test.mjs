@@ -20,6 +20,8 @@ beforeAll(() => {
         return () => listeners.delete(ch);
       },
       download: { getState: async () => ({ queue: [] }) },
+      // v5.5 M0：任务运行时快照（initBackup 初始化恢复用）
+      task: { getState: async () => ({ task: { state: 'idle' }, runtime: { stalled: false } }) },
       backup: {
         engineInject: async () => {
           engineInjectCalls += 1;
@@ -89,5 +91,61 @@ describe('§B engine:status-changed 状态派生', () => {
     expect(bk.engineFailed).toBe(false);
     expect(await p).toBe(true);
     expect(engineInjectCalls).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * v5.5 M0：idle 默认态 / 任务停滞 / paused reason（plans/v5.5.md §4.4）
+ */
+describe('v5.5 M0 idle 默认态与停滞告警', () => {
+  it('初始 engineState=idle：冷启动未登录显示「未连接」而非「连接中」', () => {
+    const bk = makeStore();
+    expect(bk.engineState).toBe('idle');
+    expect(bk.engineReady).toBe(false);
+    expect(bk.engineFailed).toBe(false); // idle 不是失败态（未建窗 ≠ 连接失败）
+  });
+
+  it('backup:stalled → stalled=true + 明细；running 恢复 → 解除', () => {
+    const bk = makeStore();
+    listeners.get('backup:state-changed')({ taskId: 't1', state: 'running', modules: ['Blogs'] });
+    listeners.get('backup:stalled')({ taskId: 't1', silentMs: 61000, lastModule: 'Blogs', lastPhase: '翻页' });
+    expect(bk.stalled).toBe(true);
+    expect(bk.stalledInfo.lastModule).toBe('Blogs');
+    expect(bk.stalledInfo.silentMs).toBe(61000);
+
+    // 心跳恢复：主进程补推 running → 解除
+    listeners.get('backup:state-changed')({ taskId: 't1', state: 'running', modules: ['Blogs'] });
+    expect(bk.stalled).toBe(false);
+    expect(bk.stalledInfo).toBe(null);
+  });
+
+  it('paused(非 user 原因) → pausedReason 透传；终态清除停滞与原因', () => {
+    const bk = makeStore();
+    listeners.get('backup:state-changed')({ taskId: 't1', state: 'running', modules: ['Blogs'] });
+    listeners.get('backup:state-changed')({ taskId: 't1', state: 'paused', pausedReason: 'engine_lost' });
+    expect(bk.paused).toBe(true);
+    expect(bk.pausedReason).toBe('engine_lost');
+
+    listeners.get('backup:state-changed')({ taskId: 't1', state: 'cancelled' });
+    expect(bk.pausedReason).toBe(null);
+    expect(bk.stalled).toBe(false);
+  });
+
+  it('task:get-state 快照恢复：运行中任务重载后恢复 running 与停滞标记', async () => {
+    // 模拟主进程快照（renderer store 初始化时调用）
+    const store = await import('../../src/renderer/src/stores/backup');
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    globalThis.window.api.task.getState = async () => ({
+      task: { taskId: 't-live', state: 'running', modules: ['Blogs'] },
+      runtime: { stalled: true, msSinceHeartbeat: 45000, lastHeartbeat: { module: 'Blogs', phase: '翻页' } },
+    });
+    const bk = store.useBackupStore();
+    bk.initBackup();
+    await new Promise((r) => setTimeout(r, 0)); // 快照 Promise 落地
+    expect(bk.taskState).toBe('running');
+    expect(bk.stalled).toBe(true);
+    expect(bk.stalledInfo.silentMs).toBe(45000);
+    globalThis.window.api.task.getState = async () => ({ task: { state: 'idle' }, runtime: { stalled: false } });
   });
 });

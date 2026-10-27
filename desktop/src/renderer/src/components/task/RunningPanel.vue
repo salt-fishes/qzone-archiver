@@ -7,13 +7,24 @@ import { computed, ref } from 'vue';
 import { NButton, NProgress, NDrawer, NDrawerContent, NTag, useDialog } from 'naive-ui';
 import { AnimatePresence, Motion } from 'motion-v';
 import { useBackupStore, DL_STATES } from '../../stores/backup';
+import { useAuthStore } from '../../stores/auth';
 import { MODULE_META, MODULE_ICONS } from '../../stores/config';
 import VirtualList from '../common/VirtualList.vue';
 
 const bk = useBackupStore();
+const auth = useAuthStore();
 const dialog = useDialog();
 
 const paused = computed(() => bk.paused);
+/**
+ * v5.5 M0 补：engine_lost/auth_lost 的引擎会话已失效（窗口重建/页面离开 qzone），
+ * 新引擎里没有运行中的任务，直接“恢复”只会把状态误置回 running。
+ * 这两种原因只展示处置卡（重连/登录 + 取消后重发），不提供通用恢复按钮。
+ */
+const canResume = computed(() => {
+  const r = bk.pausedReason;
+  return !r || r === 'user' || r === 'rate_limited';
+});
 /** 当前阶段进度（0-100，阶段内原始百分比，子条显示用） */
 const modulePercent = computed(() => bk.progress?.percent ?? 0);
 /** 收尾可见状态（引擎已完成、等待下载落盘/统计归档） */
@@ -77,6 +88,47 @@ function onCancel() {
   });
 }
 
+/** v5.5 M0：停滞横幅明细（最后阶段 + 无心跳时长） */
+const stallDetail = computed(() => {
+  const info = bk.stalledInfo;
+  const mod = info?.lastModule ? MODULE_META[info.lastModule]?.label || info.lastModule : '';
+  const sec = Math.round((info?.silentMs || 0) / 1000);
+  const dur = sec >= 120 ? `${Math.floor(sec / 60)} 分钟${sec % 60 ? ` ${sec % 60} 秒` : ''}` : `${sec} 秒`;
+  const phase = mod || info?.lastPhase || '';
+  return `${phase ? `最后阶段：${phase}，` : ''}已 ${dur} 无引擎心跳`;
+});
+
+/** v5.5 M0：非用户暂停的原因卡文案与动作（引擎丢失/登录失效/限流的处置指引各不相同） */
+const pauseReasonCard = computed(() => {
+  const reason = bk.pausedReason;
+  if (!bk.paused || !reason || reason === 'user') return null;
+  if (reason === 'engine_lost') {
+    return {
+      type: 'error' as const,
+      title: '引擎已断开（窗口被关闭或崩溃）',
+      text: '已采集的文件保留在目标目录。点击「重连引擎」恢复连接；本版本暂不支持断点续跑，请取消本任务后重新发起备份。',
+      actionLabel: '重连引擎',
+      action: () => bk.retryEngine(),
+    };
+  }
+  if (reason === 'auth_lost') {
+    return {
+      type: 'warning' as const,
+      title: '登录已失效',
+      text: 'QQ 空间页面已离开登录态，本次备份无法继续。请先取消本任务，再重新扫码登录并新建备份（已采集的文件保留）。',
+      actionLabel: '扫码登录',
+      action: () => auth.login(),
+    };
+  }
+  return {
+    type: 'warning' as const,
+    title: '接口限流保护',
+    text: 'QQ 空间接口连续异常，已暂停请求以避免加重限制。建议等待 10~30 分钟后点击「恢复」继续。',
+    actionLabel: '',
+    action: null,
+  };
+});
+
 function fmtElapsed(sec?: number) {
   if (sec == null || sec < 0) return '';
   const m = Math.floor(sec / 60);
@@ -87,6 +139,54 @@ function fmtElapsed(sec?: number) {
 
 <template>
   <section class="running">
+    <!-- v5.5 M0：停滞横幅——30s 无引擎心跳时显示最后阶段与时长，提供日志/取消入口 -->
+    <div
+      v-if="bk.stalled && !paused"
+      class="stall-banner"
+    >
+      <span class="sb-icon">⚠</span>
+      <div class="sb-text">
+        <b>备份疑似停滞</b>
+        <span>{{ stallDetail }}</span>
+      </div>
+      <NButton
+        size="tiny"
+        quaternary
+        @click="showLogs = true"
+      >
+        查看日志
+      </NButton>
+      <NButton
+        size="tiny"
+        type="error"
+        secondary
+        @click="onCancel"
+      >
+        取消备份
+      </NButton>
+    </div>
+
+    <!-- v5.5 M0：非用户暂停的原因卡（引擎丢失/登录失效/限流的处置指引） -->
+    <div
+      v-if="pauseReasonCard"
+      class="pause-reason"
+      :class="pauseReasonCard.type"
+    >
+      <div class="pr-main">
+        <b>{{ pauseReasonCard.title }}</b>
+        <span>{{ pauseReasonCard.text }}</span>
+      </div>
+      <NButton
+        v-if="pauseReasonCard.actionLabel"
+        size="tiny"
+        type="primary"
+        secondary
+        @click="pauseReasonCard.action?.()"
+      >
+        {{ pauseReasonCard.actionLabel }}
+      </NButton>
+    </div>
+
     <div class="run-card">
       <div class="run-progress">
         <NProgress
@@ -150,7 +250,7 @@ function fmtElapsed(sec?: number) {
               暂停
             </NButton>
             <NButton
-              v-else
+              v-else-if="canResume"
               size="small"
               type="primary"
               round
@@ -349,6 +449,58 @@ function fmtElapsed(sec?: number) {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+/* v5.5 M0：停滞横幅 */
+.stall-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(240, 160, 32, 0.45);
+  background: rgba(240, 160, 32, 0.08);
+  color: #b06f00;
+}
+.stall-banner .sb-icon {
+  font-size: 18px;
+}
+.sb-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+}
+.sb-text b {
+  font-size: 13.5px;
+}
+/* v5.5 M0：暂停原因卡 */
+.pause-reason {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  font-size: 12.5px;
+}
+.pause-reason.error {
+  border: 1px solid rgba(208, 48, 80, 0.45);
+  background: rgba(208, 48, 80, 0.07);
+}
+.pause-reason.warning {
+  border: 1px solid rgba(240, 160, 32, 0.45);
+  background: rgba(240, 160, 32, 0.08);
+}
+.pr-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+.pr-main b {
+  font-size: 13.5px;
 }
 .run-card {
   display: flex;

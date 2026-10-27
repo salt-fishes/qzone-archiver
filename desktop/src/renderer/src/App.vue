@@ -43,16 +43,18 @@ watchEffect(() => {
   document.documentElement.classList.toggle('dark', appearance.resolvedTheme === 'dark');
 });
 
-/** 引擎加载超时兜底：20s 仍未就绪 → 提示连接失败并允许重试 */
+/** 引擎加载超时兜底：20s 仍未就绪 → 提示连接失败并允许重试。
+ * v5.5 M0：watch 加 immediate（冷启动 engineReady 初始 false，旧实现首个变更前定时器不启动）；
+ * 且只在「连接中」态置失败——v5.5 起 engineState 默认 idle（未登录未建窗），那不是加载失败 */
 let engineTimer: number | undefined;
 watch(engineReady, (ready) => {
   window.clearTimeout(engineTimer);
   if (!ready) {
     engineTimer = window.setTimeout(() => {
-      if (!engineReady.value) engineFailed.value = true;
+      if (!engineReady.value && bk.engineState === 'loading') engineFailed.value = true;
     }, 20000);
   }
-});
+}, { immediate: true });
 
 onMounted(async () => {
   window.api.app.getInfo().then((i) => (appInfo.value = i));

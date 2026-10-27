@@ -48,8 +48,8 @@ const userOptions = [
 ];
 
 function onUserAction(key: string) {
-  // 走 store 的 login()：会先给出「打开 QQ 空间前的注意事项」提示（v4.7 反馈 ⑤）
-  if (key === 'engine') auth.login();
+  // v5.5 M0：「打开 QQ 空间页面」直接置前引擎窗（不弹扫码前提示——那是「扫码登录」的语义）
+  if (key === 'engine') auth.openEngine();
   if (key === 'logout') confirmLogout();
 }
 </script>
@@ -57,33 +57,57 @@ function onUserAction(key: string) {
 <template>
   <header class="app-header">
     <div class="header-left">
-      <!-- §B：引擎状态由主进程 engine:status-changed 驱动，区分「窗口已关闭」与「连接失败」 -->
+      <!-- v5.5 M0 六态：stalled（黄点·无响应）/ ready（已连接）/ loading（连接中）/ idle·closed（未连接·点击重试）/ crashed（连接失败·点击重试） -->
       <NTag
-        v-if="bk.engineFailed"
+        v-if="bk.stalled"
+        size="small"
+        type="warning"
+        round
+        :bordered="false"
+        style="cursor: pointer"
+        title="备份长时间无引擎心跳，疑似停滞。可尝试重连；若日志无输出请取消后重新发起备份"
+        @click="bk.retryEngine()"
+      >
+        <template #icon>
+          <span class="dot off" />
+        </template>
+        无响应 · 点击重连
+      </NTag>
+      <NTag
+        v-else-if="bk.engineState === 'ready'"
+        size="small"
+        type="success"
+        round
+        :bordered="false"
+      >
+        <template #icon>
+          <span class="dot on" />
+        </template>
+        已连接
+      </NTag>
+      <NTag
+        v-else-if="bk.engineState === 'loading'"
+        size="small"
+        round
+        :bordered="false"
+        type="default"
+      >
+        <template #icon>
+          <span class="dot off" />
+        </template>
+        连接中…
+      </NTag>
+      <NTag
+        v-else
         size="small"
         type="error"
         round
         :bordered="false"
         style="cursor: pointer"
-        :title="bk.engineStateReason || (bk.engineState === 'closed' ? 'QQ 空间窗口已关闭' : '引擎连接失败')"
+        :title="bk.engineStateReason || (bk.engineState === 'crashed' ? '引擎连接失败' : 'QQ 空间窗口未打开')"
         @click="bk.retryEngine()"
       >
-        {{ bk.engineState === 'closed' ? '未连接 · 点击重试' : '连接失败 · 点击重试' }}
-      </NTag>
-      <NTag
-        v-else
-        size="small"
-        round
-        :bordered="false"
-        :type="bk.engineReady ? 'success' : 'default'"
-      >
-        <template #icon>
-          <span
-            class="dot"
-            :class="bk.engineReady ? 'on' : 'off'"
-          />
-        </template>
-        {{ bk.engineReady ? '已连接' : '连接中…' }}
+        {{ bk.engineState === 'crashed' ? '连接失败 · 点击重试' : '未连接 · 点击重试' }}
       </NTag>
     </div>
 

@@ -73,15 +73,30 @@ export const useBackupStore = defineStore('backup', () => {
   const taskState = ref<TaskState>('idle');
   const busy = computed(() => ['preparing', 'running', 'paused'].includes(taskState.value));
   const paused = computed(() => taskState.value === 'paused');
+  /**
+   * v5.5 M0：paused 原因（主进程 backup:state-changed 携带）——
+   * user=手动暂停；engine_lost=引擎窗口丢失；auth_lost=登录态失效；rate_limited=限流保护。
+   * 运行面板据此显示原因卡（引擎丢失 ≠ 用户暂停，操作指引不同）
+   */
+  const pausedReason = ref<string | null>(null);
   const engineReady = ref(false);
   /** 引擎加载超时/失败标记（顶栏提示「连接失败」并可重试） */
   const engineFailed = ref(false);
   /**
    * §B：引擎窗状态（主进程 engine:status-changed 驱动，窗口关闭/崩溃自动更新）。
+   * v5.5 M0：默认 idle（冷启动未登录不再误显示「连接中…」，顶栏显示「未连接 · 点击重试」）。
    * ready=已连接；loading=连接中；closed=窗口已关闭；crashed=连接失败（注入失败/崩溃/加载失败）
    */
-  const engineState = ref<'loading' | 'ready' | 'closed' | 'crashed'>('loading');
+  const engineState = ref<'idle' | 'loading' | 'ready' | 'closed' | 'crashed'>('idle');
   const engineStateReason = ref('');
+
+  /**
+   * v5.5 M0：任务停滞（主进程 backup:stalled 推送——running 态 30s 无引擎心跳）。
+   * stalled=true 时顶栏黄点「无响应」、运行面板显示停滞横幅（最后阶段/时长/取消入口）。
+   * 心跳恢复（主进程补推 running）或任务离开 running 即解除。
+   */
+  const stalled = ref(false);
+  const stalledInfo = ref<{ silentMs?: number; lastModule?: string; lastPhase?: string } | null>(null);
 
   function applyEngineStatus(p: { state?: string; reason?: string }) {
     if (!p?.state) return;
@@ -92,6 +107,7 @@ export const useBackupStore = defineStore('backup', () => {
       engineFailed.value = false;
     } else {
       engineReady.value = false;
+      // v5.5 M0：idle（冷启动未建窗）不算「失败」——顶栏显示「未连接」而非「连接失败」
       engineFailed.value = p.state === 'closed' || p.state === 'crashed';
     }
   }
@@ -448,11 +464,15 @@ export const useBackupStore = defineStore('backup', () => {
         }
         // P3-1：状态机快照是唯一事实源，渲染层只派生（idle 之外全量采纳）
         if (p.state) taskState.value = p.state;
+        // v5.5 M0：paused 原因随状态机快照透传；离开 paused 即清
+        pausedReason.value = p.state === 'paused' ? p.pausedReason || 'user' : null;
         // 模块清单以主进程推送为准（他人模式为引擎过滤后的实际执行清单）
         if (Array.isArray(p.modules) && p.modules.length) activeModules.value = [...p.modules];
         if (p.state === 'running') {
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
           finalizing.value = null;
+          stalled.value = false; // v5.5 M0：心跳恢复（主进程补推 running）或新任务启动 → 解除停滞
+          stalledInfo.value = null;
           // 注意：此处不再重复推「开始备份」日志——startBackup 已推详细行（含目标/模块/目录），
           // 且 resume 也会进入 running，通用文案会把「已恢复」误导成「开始备份」
           // v5.0：新任务的 running（区别于同任务 resume）→ 清空下载列表，
@@ -465,11 +485,35 @@ export const useBackupStore = defineStore('backup', () => {
           }
         }
         if (p.state === 'paused') {
-          pushLog('warn', '已暂停，可点击「恢复」继续');
+          stalled.value = false; // 暂停态不显示停滞（引擎本来就挂起，无心跳是预期）
+          stalledInfo.value = null;
+          const reasonText: Record<string, string> = {
+            user: '已暂停，可点击「恢复」继续',
+            engine_lost: '已暂停：引擎窗口丢失，请重连后重新发起备份',
+            auth_lost: '已暂停：登录已失效，请重新扫码登录后重新发起备份',
+            rate_limited: '已暂停：接口限流保护，建议等待 10~30 分钟后恢复',
+          };
+          pushLog('warn', reasonText[p.pausedReason as string] || reasonText.user);
         }
         if (p.state === 'completed' || p.state === 'cancelled' || p.state === 'failed') {
           finalizing.value = null;
+          stalled.value = false;
+          stalledInfo.value = null;
         }
+      }),
+      // v5.5 M0：任务停滞告警（running 态 30s 无引擎心跳；心跳恢复时主进程会补推 running 解除）
+      window.api.on('backup:stalled', (p) => {
+        stalled.value = true;
+        stalledInfo.value = {
+          silentMs: Number(p?.silentMs) || 0,
+          lastModule: p?.lastModule || '',
+          lastPhase: p?.lastPhase || '',
+        };
+        const mins = Math.round((Number(p?.silentMs) || 0) / 60000);
+        pushLog(
+          'warn',
+          `任务疑似停滞：${mins >= 1 ? `${mins} 分钟` : `${Math.round((Number(p?.silentMs) || 0) / 1000)} 秒`}无引擎心跳（最后阶段：${p?.lastModule || '?'}）。可取消后重新发起备份；若日志持续无输出，请到设置打开日志目录取证`
+        );
       }),
       // 收尾可见状态：引擎已完成、等待下载落盘/统计归档期间持续推送剩余计数
       window.api.on('backup:finalizing', (p) => {
@@ -613,6 +657,25 @@ export const useBackupStore = defineStore('backup', () => {
         flushDownloadsNow();
       })
       .catch((e) => console.warn('读取下载队列失败', e));
+
+    // v5.5 M0：任务运行时快照——渲染层重载/启动后恢复任务态与停滞标记
+    // （此前渲染层重载后 taskState 回 idle，任务实际仍在跑，UI 与主进程脱节）
+    Promise.resolve(window.api.task?.getState?.() ?? null)
+      .then((snap) => {
+        if (!snap?.task?.state) return;
+        if (snap.task.state !== 'idle') taskState.value = snap.task.state as TaskState;
+        pausedReason.value =
+          snap.task.state === 'paused' ? snap.task.pausedReason || 'user' : null;
+        if (snap.runtime?.stalled && snap.task.state === 'running') {
+          stalled.value = true;
+          stalledInfo.value = {
+            silentMs: snap.runtime.msSinceHeartbeat ?? 0,
+            lastModule: snap.runtime.lastHeartbeat?.module || '',
+            lastPhase: snap.runtime.lastHeartbeat?.phase || '',
+          };
+        }
+      })
+      .catch((e) => console.warn('读取任务快照失败', e));
   }
 
   function disposeBackup() {
@@ -623,7 +686,8 @@ export const useBackupStore = defineStore('backup', () => {
 
   return {
     // 状态
-    taskState, busy, paused, engineReady, engineFailed, engineState, engineStateReason, progress, moduleOverall, elapsedSec, logs, downloads,
+    taskState, busy, paused, pausedReason, engineReady, engineFailed, engineState, engineStateReason, progress, moduleOverall, elapsedSec, logs, downloads,
+    stalled, stalledInfo,
     lastResult, resetResult, doneModules, finalizing, finalizingActive, activeModules, moduleList,
     downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,

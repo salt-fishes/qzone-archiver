@@ -18,6 +18,8 @@ declare global {
       auth: {
         getStatus(): Promise<{ loggedIn: boolean; qqNumber?: string; nickname?: string; avatar?: string; fromCache?: boolean }>;
         showLogin(): Promise<void>;
+        /** v5.5 M0：打开 QQ 空间页面（引擎窗置前，不弹扫码前提示） */
+        openEngine(): Promise<void>;
         getOverview(): Promise<any>;
         logout(): Promise<{ error?: string } | null>;
       };
@@ -86,6 +88,13 @@ declare global {
       };
       viewer: {
         open(backupPath: string): Promise<any>;
+      };
+      /** v5.5 M0：任务运行时快照（状态机 + 心跳/停滞），渲染层初始化恢复用 */
+      task: {
+        getState(): Promise<{
+          task?: { taskId?: string | null; state?: string; pausedReason?: string | null; modules?: string[] };
+          runtime?: { lastHeartbeatAt?: number | null; stalled?: boolean; msSinceHeartbeat?: number | null; lastHeartbeat?: { module?: string; phase?: string } | null };
+        }>;
       };
       on(channel: string, cb: (payload: any) => void): () => void;
     };

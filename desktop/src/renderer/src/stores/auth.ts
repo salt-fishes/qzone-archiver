@@ -39,6 +39,11 @@ export const useAuthStore = defineStore('auth', () => {
     await window.api.auth.showLogin();
   }
 
+  /** v5.5 M0：打开 QQ 空间页面（引擎窗置前，不弹扫码前提示）——用户菜单入口 */
+  async function openEngine() {
+    await window.api.auth.openEngine();
+  }
+
   /** §B⑤：退出登录——主进程在备份进行中会拒绝并返回 {error}，由调用方提示 */
   async function logout() {
     try {
@@ -88,5 +93,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { auth, refresh, login, logout, initAuth, ensureProfile, clearLoginJustSucceeded };
+  return { auth, refresh, login, openEngine, logout, initAuth, ensureProfile, clearLoginJustSucceeded };
 });
