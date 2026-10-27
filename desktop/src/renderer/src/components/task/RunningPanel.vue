@@ -16,6 +16,9 @@ const auth = useAuthStore();
 const dialog = useDialog();
 
 const paused = computed(() => bk.paused);
+/** v5.5 M1：ack 窗口的中间态（按钮禁用 + 文案，避免重复点击） */
+const pausing = computed(() => bk.taskState === 'pausing');
+const resuming = computed(() => bk.taskState === 'resuming');
 /**
  * v5.5 M0 补：engine_lost/auth_lost 的引擎会话已失效（窗口重建/页面离开 qzone），
  * 新引擎里没有运行中的任务，直接“恢复”只会把状态误置回 running。
@@ -194,7 +197,7 @@ function fmtElapsed(sec?: number) {
           :percentage="ringPercent"
           :stroke-width="8"
           :size="132"
-          :color="paused ? '#c9a227' : '#b5432a'"
+          :color="paused || pausing ? '#c9a227' : '#b5432a'"
           :rail-color="'rgba(128,128,128,0.18)'"
         >
           <div class="rp-center">
@@ -202,7 +205,7 @@ function fmtElapsed(sec?: number) {
               {{ ringPercent }}%
             </div>
             <div class="rp-state">
-              {{ finalizingActive ? '收尾中' : '总体进度' }}{{ paused ? ' · 已暂停' : '' }}
+              {{ finalizingActive ? '收尾中' : '总体进度' }}{{ paused ? ' · 已暂停' : pausing ? ' · 暂停中' : resuming ? ' · 恢复中' : '' }}
             </div>
           </div>
         </NProgress>
@@ -225,7 +228,7 @@ function fmtElapsed(sec?: number) {
           :show-indicator="false"
           :height="5"
           :border-radius="3"
-          :color="paused ? '#c9a227' : '#b5432a'"
+          :color="paused || pausing ? '#c9a227' : '#b5432a'"
         />
         <div class="ri-stats">
           <span>完成模块 <b>{{ bk.doneModules.filter((m) => bk.moduleList.includes(m)).length }}/{{ bk.moduleList.length }}</b></span>
@@ -242,7 +245,24 @@ function fmtElapsed(sec?: number) {
           <!-- 收尾阶段隐藏暂停/取消：状态机已进入终态，操作会被拒绝，避免误导 -->
           <template v-if="!finalizingActive">
             <NButton
-              v-if="!paused"
+              v-if="pausing"
+              size="small"
+              round
+              disabled
+            >
+              暂停中…
+            </NButton>
+            <NButton
+              v-else-if="resuming"
+              size="small"
+              type="primary"
+              round
+              disabled
+            >
+              恢复中…
+            </NButton>
+            <NButton
+              v-else-if="!paused"
               size="small"
               round
               @click="bk.pause()"

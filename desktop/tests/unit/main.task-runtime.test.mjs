@@ -1,9 +1,9 @@
 /**
  * v5.5 M0：任务运行时（task-runtime）单测
- *  ① running 态 30s 无心跳 → 推 backup:stalled（含最后阶段与时长）；只推事实，不改状态机
- *  ② 心跳恢复 → 复位停滞并补推 running（状态机仍 running 时）
- *  ③ 非 running 态不判停滞；离开 running 自动解除
- *  ④ powerSaveBlocker：busy 态持有、终态释放；holdPowerSave/releasePowerSave 收尾续期
+ *  ① running 态 30s 无心跳 → 状态机 running → stalled + 推 backup:stalled（含最后阶段与时长）
+ *  ② 心跳恢复 → stalled → running 并补推 running
+ *  ③ 非活跃态不判停滞；离开 running 自动解除
+ *  ④ powerSaveBlocker：活跃态持有、终态释放；holdPowerSave/releasePowerSave 收尾续期
  */
 import { describe, it, expect, vi } from 'vitest';
 
@@ -32,6 +32,17 @@ function makeMachine() {
     getSnapshot() {
       return { state: m.state, taskId: m.taskId, modules: [...m.modules], startedAt: m.startedAt };
     },
+    dispatch(event) {
+      if (event === 'stall' && m.state === 'running') {
+        m.state = 'stalled';
+        return { ok: true, snapshot: m.getSnapshot() };
+      }
+      if (event === 'unstall' && m.state === 'stalled') {
+        m.state = 'running';
+        return { ok: true, snapshot: m.getSnapshot() };
+      }
+      return { ok: false, snapshot: m.getSnapshot() };
+    },
   };
   return m;
 }
@@ -56,7 +67,7 @@ function makeRuntime(machine, now) {
 }
 
 describe('心跳看门狗（v5.5 M0）', () => {
-  it('running 态 30s 无心跳 → 推 backup:stalled（不改状态机状态）', () => {
+  it('running 态 30s 无心跳 → stalled + 推 backup:stalled（含最后阶段与时长）', () => {
     pushes.length = 0;
     let t = 1_000_000;
     const machine = makeMachine();
@@ -75,15 +86,15 @@ describe('心跳看门狗（v5.5 M0）', () => {
     expect(stall.p.lastModule).toBe('Blogs');
     expect(stall.p.lastPhase).toBe('翻页');
     expect(stall.p.silentMs).toBe(31_000);
-    // 只推事实：状态机快照不被修改
-    expect(machine.state).toBe('running');
+    // v5.5 M1：停滞是正式状态（running → stalled）
+    expect(machine.state).toBe('stalled');
     // 停滞期间不重复推送
     t += 10_000;
     rt.tick();
     expect(pushes.filter((p) => p.ch === PushChannels.backupStalled)).toHaveLength(1);
   });
 
-  it('心跳恢复 → 复位停滞并补推 running；30s 内心跳不误报', () => {
+  it('心跳恢复 → stalled → running 并补推 running；30s 内心跳不误报', () => {
     pushes.length = 0;
     let t = 2_000_000;
     const machine = makeMachine();
@@ -99,9 +110,11 @@ describe('心跳看门狗（v5.5 M0）', () => {
     t += 25_000; // 累计 35s 无心跳 → 停滞
     rt.tick();
     expect(pushes.filter((p) => p.ch === PushChannels.backupStalled)).toHaveLength(1);
+    expect(machine.state).toBe('stalled');
 
     t += 60_000;
     rt.recordHeartbeat({ module: 'Photos' });
+    expect(machine.state).toBe('running');
     const running = pushes.filter((p) => p.ch === PushChannels.backupStateChanged && p.p.state === 'running');
     expect(running).toHaveLength(1);
     t += 10_000;
@@ -109,7 +122,7 @@ describe('心跳看门狗（v5.5 M0）', () => {
     expect(pushes.filter((p) => p.ch === PushChannels.backupStalled)).toHaveLength(1); // 不再累计
   });
 
-  it('非 running 态不判停滞；离开 running 自动解除', () => {
+  it('非活跃态不判停滞；离开 running 自动解除', () => {
     pushes.length = 0;
     let t = 3_000_000;
     const machine = makeMachine();

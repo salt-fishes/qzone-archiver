@@ -20,6 +20,7 @@ vi.mock('electron', () => ({
 const { createTaskRunner } = await import('../../src/main/services/task-runner.js');
 const { createTaskMachine } = await import('../../src/main/services/task-machine.js');
 const { createTaskStore } = await import('../../src/main/services/task-store.js');
+const { PushChannels } = await import('../../src/shared/ipc-contract.mjs');
 
 const CTX = { taskId: 'task-1', targetDir: 'D:/No.3', modules: ['Messages', 'Photos'] };
 const silentLog = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
@@ -30,6 +31,10 @@ let machine;
 let engine;
 let downloads;
 let dropContext;
+let stats;
+let avatar;
+let runtime;
+let push;
 
 function makeRunner() {
   return createTaskRunner({
@@ -37,7 +42,11 @@ function makeRunner() {
     engine,
     store,
     downloads,
+    stats,
+    avatar,
+    runtime,
     dropContext,
+    push,
     log: silentLog,
     now: () => 1_000_000,
   });
@@ -60,8 +69,19 @@ beforeEach(() => {
     pause: vi.fn().mockResolvedValue(undefined),
     resume: vi.fn().mockResolvedValue(undefined),
     cancel: vi.fn().mockResolvedValue(undefined),
+    cancelTask: vi.fn().mockResolvedValue(0),
+    resumeOthers: vi.fn().mockResolvedValue([]),
+    getTaskCounts: vi.fn(() => ({ pending: 2, running: 1, done: 0, failed: 0, total: 3 })),
   };
   dropContext = vi.fn();
+  stats = {
+    recordBackup: vi.fn().mockResolvedValue({ taskId: 'task-1', files: 10, size: 100 }),
+    getHistory: vi.fn(() => []),
+    deleteHistory: vi.fn(() => ({ ok: true })),
+  };
+  avatar = { ensure: vi.fn().mockResolvedValue(true) };
+  runtime = { holdPowerSave: vi.fn(), releasePowerSave: vi.fn() };
+  push = vi.fn();
 });
 
 afterEach(() => {
@@ -158,6 +178,45 @@ describe('pause / resume', () => {
     expect(downloads.resume).toHaveBeenCalled();
   });
 
+  it('pause 期间进入 pausing（UI 可见），ack 后才 paused', async () => {
+    const runner = makeRunner();
+    await runner.start(CTX);
+    let resolveCmd;
+    engine.command.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCmd = resolve;
+        })
+    );
+
+    const pending = runner.pause();
+    await Promise.resolve();
+    expect(machine.getSnapshot().state).toBe('pausing');
+    resolveCmd({ ok: true });
+    await pending;
+    expect(machine.getSnapshot().state).toBe('paused');
+  });
+
+  it('resume 期间进入 resuming（UI 可见），ack 后才 running', async () => {
+    const runner = makeRunner();
+    await runner.start(CTX);
+    await runner.pause();
+    let resolveCmd;
+    engine.command.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCmd = resolve;
+        })
+    );
+
+    const pending = runner.resume();
+    await Promise.resolve();
+    expect(machine.getSnapshot().state).toBe('resuming');
+    resolveCmd({ ok: true });
+    await pending;
+    expect(machine.getSnapshot().state).toBe('running');
+  });
+
   it('engine_lost 暂停 → resume 被拒绝，不再下发引擎命令', async () => {
     const runner = makeRunner();
     await runner.start(CTX);
@@ -190,7 +249,7 @@ describe('cancel', () => {
 
     const res = await runner.cancel();
     expect(res.ok).toBe(true);
-    expect(downloads.cancel).toHaveBeenCalled();
+    expect(downloads.cancelTask).toHaveBeenCalledWith('task-1');
     expect(dropContext).toHaveBeenCalledWith('task-1');
     expect(machine.getSnapshot().state).toBe('cancelled');
     expect(store.loadSummary('task-1')).toMatchObject({
@@ -227,11 +286,11 @@ describe('checkpoint / 引擎事实', () => {
     expect(store.loadCheckpoint('task-1').phase).toBe('Photos_Albums_Like');
   });
 
-  it('completed 事实 → 状态 completed + summary + finished journal', async () => {
+  it('completed 事实 → finalizing 收尾 → completed + summary + 完成页推送', async () => {
     const runner = makeRunner();
     await runner.start(CTX);
 
-    const verdict = runner.handleEngineState({
+    const verdict = await runner.handleEngineState({
       taskId: 'task-1',
       state: 'completed',
       errors: [{ module: 'Photos', message: 'x' }],
@@ -240,6 +299,24 @@ describe('checkpoint / 引擎事实', () => {
     });
     expect(verdict.ok).toBe(true);
     expect(machine.getSnapshot().state).toBe('completed');
+    // 收尾链：电源锁 → 统计 → 完成页 → 释放
+    expect(runtime.holdPowerSave).toHaveBeenCalled();
+    expect(stats.recordBackup).toHaveBeenCalledWith(
+      expect.objectContaining({
+        taskId: 'task-1',
+        targetDir: 'D:/No.3',
+        startedAt: expect.any(Number),
+      })
+    );
+    expect(push).toHaveBeenCalledWith(
+      PushChannels.backupCompleted,
+      expect.objectContaining({
+        record: expect.objectContaining({ taskId: 'task-1' }),
+        downloads: expect.objectContaining({ pending: 2, running: 1 }),
+      })
+    );
+    expect(push).toHaveBeenCalledWith(PushChannels.backupFinalizing, { active: false });
+    expect(runtime.releasePowerSave).toHaveBeenCalled();
     expect(store.loadSummary('task-1')).toMatchObject({
       state: 'completed',
       runId: 'task-1-r1',
@@ -247,6 +324,9 @@ describe('checkpoint / 引擎事实', () => {
       target: { uin: '123' },
     });
     expect(store.loadSummary('task-1').errors).toHaveLength(1);
+    expect(store.readJournal('task-1').map((e) => e.type)).toEqual(
+      expect.arrayContaining(['finalize-start', 'finalize-end', 'finished'])
+    );
     expect(store.readJournal('task-1').at(-1)).toMatchObject({
       type: 'finished',
       data: { state: 'completed', errors: 1 },
@@ -259,9 +339,38 @@ describe('checkpoint / 引擎事实', () => {
     await runner.cancel();
     const before = store.readJournal('task-1').length;
 
-    const verdict = runner.handleEngineState({ taskId: 'task-1', state: 'cancelled' });
+    const verdict = await runner.handleEngineState({ taskId: 'task-1', state: 'cancelled' });
     expect(verdict).toMatchObject({ ok: true, idempotent: true });
     expect(store.readJournal('task-1')).toHaveLength(before);
+    expect(store.loadSummary('task-1').state).toBe('cancelled');
+  });
+
+  it('finalizing 期间取消 → 不推完成页，回滚历史记录', async () => {
+    const runner = makeRunner();
+    await runner.start(CTX);
+    let resolveRecord;
+    stats.recordBackup.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRecord = resolve;
+        })
+    );
+
+    const completing = runner.handleEngineState({
+      taskId: 'task-1',
+      state: 'completed',
+      results: {},
+    });
+    await vi.waitFor(() => expect(machine.getSnapshot().state).toBe('finalizing'));
+    await vi.waitFor(() => expect(typeof resolveRecord).toBe('function'));
+
+    const cancelling = runner.cancel();
+    resolveRecord({ taskId: 'task-1', files: 1 });
+    await Promise.all([completing, cancelling]);
+
+    expect(machine.getSnapshot().state).toBe('cancelled');
+    expect(push).not.toHaveBeenCalledWith(PushChannels.backupCompleted, expect.anything());
+    expect(stats.deleteHistory).toHaveBeenCalledWith('task-1');
     expect(store.loadSummary('task-1').state).toBe('cancelled');
   });
 
@@ -278,7 +387,7 @@ describe('checkpoint / 引擎事实', () => {
   it('failed 事实 → 状态 failed + summary（fatal 错误）', async () => {
     const runner = makeRunner();
     await runner.start(CTX);
-    const verdict = runner.handleEngineState({
+    const verdict = await runner.handleEngineState({
       taskId: 'task-1',
       state: 'failed',
       error: '磁盘空间不足',

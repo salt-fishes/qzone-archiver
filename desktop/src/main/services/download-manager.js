@@ -275,7 +275,7 @@ export const downloadManager = {
       else running += 1;
       dispatched += 1;
       persistSoon(); // v5.5 M0：派发高频路径合并写盘
-      sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'running', module: candidate.module, media: candidate.media });
+      sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, ownerTaskId: candidate.taskId || null, state: 'running', module: candidate.module, media: candidate.media });
       pushSummary();
       this._run(candidate)
         .catch((e) => {
@@ -284,7 +284,7 @@ export const downloadManager = {
             candidate.pauseInterrupted = false;
             candidate.cancelRequested = false;
             candidate.state = 'pending';
-            sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, state: 'pending', module: candidate.module, media: candidate.media });
+            sendToUi(PushChannels.downloadStateChanged, { taskId: candidate.id, ownerTaskId: candidate.taskId || null, state: 'pending', module: candidate.module, media: candidate.media });
           } else {
             candidate.state = 'failed';
             candidate.error = e.message;
@@ -293,7 +293,7 @@ export const downloadManager = {
               'error',
               `媒体下载最终放弃（已重试 ${MAX_RETRY} 次）：${candidate.url}（${e.message}）→ ${resolveTarget(candidate)}`
             );
-            sendToUi(PushChannels.downloadItemFailed, { taskId: candidate.id, url: candidate.url, error: e.message, module: candidate.module, media: candidate.media });
+            sendToUi(PushChannels.downloadItemFailed, { taskId: candidate.id, ownerTaskId: candidate.taskId || null, url: candidate.url, error: e.message, module: candidate.module, media: candidate.media });
           }
           persist();
         })
@@ -414,7 +414,7 @@ export const downloadManager = {
     queue.push(record);
     if (record.taskId) drainedTasks.delete(record.taskId);
     persistSoon(); // v5.5 M0：入队高频路径合并写盘（派发/进度仍即时可见，落盘合并 500ms）
-    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'pending', module: record.module, media: record.media });
+    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, ownerTaskId: record.taskId || null, state: 'pending', module: record.module, media: record.media });
     pushSummary();
     this.pump();
     return record.id;
@@ -445,7 +445,7 @@ export const downloadManager = {
           `媒体下载重试 ${attempt}/${MAX_RETRY}：${record.url}（${e && e.message}），${delay}ms 后重试`
         );
         sendToUi(PushChannels.downloadStateChanged, {
-          taskId: record.id, state: 'pending', module: record.module, media: record.media, retry: attempt,
+          taskId: record.id, ownerTaskId: record.taskId || null, state: 'pending', module: record.module, media: record.media, retry: attempt,
         });
         // v5.5 M0：退避 sleep 可被 pause()/cancel() 立即唤醒（record._wakeSleep）
         await interruptibleSleep(record, delay);
@@ -470,7 +470,7 @@ export const downloadManager = {
       record.doneAt = Date.now();
       record.skipped = true;
       persist();
-      sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'done', module: record.module, media: record.media, skipped: true });
+      sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, ownerTaskId: record.taskId || null, state: 'done', module: record.module, media: record.media, skipped: true });
       return;
     }
 
@@ -547,7 +547,7 @@ export const downloadManager = {
         lastReport = now;
         lastPercent = percent;
         record.receivedBytes = received;
-        sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: received, total, currentUrl: record.url, media: record.media, module: record.module });
+        sendToUi(PushChannels.downloadProgress, { taskId: record.id, ownerTaskId: record.taskId || null, done: received, total, currentUrl: record.url, media: record.media, module: record.module });
       }
     });
 
@@ -571,8 +571,8 @@ export const downloadManager = {
     record.receivedBytes = received;
     record.retries = record.retries || 0;
     persist();
-    sendToUi(PushChannels.downloadProgress, { taskId: record.id, done: total, total, currentUrl: record.url, media: record.media, module: record.module });
-    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, state: 'done', module: record.module, media: record.media });
+    sendToUi(PushChannels.downloadProgress, { taskId: record.id, ownerTaskId: record.taskId || null, done: total, total, currentUrl: record.url, media: record.media, module: record.module });
+    sendToUi(PushChannels.downloadStateChanged, { taskId: record.id, ownerTaskId: record.taskId || null, state: 'done', module: record.module, media: record.media });
   },
 
   getState() {
@@ -659,6 +659,46 @@ export const downloadManager = {
     this.pump();
   },
 
+  /**
+   * v5.5 M1：取消某次备份的下载（任务取消时调用）——只影响该任务，
+   * 其他任务的 pending/.part 保留，待其恢复后继续。
+   * @param {string} [taskId]
+   * @returns {Promise<number>} 标记取消的 pending 数
+   */
+  async cancelTask(taskId) {
+    const key = taskId || pauseKey();
+    let changed = 0;
+    for (const q of queue) {
+      const owner = q.taskId || STANDALONE_PAUSE;
+      if (owner !== key) continue;
+      if (q.state === 'pending') {
+        q.state = 'failed';
+        q.error = '已取消';
+        changed += 1;
+        sendToUi(PushChannels.downloadStateChanged, {
+          taskId: q.id,
+          ownerTaskId: q.taskId || null,
+          state: 'failed',
+          module: q.module,
+          media: q.media,
+          error: '已取消',
+        });
+      } else if (q.state === 'running') {
+        q.cancelRequested = true;
+        try { q.abortController?.abort(); } catch (_) { /* ignore */ }
+        if (typeof q._wakeSleep === 'function') q._wakeSleep();
+      }
+    }
+    pausedTaskIds.delete(key);
+    if (pausedTaskId === key) pausedTaskId = null;
+    if (changed) {
+      persist();
+      pushSummary();
+    }
+    if (changed) logger.info(`[download-manager] 任务 ${key} 取消：${changed} 条待下载标记为已取消`);
+    return changed;
+  },
+
   /** 取消：清空待处理任务；运行中任务中断（.part 保留，下次续传）。
    * P3-2：暂停位已绑定任务（§5.2），取消后即使不手动 resume，
    * 下一次备份启动（taskId 切换）也会令旧暂停位自动失效，P0-1 根因消除 */
@@ -712,6 +752,7 @@ export const downloadManager = {
       if (q.taskId) drainedTasks.delete(q.taskId);
       sendToUi(PushChannels.downloadStateChanged, {
         taskId: q.id,
+        ownerTaskId: q.taskId || null,
         state: 'pending',
         module: q.module,
         media: q.media,

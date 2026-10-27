@@ -17,6 +17,7 @@ import { downloadManager } from '../services/download-manager.js';
 import { avatarStore } from '../services/avatar-store.js';
 import { logger } from '../services/logger.js';
 import { Channels, PushChannels } from '../../shared/ipc-contract.mjs';
+import { ACTIVE_TASK_STATES } from '../../shared/task-protocol.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /**
@@ -205,7 +206,7 @@ export function registerBackupIpc() {
 
   ipcMain.handle(Channels.backup.getState, () => {
     const checkpoints = stateStore.listCheckpoints();
-    const active = checkpoints.find((c) => c.state === 'running' || c.state === 'paused') || null;
+    const active = checkpoints.find((c) => ACTIVE_TASK_STATES.includes(c.state)) || null;
     // v5.5 M1：TaskRunner 快照为唯一事实源（taskId 字段保留兼容旧消费）
     const runnerState = taskRunner.getState();
     return {

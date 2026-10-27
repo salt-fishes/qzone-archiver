@@ -1,14 +1,13 @@
 /**
- * 任务运行时（v5.5 M0 止血层）
+ * 任务运行时（v5.5 M0 止血层 / M1 状态收口）
  *
  * 职责（对应 plans/v5.5.md §4.4）：
- *  1. 心跳看门狗：引擎 orchestrator 每 2s 发一次心跳；running 态 30s 无心跳 → 推 backup:stalled
- *     （UI 显示最后阶段与停滞时长），心跳恢复 → 复位并补推 running。只推事实，不改状态机状态。
- *  2. powerSaveBlocker：preparing/running/paused 期间 prevent-app-suspension，
- *     结束释放；备份收尾（completed 后等下载落盘）经 holdPowerSave/releasePowerSave 显式续期。
+ *  1. 心跳看门狗：引擎 orchestrator 每 2s 发一次心跳；running 态 30s 无心跳 →
+ *     状态机 running → stalled，并推 backup:stalled（UI 显示最后阶段与停滞时长）；
+ *     心跳恢复 → stalled → running 并解除横幅。
+ *  2. powerSaveBlocker：preparing/running/pausing/paused/resuming/finalizing/stalled 期间
+ *     prevent-app-suspension，结束释放；收尾期经 holdPowerSave/releasePowerSave 显式续期。
  *  3. getSnapshot：供 task:get-state 通道在渲染层初始化/重载后恢复 stalled 与任务态。
- *
- * 定位：M0 只做可观察性，不改任务机制（Runner v2 在 M1）。
  */
 import { powerSaveBlocker } from 'electron';
 import { taskMachine } from './task-machine.js';
@@ -20,6 +19,16 @@ import { PushChannels } from '../../shared/ipc-contract.mjs';
 const HEARTBEAT_STALL_MS = 30_000;
 /** 看门狗巡检间隔 */
 const WATCHDOG_INTERVAL_MS = 5_000;
+/** 持有电源锁的活跃态（v5.5 M1：含暂停中/恢复中/收尾中/停滞） */
+const POWER_ACTIVE_STATES = [
+  'preparing',
+  'running',
+  'pausing',
+  'paused',
+  'resuming',
+  'finalizing',
+  'stalled',
+];
 
 export function createTaskRuntime(deps = {}) {
   const machine = deps.machine || taskMachine;
@@ -48,18 +57,23 @@ export function createTaskRuntime(deps = {}) {
     const wasStalled = stalled;
     lastHeartbeatAt = now();
     lastHeartbeat = data || null;
-    if (wasStalled) {
-      stalled = false;
-      const snap = machine.getSnapshot();
-      if (snap.state === 'running') {
-        push(PushChannels.backupStateChanged, {
-          taskId: snap.taskId,
-          state: 'running',
-          modules: [...(snap.modules || [])],
-        });
-      }
-      logger.info(`[task-runtime] 心跳恢复（${(data && data.module) || '?'}），停滞解除`);
+    if (!wasStalled) return;
+    stalled = false;
+    const snap = machine.getSnapshot();
+    // v5.5 M1：停滞是状态机正式状态——心跳恢复必须走 unstall 迁移（checkpoint/推送同步）
+    if (snap.state === 'stalled') {
+      machine.dispatch('unstall');
     }
+    const after = machine.getSnapshot();
+    if (after.state === 'running') {
+      // 状态机可能已自行推送；重复推送幂等，用于确保渲染层停滞横幅一定解除
+      push(PushChannels.backupStateChanged, {
+        taskId: after.taskId,
+        state: 'running',
+        modules: [...(after.modules || [])],
+      });
+    }
+    logger.info(`[task-runtime] 心跳恢复（${(data && data.module) || '?'}），停滞解除`);
   }
 
   /** 电源锁：busy（preparing/running/paused）期间阻止系统挂起 */
@@ -93,13 +107,21 @@ export function createTaskRuntime(deps = {}) {
   /** 巡检：停滞判定 + 电源锁与状态机对齐 */
   function tick() {
     const snap = machine.getSnapshot();
-    ensurePowerSave(snap.state === 'preparing' || snap.state === 'running' || snap.state === 'paused');
+    ensurePowerSave(POWER_ACTIVE_STATES.includes(snap.state));
 
-    if (snap.state !== 'running') {
-      if (stalled) stalled = false; // 任务离开 running（暂停/终态）即解除停滞标记
+    // 状态机已标记停滞：保持标志，等心跳恢复（pause/cancel 仍可用）
+    if (snap.state === 'stalled') {
+      stalled = true;
       return;
     }
-    if (stalled) return;
+    if (snap.state !== 'running') {
+      stalled = false; // 任务离开 running（暂停/收尾/终态）即解除停滞标记
+      return;
+    }
+    if (stalled) {
+      // 防御：运行时标记与状态机不一致（如状态被外部回置 running）→ 复位，重新计时
+      stalled = false;
+    }
     // 尚无心跳基线（引擎还没来得及跳第一下）：以状态机进入 running 的时间兜底不误报
     const baseline = lastHeartbeatAt || snap.startedAt;
     if (!baseline) return;
@@ -107,6 +129,12 @@ export function createTaskRuntime(deps = {}) {
     if (silentMs < HEARTBEAT_STALL_MS) return;
 
     stalled = true;
+    // v5.5 M1：停滞进入正式状态（running → stalled），UI 顶栏/面板由同一状态机驱动
+    const moved = machine.dispatch('stall');
+    if (!moved.ok) {
+      stalled = false;
+      return;
+    }
     const payload = {
       taskId: snap.taskId,
       lastHeartbeatAt: baseline,

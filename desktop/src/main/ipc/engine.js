@@ -8,16 +8,14 @@
 import { ipcMain, net } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
-import { resolveEnginePath, sendToUi, getActiveTaskContext, dropTaskContext } from '../services/engine-bridge.js';
+import { resolveEnginePath, sendToUi, getActiveTaskContext } from '../services/engine-bridge.js';
 import { resolveWithin } from '../services/path-guard.js';
 import { engineStorage } from '../services/config-store.js';
-import { taskMachine } from '../services/task-machine.js';
 import { taskRuntime } from '../services/task-runtime.js';
 import { taskRunner } from '../services/task-runner.js';
 import { engineClient } from '../services/engine-client.js';
 import { backupStats } from '../services/backup-stats.js';
 import { downloadManager } from '../services/download-manager.js';
-import { avatarStore } from '../services/avatar-store.js';
 import { logger } from '../services/logger.js';
 import { windows } from '../windows.js';
 import { ENGINE_DIR } from '../paths.js';
@@ -221,75 +219,20 @@ export function registerEngineIpc() {
         break;
       }
       case 'state': {
-        // v5.5 M1：引擎状态事实 → TaskRunner（状态机裁决 + journal/summary 统一入口）
+        // v5.5 M1：引擎状态事实 → TaskRunner（completed 的 finalizing 收尾链也在 Runner 内完成）
         const isState = ['running', 'paused', 'completed', 'cancelled', 'failed'].includes(data?.state);
-        const verdict = isState
-          ? taskRunner.handleEngineState(data || {})
-          : { ok: true, snapshot: taskMachine.getSnapshot() };
-        // v5.5 M0：收尾门——状态机拒绝（如用户已取消后引擎仍上报 completed）时不执行
-        // 收尾/完成推送，杜绝"取消后仍走完成流程"（RFC 复核确认的缺陷路径）
-        if (isState && !verdict.ok) {
-          logger.warn(
-            `[engine] 引擎 ${data?.state} 事件被状态机拒绝（当前 ${verdict.snapshot.state}），跳过对应处理`
-          );
-          break;
-        }
-        if (data?.state === 'completed' || data?.state === 'cancelled') {
-          if (data?.state === 'completed') {
-            taskRuntime.holdPowerSave(); // v5.5 M0：收尾期（统计/落库）维持电源锁
-            // v5.5 M1：完成与媒体下载解耦——不再 waitIdle(120s)，完成页立即出现；
-            // 下载继续在后台跑，下载中心展示剩余数量。
-            const active = getActiveTaskContext();
-            const taskId = data.taskId || active?.taskId;
-            // v4.7 反馈 ②：先把备份目标的头像抓到本地缓存（带引擎 session，
-            // 避免渲染层 file:// 直连 qlogo 被防盗链拦掉），再落历史记录
-            const targetUin = data.target?.uin || active?.targetUin;
-            const ensureAvatar = targetUin
-              ? avatarStore.ensure(targetUin).catch(() => false)
-              : Promise.resolve(false);
-            const pushFinalizing = (payload) => sendToUi(PushChannels.backupFinalizing, payload);
-            // 当前下载计数随完成事件下发（完成页/下载页展示「后台下载中 N 项」）
-            const downloads = taskId ? downloadManager.getTaskCounts(taskId) : null;
-            pushFinalizing({ active: true, phase: 'stats', pending: 0, running: 0, total: 0 });
-            // v5.0 修复：backup:completed 推送移到 recordBackup **之后**，并携带
-            // 本次备份的完整记录；recordBackup 不再等待下载队列排空（M1 决策 D4）。
-            ensureAvatar
-              .then(() =>
-                backupStats.recordBackup({
-                  taskId,
-                  targetDir: active?.targetDir,
-                  modules: active?.modules || [],
-                  results: data.results,
-                  errors: data.errors,
-                  target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
-                  startedAt: taskMachine.getSnapshot().startedAt, // v5.0：只统计本次任务写入的文件
-                })
-              )
-              .then((rec) => {
-                if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
-                sendToUi(PushChannels.backupCompleted, { ...data, record: rec, downloads });
-              })
-              .catch((e) => {
-                console.error('[backup-stats] 记录历史失败', e);
-                // 落库失败也要推完成（数据可从 completed 事件本身构造）
-                sendToUi(PushChannels.backupCompleted, { ...data, downloads });
-              })
-              .finally(() => {
-                pushFinalizing({ active: false });
-                taskRuntime.releasePowerSave(); // v5.5 M0：收尾结束释放电源锁（与 holdPowerSave 配对）
-                dropTaskContext(taskId);
-                // v5.5 M1 决策 D13：当前任务结束后恢复旧任务下载（FIFO，设置可关后续接入）
-                try {
-                  downloadManager.resumeOthers(taskId);
-                } catch (e) {
-                  logger.warn(`[download-manager] 恢复旧任务下载失败：${e?.message || e}`);
-                }
-              });
-          } else {
-            // cancelled：无收尾流程，直接清理
-            dropTaskContext(data.taskId);
-          }
-        }
+        if (!isState) break;
+        Promise.resolve(taskRunner.handleEngineState(data || {}))
+          .then((verdict) => {
+            if (verdict && !verdict.ok) {
+              logger.warn(
+                `[engine] 引擎 ${data?.state} 事件被状态机拒绝（当前 ${verdict.snapshot?.state}）`
+              );
+            }
+          })
+          .catch((e) => {
+            logger.error(`[engine] 处理引擎 ${data?.state} 事件失败：${e?.stack || e}`);
+          });
         break;
       }
       case 'module-done': {
@@ -308,8 +251,10 @@ export function registerEngineIpc() {
         // v5.5 M0：引擎存活心跳（orchestrator 每 2s）→ task-runtime 记录；30s 无心跳由看门狗推 backup:stalled
         // v5.5 M1：心跳携带协议版本 + module/phase，TaskRunner 据此写阶段检查点
         if (data?.v) engineClient.setProtocolVersion(data.v);
-        taskRunner.onHeartbeat(data || {});
+        // 先让看门狗解除 stalled（stalled → running），再写 checkpoint，
+        // 保证恢复瞬间的 checkpoint 状态是 running 而不是 stalled
         taskRuntime.recordHeartbeat(data || {});
+        taskRunner.onHeartbeat(data || {});
         break;
       }
       case 'started': {

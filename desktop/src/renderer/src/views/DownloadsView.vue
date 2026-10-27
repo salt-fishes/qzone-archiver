@@ -23,6 +23,27 @@ const moduleFilter = computed({
   get: () => bk.downloadModule,
   set: (v: string) => (bk.downloadModule = v),
 });
+const taskFilter = computed({
+  get: () => bk.downloadTask,
+  set: (v: string) => (bk.downloadTask = v),
+});
+
+/** v5.5 M1：备份任务筛选项（本次任务排在最前） */
+const taskOptions = computed(() => {
+  const ids = new Set<string>();
+  for (const d of bk.mediaDownloads) {
+    const id = d.ownerTaskId || taskOf.value[d.id];
+    if (id) ids.add(id);
+  }
+  if (bk.currentTaskId) ids.add(bk.currentTaskId);
+  return [
+    { label: '全部任务', value: 'all' },
+    ...[...ids].map((id) => ({
+      label: `${shortTask(id)}${id === bk.currentTaskId ? '（本次）' : ''}`,
+      value: id,
+    })),
+  ];
+});
 
 const moduleOptions = computed(() => {
   const set = new Set(bk.mediaDownloads.map((d) => d.module).filter(Boolean) as string[]);
@@ -184,6 +205,12 @@ function shortTask(taskId?: string) {
         :options="moduleOptions"
         style="width: 150px"
       />
+      <NSelect
+        v-model:value="taskFilter"
+        size="small"
+        :options="taskOptions"
+        style="width: 190px"
+      />
       <span class="flex1" />
       <NButton
         size="small"
@@ -228,11 +255,11 @@ function shortTask(taskId?: string) {
               {{ bk.stateLabel(d.state) }}
             </NTag>
             <NTag
-              v-if="taskOf[d.id]"
+              v-if="d.ownerTaskId || taskOf[d.id]"
               size="tiny"
               :bordered="false"
             >
-              {{ shortTask(taskOf[d.id]) }}
+              {{ shortTask(d.ownerTaskId || taskOf[d.id]) }}
             </NTag>
           </div>
           <NProgress

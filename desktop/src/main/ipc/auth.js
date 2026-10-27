@@ -269,7 +269,7 @@ export function registerAuthIpc() {
   ipcMain.handle(Channels.auth.logout, async () => {
     // §B⑤：备份进行中先拒绝退出——关引擎窗会打断采集
     const st = taskMachine.getSnapshot().state;
-    if (st === 'preparing' || st === 'running' || st === 'paused') {
+    if (['preparing', 'running', 'pausing', 'paused', 'resuming', 'stalled'].includes(st)) {
       logger.warn(`[auth] 退出登录被拒：任务状态 ${st}`);
       return { error: '当前有备份任务进行中，请先取消备份再退出登录' };
     }

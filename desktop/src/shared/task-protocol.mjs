@@ -126,6 +126,8 @@ export const TASK_EVENT_TYPES = Object.freeze([
   'cancelled',
   'stall',
   'engine-lost',
+  'finalize-start',
+  'finalize-end',
   'finished',
   'interrupted',
   'abandoned',

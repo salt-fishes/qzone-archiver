@@ -1,7 +1,8 @@
 /**
- * 任务状态机（P3-1，架构改造计划 §5.1）：备份任务生命周期唯一事实源（主进程侧）
+ * 任务状态机（P3-1，架构改造计划 §5.1；v5.5 M1 状态收口）：备份任务生命周期唯一事实源（主进程侧）
  *
- * 状态：idle → preparing → running ⇄ paused → completed | cancelled | failed
+ * 状态：idle → preparing → running ⇄ pausing/paused/resuming → finalizing → completed
+ *       running ⇄ stalled（心跳看门狗裁决）；任意活跃态 → cancelled | failed
  * - 引擎 notify 只是输入事件，全部经 dispatch() 裁决：非法转移拒绝并告警，同态事件幂等
  * - 每次成功转移推送 backup:state-changed（渲染层状态全部由此派生，删除乐观置位）
  * - 非终态持久化最小恢复上下文（checkpoint：taskId/目标目录/模块/配置）；终态清除 checkpoint
@@ -17,7 +18,11 @@ export const TASK_STATES = [
   'idle',
   'preparing',
   'running',
+  'pausing',
   'paused',
+  'resuming',
+  'finalizing',
+  'stalled',
   'completed',
   'cancelled',
   'failed',
@@ -32,23 +37,39 @@ export { PAUSED_REASONS, canResumePaused };
 
 /**
  * 事件转移表：event → { from[], to }
- * engineRunning 统一承接引擎 running 事件（start 后首次 / resume 后恢复）；
- * prepare 允许自终态发起：新任务自动覆盖旧终态（复位上下文）
+ * v5.5 M1 状态收口：
+ *  - pauseRequest/resumeRequest 让「暂停中/恢复中」在 ack 期间可见；ack 失败走 pauseFailed/resumeFailed 回滚
+ *  - finalize 在引擎完成后先进入收尾态（统计归档/完成页推送），完成后才 commit
+ *  - stall/unstall 由 task-runtime 心跳看门狗驱动（stalled 仍是可暂停/可取消的活跃态）
+ * engineRunning 承接引擎 running 事件；prepare 允许自终态发起：新任务自动覆盖旧终态
  * v5.5 M0：engineLost / authLost / rateLimited 是引擎生命周期与网络层上报的事实事件，
  * 全部转入 paused(reason)；无活跃任务时被 from 守卫拒绝（静默），不会误伤空闲态
  */
 const TRANSITIONS = {
   prepare: { from: ['idle', 'completed', 'cancelled', 'failed'], to: 'preparing' },
   start: { from: ['preparing'], to: 'running' },
-  engineRunning: { from: ['preparing', 'paused', 'running'], to: 'running' },
-  pause: { from: ['running'], to: 'paused' },
-  resume: { from: ['paused'], to: 'running' },
-  complete: { from: ['running', 'paused'], to: 'completed' },
-  cancel: { from: ['preparing', 'running', 'paused'], to: 'cancelled' },
-  fail: { from: ['preparing', 'running', 'paused'], to: 'failed' },
-  engineLost: { from: ['preparing', 'running'], to: 'paused' },
-  authLost: { from: ['preparing', 'running'], to: 'paused' },
-  rateLimited: { from: ['preparing', 'running'], to: 'paused' },
+  engineRunning: { from: ['preparing', 'paused', 'running', 'resuming', 'stalled'], to: 'running' },
+  pauseRequest: { from: ['running', 'stalled'], to: 'pausing' },
+  pause: { from: ['running', 'pausing', 'stalled'], to: 'paused' },
+  pauseFailed: { from: ['pausing'], to: 'running' },
+  resumeRequest: { from: ['paused'], to: 'resuming' },
+  resume: { from: ['paused', 'resuming'], to: 'running' },
+  resumeFailed: { from: ['resuming'], to: 'paused' },
+  finalize: { from: ['running', 'paused', 'stalled'], to: 'finalizing' },
+  stall: { from: ['running'], to: 'stalled' },
+  unstall: { from: ['stalled'], to: 'running' },
+  complete: { from: ['running', 'paused', 'stalled', 'finalizing'], to: 'completed' },
+  cancel: {
+    from: ['preparing', 'running', 'pausing', 'paused', 'resuming', 'finalizing', 'stalled'],
+    to: 'cancelled',
+  },
+  fail: {
+    from: ['preparing', 'running', 'pausing', 'paused', 'resuming', 'finalizing', 'stalled'],
+    to: 'failed',
+  },
+  engineLost: { from: ['preparing', 'running', 'pausing', 'resuming', 'stalled'], to: 'paused' },
+  authLost: { from: ['preparing', 'running', 'pausing', 'resuming', 'stalled'], to: 'paused' },
+  rateLimited: { from: ['preparing', 'running', 'pausing', 'resuming', 'stalled'], to: 'paused' },
 };
 
 /**
@@ -169,6 +190,16 @@ export function createTaskMachine(deps = {}) {
         break;
       case 'resume':
         snap.pausedReason = null;
+        persistCheckpoint();
+        break;
+      case 'pauseRequest':
+      case 'pauseFailed':
+      case 'resumeRequest':
+      case 'resumeFailed':
+      case 'finalize':
+      case 'stall':
+      case 'unstall':
+        // v5.5 M1：中间态同样落 checkpoint——任务被杀后能看出当时处于暂停中/收尾中
         persistCheckpoint();
         break;
       case 'engineLost':

@@ -15,7 +15,9 @@ import { weightedModulePercent } from '../utils/phase-progress';
  */
 
 export type TaskState =
-  | 'idle' | 'preparing' | 'running' | 'paused'
+  | 'idle' | 'preparing' | 'running'
+  | 'pausing' | 'paused' | 'resuming'
+  | 'finalizing' | 'stalled'
   | 'completed' | 'cancelled' | 'failed';
 
 /** 模块级失败信息（P0-3：部分模块备份失败时在成功页显著提示） */
@@ -38,6 +40,8 @@ export type BackupResult = {
 
 export type DownloadItem = {
   id: string; name?: string; url: string; state: string; module?: string; error?: string | null;
+  /** v5.5 M1：所属备份任务（下载按任务分组/筛选；独立下载无归属时为 null） */
+  ownerTaskId?: string | null;
   received?: number; total?: number; percent?: number; skipped?: boolean; media?: boolean;
   /** v4.7：已重试次数（主进程重试中回置 pending 时携带） */
   retry?: number;
@@ -73,7 +77,14 @@ export const useBackupStore = defineStore('backup', () => {
   /* -------- 运行状态 -------- */
 
   const taskState = ref<TaskState>('idle');
-  const busy = computed(() => ['preparing', 'running', 'paused'].includes(taskState.value));
+  /** v5.5 M1：当前（最近一次）备份任务 id——下载中心据此区分「本次任务 / 历史任务」 */
+  const currentTaskId = ref('');
+  /** v5.5 M1：活跃态包含暂停中/恢复中/收尾中/停滞——界面不得在 ack 窗口内跳回向导 */
+  const busy = computed(() =>
+    ['preparing', 'running', 'pausing', 'paused', 'resuming', 'stalled', 'finalizing'].includes(
+      taskState.value
+    )
+  );
   const paused = computed(() => taskState.value === 'paused');
   /**
    * v5.5 M0：paused 原因（主进程 backup:state-changed 携带）——
@@ -247,6 +258,8 @@ export const useBackupStore = defineStore('backup', () => {
   const downloads = ref<Record<string, DownloadItem>>({});
   const downloadFilter = ref('all');
   const downloadModule = ref('all');
+  /** v5.5 M1：下载中心按备份任务筛选（'all' = 全部） */
+  const downloadTask = ref('all');
   /** v4.7：队列汇总（排队/下载中/完成/失败 + 总数），用于「下载中 x / 共 y」 */
   const downloadSummary = ref<DownloadSummary | null>(null);
 
@@ -295,8 +308,10 @@ export const useBackupStore = defineStore('backup', () => {
     const list = mediaDownloads.value;
     const byState = downloadFilter.value === 'all' ? list : list.filter((d) => d.state === downloadFilter.value);
     const byModule = downloadModule.value === 'all' ? byState : byState.filter((d) => d.module === downloadModule.value);
+    const byTask =
+      downloadTask.value === 'all' ? byModule : byModule.filter((d) => d.ownerTaskId === downloadTask.value);
     // 倒序：最新任务在前（不原地 reverse，避免污染 computed 依赖数组）
-    return [...byModule].reverse();
+    return [...byTask].reverse();
   });
   const dlCount = computed(() => mediaDownloads.value.length);
   const dlFilterCount = computed(() => filteredDownloads.value.length);
@@ -471,6 +486,7 @@ export const useBackupStore = defineStore('backup', () => {
         // 模块清单以主进程推送为准（他人模式为引擎过滤后的实际执行清单）
         if (Array.isArray(p.modules) && p.modules.length) activeModules.value = [...p.modules];
         if (p.state === 'running') {
+          if (p.taskId) currentTaskId.value = p.taskId;
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
           finalizing.value = null;
           stalled.value = false; // v5.5 M0：心跳恢复（主进程补推 running）或新任务启动 → 解除停滞
@@ -496,6 +512,18 @@ export const useBackupStore = defineStore('backup', () => {
             rate_limited: '已暂停：接口限流保护，建议等待 10~30 分钟后恢复',
           };
           pushLog('warn', reasonText[p.pausedReason as string] || reasonText.user);
+        }
+        // v5.5 M1：中间态——暂停中/恢复中/收尾中/停滞都保持运行面板，避免闪回向导
+        if (p.state === 'pausing' || p.state === 'resuming') {
+          stalled.value = false;
+          stalledInfo.value = null;
+        }
+        if (p.state === 'finalizing') {
+          stalled.value = false;
+          stalledInfo.value = null;
+          if (!finalizing.value?.active) {
+            finalizing.value = { active: true, phase: 'stats', pending: 0, running: 0, total: 0 };
+          }
         }
         if (p.state === 'completed' || p.state === 'cancelled' || p.state === 'failed') {
           finalizing.value = null;
@@ -635,6 +663,7 @@ export const useBackupStore = defineStore('backup', () => {
         applyDownloadState({
           id: p.taskId, state: p.state, url: p.url || '', module: p.module,
           media: p.media, skipped: p.skipped, retry: p.retry, error: p.error,
+          ownerTaskId: p.ownerTaskId || null,
         });
       }),
       window.api.on('download:progress', (p) => {
@@ -642,6 +671,7 @@ export const useBackupStore = defineStore('backup', () => {
         if (p.currentUrl) {
           applyDownloadState({
             id: p.taskId, url: p.currentUrl, state: 'running', module: p.module,
+            ownerTaskId: p.ownerTaskId || null,
             // v4.7：progress 事件同样带 media，缺失会让列表项在下载中阶段漏筛
             media: p.media,
             received: p.done, total: p.total,
@@ -651,7 +681,7 @@ export const useBackupStore = defineStore('backup', () => {
       }),
       window.api.on('download:item-failed', (p) => {
         if (ignoreAfterCancel) return;
-        applyDownloadState({ id: p.taskId, url: p.url, state: 'failed', error: p.error, module: p.module, media: p.media });
+        applyDownloadState({ id: p.taskId, ownerTaskId: p.ownerTaskId || null, url: p.url, state: 'failed', error: p.error, module: p.module, media: p.media });
         pushLog('error', `下载失败：${downloadName(p.url)} - ${p.error}`);
       })
     );
@@ -661,7 +691,7 @@ export const useBackupStore = defineStore('backup', () => {
       .getState()
       .then((st) => {
         for (const q of st?.queue || []) {
-          applyDownloadState({ id: q.id, url: q.url, name: q.name, state: q.state, error: q.error, module: q.module, media: q.media });
+          applyDownloadState({ id: q.id, ownerTaskId: q.taskId || null, url: q.url, name: q.name, state: q.state, error: q.error, module: q.module, media: q.media });
         }
         flushDownloadsNow();
       })
@@ -672,10 +702,11 @@ export const useBackupStore = defineStore('backup', () => {
     Promise.resolve(window.api.task?.getState?.() ?? null)
       .then((snap) => {
         if (!snap?.task?.state) return;
+        if (snap.task.taskId) currentTaskId.value = snap.task.taskId;
         if (snap.task.state !== 'idle') taskState.value = snap.task.state as TaskState;
         pausedReason.value =
           snap.task.state === 'paused' ? snap.task.pausedReason || 'user' : null;
-        if (snap.runtime?.stalled && snap.task.state === 'running') {
+        if (snap.runtime?.stalled && (snap.task.state === 'running' || snap.task.state === 'stalled')) {
           stalled.value = true;
           stalledInfo.value = {
             silentMs: snap.runtime.msSinceHeartbeat ?? 0,
@@ -698,7 +729,8 @@ export const useBackupStore = defineStore('backup', () => {
     taskState, busy, paused, pausedReason, engineReady, engineFailed, engineState, engineStateReason, progress, moduleOverall, elapsedSec, logs, downloads,
     stalled, stalledInfo,
     lastResult, resetResult, doneModules, finalizing, finalizingActive, activeModules, moduleList,
-    downloadFilter, downloadModule, mediaDownloads, filteredDownloads,
+    currentTaskId,
+    downloadFilter, downloadModule, downloadTask, mediaDownloads, filteredDownloads,
     dlCount, dlFilterCount, DL_STATES, downloadSummary, downloadingCount,
     // 函数
     retryEngine, pushLog, exportLogs, downloadName, downloadLabel, applyDownloadState, stateLabel,

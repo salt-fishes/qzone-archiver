@@ -257,6 +257,94 @@ describe('paused 恢复守卫（v5.5 M0 补）', () => {
   });
 });
 
+describe('v5.5 M1 状态收口（pausing/resuming/finalizing/stalled）', () => {
+  it('暂停中：pauseRequest → pausing；失败回滚 running，成功进入 paused', () => {
+    const { m, persisted } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+
+    expect(m.dispatch('pauseRequest').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('pausing');
+    expect(persisted.at(-1).data.state).toBe('pausing');
+
+    expect(m.dispatch('pauseFailed').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('running');
+
+    m.dispatch('pauseRequest');
+    expect(m.dispatch('pause', { reason: 'user' }).ok).toBe(true);
+    expect(m.getSnapshot()).toMatchObject({ state: 'paused', pausedReason: 'user' });
+  });
+
+  it('恢复中：resumeRequest → resuming；失败回滚 paused，成功回到 running', () => {
+    const { m, persisted } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+    m.dispatch('pause');
+
+    expect(m.dispatch('resumeRequest').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('resuming');
+    expect(persisted.at(-1).data.state).toBe('resuming');
+
+    expect(m.dispatch('resumeFailed').ok).toBe(true);
+    expect(m.getSnapshot()).toMatchObject({ state: 'paused', pausedReason: 'user' });
+
+    m.dispatch('resumeRequest');
+    expect(m.dispatch('resume').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('running');
+  });
+
+  it('收尾：finalize → finalizing，complete 才清 checkpoint', () => {
+    const { m, persisted, cleared } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+
+    expect(m.dispatch('finalize').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('finalizing');
+    expect(persisted.at(-1).data.state).toBe('finalizing');
+    expect(cleared).toEqual([]);
+
+    expect(m.dispatch('complete', { errors: [] }).ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('completed');
+    expect(cleared).toEqual(['task-1']);
+  });
+
+  it('停滞：stall → stalled，unstall → running；stalled 可暂停/取消', () => {
+    const { m } = makeMachine();
+    m.dispatch('prepare', CTX);
+    m.dispatch('start', CTX);
+
+    expect(m.dispatch('stall').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('stalled');
+    expect(m.dispatch('unstall').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('running');
+
+    m.dispatch('stall');
+    expect(m.dispatch('pause').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('paused');
+
+    m.dispatch('resume');
+    m.dispatch('stall');
+    expect(m.dispatch('cancel').ok).toBe(true);
+    expect(m.getSnapshot().state).toBe('cancelled');
+  });
+
+  it('stalled 下引擎丢失 → paused(engine_lost)；finalizing 下取消 → cancelled', () => {
+    const a = makeMachine();
+    a.m.dispatch('prepare', CTX);
+    a.m.dispatch('start', CTX);
+    a.m.dispatch('stall');
+    expect(a.m.dispatch('engineLost', { reason: '窗口崩溃' }).ok).toBe(true);
+    expect(a.m.getSnapshot()).toMatchObject({ state: 'paused', pausedReason: 'engine_lost' });
+
+    const b = makeMachine();
+    b.m.dispatch('prepare', CTX);
+    b.m.dispatch('start', CTX);
+    b.m.dispatch('finalize');
+    expect(b.m.dispatch('cancel').ok).toBe(true);
+    expect(b.m.getSnapshot().state).toBe('cancelled');
+  });
+});
+
 describe('§K4 任务日志流水', () => {
   it('每次迁移写一行；终态带结论（耗时/失败原因）', () => {
     const { m, logged } = makeMachine();

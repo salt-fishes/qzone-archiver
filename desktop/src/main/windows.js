@@ -29,15 +29,16 @@ const APP_ICON = path.join(__dirname, 'icon.png');
  */
 function noteEngineLost(reason) {
   // v5.5 M0：仅活跃任务需要落态；空闲/终态下引擎关窗是正常操作，不再刷“非法转移”日志
+  // v5.5 M1：pausing/resuming/stalled 也是活跃态；finalizing 已不依赖引擎，不落态
   const st = taskMachine.getSnapshot().state;
-  if (st === 'preparing' || st === 'running') {
+  if (['preparing', 'running', 'pausing', 'resuming', 'stalled'].includes(st)) {
     taskMachine.dispatch('engineLost', { reason: reason || undefined });
   }
 }
 
 function noteAuthLost(reason) {
   const st = taskMachine.getSnapshot().state;
-  if (st === 'preparing' || st === 'running') {
+  if (['preparing', 'running', 'pausing', 'resuming', 'stalled'].includes(st)) {
     taskMachine.dispatch('authLost', { reason: reason || undefined });
   }
 }
