@@ -289,6 +289,34 @@ const API_NETWORK_METHODS = {
                 }
             } catch (_) { /* 日志推送失败不影响请求流程 */ }
         };
+        // v5.5 M1：统一请求层（超时/总预算/可中断退避/错误分类）——
+        // 此处保留旧实现作为缺脚本兜底；正常注入顺序下 request.js 先于本文件加载。
+        if (typeof window !== 'undefined' && window.QZoneRequest && window.QZoneRequest.request) {
+            return window.QZoneRequest.request({
+                url,
+                data: params,
+                method: 'GET',
+                timeoutMs: 30_000,
+                totalBudgetMs: 120_000,
+                retries: QZone_Config.Common.listRetryCount,
+                retryBaseMs: (QZone_Config.Common.listRetrySleep || 2) * 1000,
+                onRetry: (info) => {
+                    const msgText = (info.error && info.error.message) || '未知错误';
+                    console.warn('请求接口异常，正在重试，接口：%s，参数：%o，剩余重试次数：%i，错误：%s', url, params, info.remaining, msgText);
+                    notifyLog('warn', `接口请求失败，${Math.round(info.delay / 1000)}s 后重试（剩余 ${info.remaining} 次）：${msgText.slice(0, 160)}`);
+                    $('#errorTips').show();
+                    $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，将会在{1}重试，剩余次数：{2}</span>".format((info.error && info.error.fullMessage) || msgText, API.Utils.formatDate((Date.now() + info.delay) / 1000, 'MM-dd hh:mm:ss'), info.remaining));
+                },
+            }).catch((e) => {
+                if (e && e.__exportCancelled) throw e;
+                const msgText = (e && e.message) || '未知错误';
+                console.warn('重试次数已用完，准备回调，接口：%s，参数：%o，错误：%s', url, params, msgText);
+                notifyLog('error', `接口请求重试次数已用完，已放弃：${msgText.slice(0, 160)}`);
+                $('#errorTips').show();
+                $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，重试次数用完，已取消</span>".format((e && e.fullMessage) || msgText, API.Utils.formatDate(Date.now() / 1000, 'MM-dd hh:mm:ss'), 0));
+                throw e;
+            });
+        }
         // 重试
         const retryRequest = (ajax, reject, error) => {
             // 纯文本版（给 console 用，去 HTML 标签）
@@ -417,6 +445,26 @@ const API_NETWORK_METHODS = {
      */
     post(url, data, options) {
         options = options || {};
+        // v5.5 M1：统一请求层（POST 不做业务 code 重试，保持旧 post 语义）
+        if (typeof window !== 'undefined' && window.QZoneRequest && window.QZoneRequest.request) {
+            const timeoutMs = (options.timeout || 15) * 1000;
+            const retries = options.retries != null ? options.retries : 2;
+            return window.QZoneRequest.request({
+                url,
+                data,
+                method: 'POST',
+                timeoutMs,
+                totalBudgetMs: timeoutMs * (retries + 1) + 60_000,
+                retries,
+                retryBaseMs: (options.retryInterval || 2) * 1000,
+                contentType: options.contentType || "application/json;charset=utf-8",
+                classifyBusiness: false,
+                onRetry: (info) => {
+                    const msgText = (info.error && info.error.message) || '未知错误';
+                    console.warn('POST 接口异常，正在重试，接口：%s，剩余次数：%i，错误：%s', url, info.remaining, msgText);
+                },
+            });
+        }
         const retries = options.retries != null ? options.retries : 2;
         const retryInterval = (options.retryInterval || 2) * 1000;
         let attempt = 0;

@@ -30,6 +30,8 @@ beforeAll(() => {
     console,
     setTimeout,
     clearTimeout,
+    setInterval,
+    clearInterval,
     REST_URLS: {},
     QZone_Config: {
       Common: { listRetryCount: 2, listRetrySleep: 0.05, RestSleepUrls: [], waitCount: 2, waitTime: 3600 },
@@ -39,6 +41,7 @@ beforeAll(() => {
     $: () => ({ show() {}, hide() {}, html() {} }),
     API: {
       Utils: {
+        toJson: (raw) => (typeof raw === 'string' ? JSON.parse(raw) : raw),
         buildNetworkErrorMessage: (xhr, status, error) =>
           `HTTP ${xhr?.status || 0} ${error || status || '网络错误'}`,
         noteServerSuccess() {},
@@ -57,6 +60,9 @@ beforeAll(() => {
   vm.createContext(sandbox);
   // String.prototype.format（utils.js 注入的自定义方法，retryRequest 拼 #errorTips 文案时使用）
   vm.runInContext("String.prototype.format = function() { return String(this); };", sandbox);
+  vm.runInContext(readFileSync(path.join(rootDir, 'src/engine/api/request.js'), 'utf8'), sandbox, {
+    filename: 'api/request.js',
+  });
   vm.runInContext(readFileSync(path.join(rootDir, 'src/engine/api/network.js'), 'utf8'), sandbox, {
     filename: 'api/network.js',
   });

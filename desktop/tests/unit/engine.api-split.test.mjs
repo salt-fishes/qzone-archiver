@@ -61,6 +61,7 @@ const P23_REMOVED = { Shares: ['convert'], Favorites: ['convert'] };
 /**
  * v4.7 计划内行为变更（登记在此，逐字比对对这些方法放行源码全等，但仍校验其存在与类型）：
  * - Utils.get：加入连续 5xx/无响应熔断（避免风控期间持续重试打接口）
+ * - v5.5 M1：Utils.get / Utils.post 委托统一请求层 request.js（超时/总预算/可中断退避/错误分类）
  * - Common.addEmoticonDowanloadTask / Common.formatEmoticonPath：按 roster 真实文件名处理
  *   表情（经典 .gif / 魔法 .png），修导出档案里 png 表情指向不存在文件的问题
  * v4.9 §J 计划内删除（issue #5 承诺下线「已删除说说恢复」，连同其专属接口一并移除）：
@@ -70,7 +71,7 @@ const P23_REMOVED = { Shares: ['convert'], Favorites: ['convert'] };
  * 基线键集合是拆分产物的子集，故 Utils 只要求「基线键全部保留且源码一致」，允许新增。
  */
 const V47_CHANGED = {
-  Utils: ['get'],
+  Utils: ['get', 'post'],
   Common: ['addEmoticonDowanloadTask', 'formatEmoticonPath'],
 };
 

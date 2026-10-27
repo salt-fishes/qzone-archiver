@@ -56,6 +56,7 @@ const COMMAND_TIMEOUT_MS = 15_000;
   'templates-compiled.js',
   // P2-1：api.js 拆分为基础层 + 模块接口层 + 装配器（逐字搬迁，注入顺序见架构改造计划 §4.1）
   'api/rest-urls.js',
+  'api/request.js',
   'api/network.js',
   'api/fs-utils.js',
   'api/utils.js',
