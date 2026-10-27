@@ -299,8 +299,15 @@ const API_NETWORK_METHODS = {
                 $('#errorTips').show();
                 $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，将会在{1}重试，剩余次数：{2}</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
                 ajax.retries--;
-                // 指定秒数后继续请求
+                // v5.5 M0：退避可取消——等待期间用户取消备份则立即结算，不再发下一发
                 setTimeout(function() {
+                    const st = window.__engineExportState;
+                    if (st && st.cancelled && reject) {
+                        const cancelErr = error || new Error('请求在重试退避期间被取消');
+                        cancelErr.__exportCancelled = true;
+                        reject(cancelErr);
+                        return;
+                    }
                     $.ajax(ajax);
                 }, ajax.retryInterval);
                 return;
@@ -309,9 +316,23 @@ const API_NETWORK_METHODS = {
             notifyLog('error', `接口请求重试次数已用完，已放弃：${msgText.slice(0, 160)}`);
             $('#errorTips').show();
             $('#errorTips').html("<span style='color:red'>请求发生错误，错误信息：{0}，重试次数用完，已取消</span>".format(ajax.customMessage || '未知错误', API.Utils.formatDate((Date.now() + ajax.retryInterval) / 1000, 'MM-dd hh:mm:ss'), ajax.retries));
-            reject(error);
+            // v5.5 M0：success 路径此前不传 reject——业务错误（如 -10000）重试耗尽后
+            // reject(error) 对 undefined 调用抛 TypeError，Promise 永不结算 → 调用方永久挂死
+            if (reject) reject(error);
         }
         return new Promise(function(resolve, reject) {
+            // v5.5 M0：settle 守卫——无论哪条路径只允许结算一次（防重试链与超时分支重复结算）
+            let settled = false;
+            const settleResolve = function(v) {
+                if (settled) return;
+                settled = true;
+                resolve(v);
+            };
+            const settleReject = function(e) {
+                if (settled) return;
+                settled = true;
+                reject(e);
+            };
             $.ajax({
                 url: url,
                 type: 'GET',
@@ -340,32 +361,22 @@ const API_NETWORK_METHODS = {
                         const isPermanent = code === -4009 || /原文已经被删除|已被删除|无法查看|无权限/.test(msgText);
                         if (code && code != 0 && !isPermanent) {
                             console.warn('接口请求成功，接口处理返回错误，将尝试重试，接口：%s，参数：%o，返回值：%o', this.url, params, resJson);
-                            if (code === -10000 || msgText === '使用人数过多，请稍后再试') {
-                                let isWaitTimeRest = false;
-                                for (const cfgUrlKey of QZone_Config.Common.RestSleepUrls) {
-                                    if (this.url.includes(REST_URLS[cfgUrlKey])) {
-                                        isWaitTimeRest = true;
-                                        break;
-                                    }
-                                }
-                                if (isWaitTimeRest) {
-                                    // 请稍候重试专用时间间隔
-                                    this.retries = QZone_Config.Common.waitCount;
-                                    this.retryInterval = QZone_Config.Common.waitTime * 1000;
-                                }
-                            }
+                            // v5.5 M0：删除 -10000「使用人数过多」的 waitTime（3600s）专用长等待——
+                            // 每次重试静默等 1 小时且不可取消（waitCount=2 即 2 小时），
+                            // 是 2026-10-22 备份 30 分钟无日志卡死的直接来源；
+                            // 统一走 listRetrySleep 常规退避（可取消），用户可在 UI 暂停/取消。
                             this.customMessage = msgText;
-                            retryRequest(this);
+                            retryRequest(this, settleReject, new Error(msgText || ('接口返回 code ' + code)));
                             return;
                         }
                     } catch (error) {
                         $('#errorTips').hide();
                         // 转换JSON错误时，当作成功返回
-                        resolve(result);
+                        settleResolve(result);
                         return;
                     }
                     $('#errorTips').hide();
-                    resolve(result);
+                    settleResolve(result);
                 },
                 error: function(xhr, status, error) {
                     // 使用统一的错误构造器，自动识别 WAF 403 / 超时 / CORS / Motrix 端口 等
@@ -376,23 +387,23 @@ const API_NETWORK_METHODS = {
                     if (is5xx || isNetFail) {
                         if (API.Utils.noteServerFailure(xhr.status || 0)) {
                             $('#errorTips').hide();
-                            reject(new Error(API.Utils.serverFailureMessage(xhr.status || '网络错误')));
+                            settleReject(new Error(API.Utils.serverFailureMessage(xhr.status || '网络错误')));
                             return;
                         }
                     }
                     // HTTP 501：服务端异常（接口不支持/该请求不可用），重试无法恢复，快速失败避免请求风暴
                     if (xhr.status === 501) {
                         $('#errorTips').hide();
-                        reject(new Error(this.customMessage));
+                        settleReject(new Error(this.customMessage));
                         return;
                     }
                     // 401/403：登录态失效 / 权限 / WAF 风控拦截，重试无法恢复（WAF 重试反而加重风控），与 POST 保持一致快速失败
                     if (xhr.status === 401 || xhr.status === 403) {
                         $('#errorTips').hide();
-                        reject(new Error(this.customMessage));
+                        settleReject(new Error(this.customMessage));
                         return;
                     }
-                    retryRequest(this, reject, error);
+                    retryRequest(this, settleReject, error);
                 }
             });
         });

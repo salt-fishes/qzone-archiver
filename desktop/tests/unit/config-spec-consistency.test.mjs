@@ -80,6 +80,11 @@ describe('config-spec 单一来源一致性', () => {
     // desktop/src/engine/templates/messages.html 与 export-resources 的独立脚本
     'Messages.hasThatYearToday',
     // config-spec.json 的 labelMaps（DOWNLOAD_MAP 等）由 schema 生成器消费
+    // v5.5 M0 退役（plans/v5.5.md §4.2）：-10000「使用人数过多」的专用长等待
+    //（每次重试静默等 waitTime=3600s 且不可取消）已删除，统一走 listRetrySleep 常规退避。
+    // 两项设置 UI 仍在（v5.0 F10 设置项收敛时移除），此处登记避免哑巴设置守卫误报。
+    'Common.waitCount',
+    'Common.waitTime',
   ]);
 
   function collectSourceFiles(dir, acc = []) {

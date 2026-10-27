@@ -63,15 +63,17 @@ QZoneRepo.incremental.unionBackedUpItems = (moduleConfig, old_items, new_items) 
 
 /**
  * 保存当前备份数据
+ * v5.5 M0：改为 async/await——原实现 .then 链无 catch，storage.set 失败（或未返回 Promise）
+ * 时 Promise 永不结算且无任何日志，调用方（exportBackupItemsToJson）永久挂死。
+ * 现约定：主数据 storage.set 失败必须 reject（模块失败可见）；配置项与产物 meta 写失败仅告警不阻断。
  */
-QZoneRepo.incremental.saveBackupItems = () => {
+QZoneRepo.incremental.saveBackupItems = async () => {
 
     // 状态更新器
     const indicator = new StatusIndicator('Backup_Save');
     indicator.print();
 
-    return new Promise(function(resolve, reject) {
-
+    try {
         // 需要保存的备份数据
         const backupInfos = {
             Backedup: window.Backedup || {}
@@ -112,30 +114,34 @@ QZoneRepo.incremental.saveBackupItems = () => {
 
         backupInfos.Backedup[QZone.Common.Target.uin] = rows;
 
-        // 保存配置项，主要是上次备份时间
-        window.QZonePlatform.storage.set({ QZone_Config });
+        // 保存配置项，主要是上次备份时间（失败仅告警——配置丢失不影响产物数据，下次备份覆盖重写）
+        try {
+            await window.QZonePlatform.storage.set({ QZone_Config });
+        } catch (error) {
+            console.warn("保存配置项（QZone_Config）失败（不阻断增量元数据）", error);
+        }
 
         // P3-3（§5.3）：增量元数据落产物 Common/backup-meta.json（结构同 storage：{ Backedup: { [uin]: rows } }）。
         // fs 写入主进程侧自动递归建目录；失败仅告警不阻断（下次备份覆盖重写，最坏多备不丢数据）
         const metaPath = API.Common.getRootFolder() + '/Common/backup-meta.json';
-        const writeMeta = window.QZonePlatform.fs.writeFile(metaPath, JSON.stringify(backupInfos))
-            .then(function() {
-                console.info("增量元数据已写入产物", metaPath);
-            })
-            .catch(function(error) {
-                console.error("增量元数据写入产物异常", metaPath, error);
-            });
+        try {
+            await window.QZonePlatform.fs.writeFile(metaPath, JSON.stringify(backupInfos));
+            console.info("增量元数据已写入产物", metaPath);
+        } catch (error) {
+            console.error("增量元数据写入产物异常", metaPath, error);
+        }
 
-        // 保存数据到 Storage（桌面端：QZonePlatform.storage → 主进程；P3-3 双写过渡，一个版本后清理）
-        window.QZonePlatform.storage.set(backupInfos).then(function() {
-            console.info("保存当前备份数据到Storage完成");
-            return writeMeta;
-        }).then(function() {
-            indicator.complete();
-            resolve(backupInfos);
-        });
+        // 保存数据到 Storage（桌面端：QZonePlatform.storage → 主进程；P3-3 双写过渡，一个版本后清理）。
+        // v5.5 M0：失败必须 reject——此处静默挂起 = 增量数据丢失且任务永不结束
+        await window.QZonePlatform.storage.set(backupInfos);
+        console.info("保存当前备份数据到Storage完成");
 
-    })
+        indicator.complete();
+        return backupInfos;
+    } catch (error) {
+        try { indicator.complete(); } catch (_) { /* 指示器失败不掩盖原始错误 */ }
+        throw error;
+    }
 }
 
 /**

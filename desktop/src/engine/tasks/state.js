@@ -41,15 +41,23 @@
    */
   async function checkExportState() {
     const s = window.__engineExportState;
-    if (s.cancelled) {
+    const cancelledError = () => {
       const err = new Error('[ExportState] 导出已取消');
       err.__exportCancelled = true;
-      throw err;
+      return err;
+    };
+    if (s.cancelled) {
+      throw cancelledError();
     }
     if (s.paused) {
       await new Promise((resolve) => {
         s.pauseWaiters.push(resolve);
       });
+      // v5.5 M0：唤醒后必须重查取消——暂停中取消由 cancel() 唤醒等待者，
+      // 此处不抛错的话流程会从暂停点继续跑（等于取消失效）
+      if (s.cancelled) {
+        throw cancelledError();
+      }
     }
     return s.cancelled;
   }

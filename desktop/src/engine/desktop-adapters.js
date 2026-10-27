@@ -200,7 +200,14 @@
     network: {
       /** 主进程带 Referer 探测 MIME（等价扩展 background getMimeType） */
       getMimeType(url, timeout) {
-        return bridge.invoke('engine:network-mimetype', { url, timeout });
+        // v5.5 M0 补：timeout 以【秒】传入（QZone_Config.Common.autoFileSuffixTimeOut），
+        // 主进程 setTimeout 按【毫秒】解释。此前直接透传 30 → 30ms 即 abort，
+        // 自动后缀识别几乎必然失败（现场无后缀媒体文件的根因）。
+        const seconds = Number(timeout) > 0 ? Number(timeout) : 30;
+        return bridge.invoke('engine:network-mimetype', {
+          url,
+          timeout: Math.round(seconds * 1000),
+        });
       },
       /** 主进程带 Referer 获取 JSON（等价扩展 background getMapJson） */
       getJson(url) {
@@ -248,6 +255,10 @@
       },
       moduleDone(data) {
         bridge.post('engine:notify', { type: 'module-done', data });
+      },
+      /** v5.5 M0：引擎心跳（orchestrator 每 2s 一次；主进程 30s 无心跳判 stalled） */
+      heartbeat(data) {
+        bridge.post('engine:notify', { type: 'heartbeat', data });
       },
     },
   };

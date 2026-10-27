@@ -111,6 +111,29 @@
     async start({ taskId, config, modules, targetDir, targetUin }) {
       P.setTargetDir(targetDir);
 
+      // v5.5 M0：心跳——每 2s 通知主进程 task-runtime「引擎还活着」。
+      // 背景：最小化窗口被 Chromium 定时器节流 / 引擎静默挂死时，界面停在 running 无任何证据；
+      // 主进程 30s 无心跳即推 backup:stalled（见 main/services/task-runtime.js）。
+      // phase 捕获：包装 notify.progress，各采集层推送进度时顺带记录当前阶段。
+      const s = window.__engineExportState;
+      let lastPhase = '';
+      const origProgressNotify = typeof P.notify.progress === 'function'
+        ? P.notify.progress.bind(P.notify)
+        : function() {};
+      P.notify.progress = (data) => {
+        if (data && data.phase) lastPhase = data.phase;
+        origProgressNotify(data);
+      };
+      const heartbeat = () => {
+        try {
+          P.notify.heartbeat({ taskId, module: (s && s.currentModule) || '', phase: lastPhase });
+        } catch (_) { /* 心跳失败不影响任务 */ }
+      };
+      let heartbeatTimer = null;
+      try {
+        heartbeat();
+        heartbeatTimer = setInterval(heartbeat, 2000);
+
       // 装配配置：引擎默认打底 → 深度合入已保存 → 深度合入本次备份配置，并持久化
       // （UI 设置传部分结构（如 { Messages: { exportType } }），深度合并保留其余子项）
       if (config) {
@@ -143,7 +166,6 @@
       P.notify.log({ level: 'info', message: `备份任务已启动（${taskId}）` });
 
       // 先重置导出状态（清空上次取消/暂停残留），再进入各采集环节
-      const s = window.__engineExportState;
       s.running = true;
       s.paused = false;
       s.cancelled = false;
@@ -271,6 +293,11 @@
         });
       }
       P.notify.log({ level: 'info', message: '备份完成' });
+      } finally {
+        // v5.5 M0：心跳与 progress 包装随任务结束清理（start 正常结束或抛错都走这里）
+        if (heartbeatTimer) clearInterval(heartbeatTimer);
+        P.notify.progress = origProgressNotify;
+      }
     },
 
     /**
@@ -430,6 +457,19 @@
     async cancel() {
       const s = window.__engineExportState;
       s.cancelled = true;
+      // v5.5 M0：暂停中取消——清除暂停位并唤醒全部检查点等待者。
+      // 此前 cancel 只置 cancelled 标志、不唤醒 pauseWaiters，暂停中的任务被取消后
+      // 永远走不到下一个检查点 → checkExportState 永久挂起（2026-10-22 现场事件确认路径之一）。
+      s.paused = false;
+      const waiters = s.pauseWaiters || [];
+      s.pauseWaiters = [];
+      for (const resolve of waiters) {
+        resolve();
+      }
+      if (s.pauseToken) {
+        s.pauseToken.resolve();
+        s.pauseToken = null;
+      }
       P.notify.state({ state: 'cancelled' });
     },
 

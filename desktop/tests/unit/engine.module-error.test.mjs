@@ -12,7 +12,7 @@ const bridgeSrc = readFileSync(join(here, '..', '..', 'src', 'main', 'services',
 
 /** 在 vm 沙箱中按顺序执行引擎脚本（sandbox.window = sandbox 浏览器语义） */
 function evalFiles(files, extra = {}) {
-  const sandbox = Object.assign({ console, setTimeout, clearTimeout, window: null }, extra);
+  const sandbox = Object.assign({ console, setTimeout, clearTimeout, setInterval, clearInterval, window: null }, extra);
   sandbox.window = sandbox;
   const ctx = vm.createContext(sandbox);
   for (const f of files) {
