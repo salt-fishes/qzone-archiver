@@ -4,12 +4,14 @@
  * 对勾入场使用 motion-v 弹簧动画（prefers-reduced-motion 时 motion-v 自动降级）
  */
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { NButton, NTag, NAlert } from 'naive-ui';
 import { Motion } from 'motion-v';
 import type { BackupResult } from '../../stores/backup';
 import { MODULE_META } from '../../stores/config';
 import EmoticonText from '../common/EmoticonText.vue';
 
+const router = useRouter();
 const props = defineProps<{
   result: BackupResult;
   elapsed: number;
@@ -21,6 +23,11 @@ const emit = defineEmits<{
 }>();
 
 const hasErrors = computed(() => (props.result.errors?.length || 0) > 0);
+/** v5.5 M1：完成页提示后台仍在下载的媒体数量 */
+const pendingDownloads = computed(() => {
+  const d = props.result.downloads;
+  return d ? (d.pending || 0) + (d.running || 0) : 0;
+});
 
 const stats = computed(() => {
   const r = props.result;
@@ -134,6 +141,23 @@ function fmtElapsed(sec: number) {
           {{ c.label }} {{ c.count.toLocaleString() }}
         </NTag>
       </div>
+
+      <NAlert
+        v-if="pendingDownloads > 0"
+        type="info"
+        class="dl-alert"
+      >
+        媒体仍在后台下载（剩余 {{ pendingDownloads }} 项），可前往
+        <NButton
+          text
+          type="primary"
+          size="tiny"
+          @click="router.push('/downloads')"
+        >
+          下载中心
+        </NButton>
+        查看；关闭应用后将在下次启动继续。
+      </NAlert>
 
       <NAlert
         v-if="hasErrors"

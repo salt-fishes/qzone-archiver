@@ -32,6 +32,8 @@ export type BackupResult = {
   errors?: BackupModuleError[];
   /** 采集目标（v4.6：他人模式档案展示；缺省/旧记录 = 本人） */
   target?: { uin: string; nickname?: string };
+  /** v5.5 M1：完成时仍在后台下载的媒体计数（完成页提示；下载中心有完整队列） */
+  downloads?: DownloadSummary;
 };
 
 export type DownloadItem = {
@@ -586,6 +588,8 @@ export const useBackupStore = defineStore('backup', () => {
           lastResult.value = {
             ...p.record,
             errors: errs,
+            // v5.5 M1：完成与下载解耦，完成页据此提示后台下载剩余
+            downloads: p?.downloads || p?.record?.downloads,
             // 目标以引擎完成事件为准（record.target 与其同源，兜底更稳）
             target: p.record.target || p?.target,
           };
@@ -594,10 +598,15 @@ export const useBackupStore = defineStore('backup', () => {
         // 兜底：旧版主进程无 record 时回查历史（保持兼容）
         try {
           const r = await window.api.backup.getHistory();
-          lastResult.value = { ...((r?.history && r.history[0]) || { targetDir: cfg.targetDir }), errors: errs, target: p?.target };
+          lastResult.value = {
+            ...((r?.history && r.history[0]) || { targetDir: cfg.targetDir }),
+            errors: errs,
+            downloads: p?.downloads,
+            target: p?.target,
+          };
         } catch (e) {
           console.warn('读取备份结果失败', e);
-          lastResult.value = { targetDir: cfg.targetDir, errors: errs, target: p?.target };
+          lastResult.value = { targetDir: cfg.targetDir, errors: errs, downloads: p?.downloads, target: p?.target };
         }
       }),
       window.api.on('download:state-changed', (p) => {

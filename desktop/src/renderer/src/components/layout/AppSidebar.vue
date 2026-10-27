@@ -2,16 +2,20 @@
 /** 应用侧边导航（v4.6）：品牌（应用图标）+ 主导航 + 底部帮助入口 */
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useBackupStore } from '../../stores/backup';
 import appIcon from '../../assets/icon.png';
 
 const route = useRoute();
 const router = useRouter();
 const emit = defineEmits<{ help: [] }>();
+const bk = useBackupStore();
+const dlActive = computed(() => bk.downloadingCount);
 
 const NAV = [
   { path: '/', label: '首页', icon: 'M4 11.5 12 4l8 7.5 M6 10v10h4.5v-5h3v5H18V10' },
   { path: '/new', label: '新建任务', icon: 'M12 5v14 M5 12h14' },
   { path: '/archives', label: '档案列表', icon: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z M4 10h16 M9 14h6' },
+  { path: '/downloads', label: '下载', icon: 'M12 4v11 M8 11l4 4 4-4 M5 20h14' },
   { path: '/settings', label: '设置', icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5c.07-.4.1-.8.1-1.2Z' },
 ];
 
@@ -50,6 +54,10 @@ function openTutorial() {
           <path :d="item.icon" />
         </svg>
         <span>{{ item.label }}</span>
+        <span
+          v-if="item.path === '/downloads' && dlActive > 0"
+          class="nav-badge"
+        >{{ dlActive > 99 ? '99+' : dlActive }}</span>
       </router-link>
     </nav>
 
@@ -127,6 +135,19 @@ function openTutorial() {
   background: rgba(180, 95, 61, 0.13);
   color: #b5432a;
   font-weight: 600;
+}
+.nav-badge {
+  margin-left: auto;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #b5432a;
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 500;
 }
 .sidebar-foot {
   margin-top: auto;

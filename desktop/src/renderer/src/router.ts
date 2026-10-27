@@ -6,6 +6,7 @@ import { createRouter, createWebHashHistory } from 'vue-router';
 import HomeView from './views/HomeView.vue';
 import NewTaskView from './views/NewTaskView.vue';
 import ArchivesView from './views/ArchivesView.vue';
+import DownloadsView from './views/DownloadsView.vue';
 import SettingsView from './views/SettingsView.vue';
 import TutorialView from './views/TutorialView.vue';
 
@@ -15,6 +16,7 @@ export const router = createRouter({
     { path: '/', name: 'home', component: HomeView },
     { path: '/new', name: 'new', component: NewTaskView },
     { path: '/archives', name: 'archives', component: ArchivesView },
+    { path: '/downloads', name: 'downloads', component: DownloadsView },
     { path: '/settings', name: 'settings', component: SettingsView },
     { path: '/tutorial', name: 'tutorial', component: TutorialView },
   ],

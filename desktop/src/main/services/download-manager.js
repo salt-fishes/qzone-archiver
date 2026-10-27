@@ -71,10 +71,22 @@ let bigRunning = 0; // 大文件任务运行数
 // 旧暂停位自动失效——杜绝"取消/换任务后 pump 永久短路，媒体下载静默排队"。
 const STANDALONE_PAUSE = '__standalone__'; // 无活跃备份时的独立暂停（下载页手动暂停）
 let pausedTaskId = null;
+// v5.5 M1：任务级暂停集合——新任务启动时暂停旧任务；当前任务完成后 FIFO 恢复旧任务。
+const pausedTaskIds = new Set();
 
 /** 当前暂停位应绑定的任务标识：活跃备份 taskId，无则独立暂停哨兵 */
 function pauseKey() {
   return getActiveTaskContext()?.taskId || STANDALONE_PAUSE;
+}
+
+function taskKeyOf(record) {
+  return (record && record.taskId) || STANDALONE_PAUSE;
+}
+
+/** 某任务是否处于暂停（当前任务位 + 旧任务集合） */
+function isTaskPaused(taskId) {
+  const key = taskId || STANDALONE_PAUSE;
+  return pausedTaskIds.has(key) || (!!pausedTaskId && pausedTaskId === key);
 }
 
 /**
@@ -203,30 +215,32 @@ export const downloadManager = {
   purgeFinished() {
     const currentTaskId = getActiveTaskContext()?.taskId;
     const before = queue.length;
-    queue = queue.filter((q) => !!q.taskId && q.taskId === currentTaskId);
+    // v5.5 M1：只清其他任务的终态记录；旧任务 pending/running 保留（新任务启动时暂停，稍后恢复）
+    queue = queue.filter(
+      (q) =>
+        (!!q.taskId && q.taskId === currentTaskId) ||
+        q.state === 'pending' ||
+        q.state === 'running'
+    );
     if (queue.length !== before) {
       persist();
       sendToUi(PushChannels.downloadStateChanged, { state: 'cleared' });
-      logger.info(`[download-manager] 已清理历史任务下载记录 ${before - queue.length} 条`);
+      logger.info(`[download-manager] 已清理历史任务下载记录 ${before - queue.length} 条（保留未完成）`);
     }
   },
 
   /** 并发调度：并发数与批间间隔来自本次备份配置；暂停时不调度新任务 */
   pump() {
-    // P3-2：暂停位只对发起暂停时的活跃任务有效；任务已切换则自动失效并恢复调度
-    if (pausedTaskId) {
-      if (pausedTaskId === pauseKey()) return;
-      pausedTaskId = null;
-    }
     const { thread } = settings();
     let dispatched = 0;
     while (true) {
       const big = bigRunning < BIG_CONCURRENCY;
       const reg = running < thread;
-      // 大文件占专用槽位，常规任务占常规槽位
+      // 大文件占专用槽位，常规任务占常规槽位；跳过被暂停任务（旧任务/当前任务）
+      const eligible = (q) => q.state === 'pending' && !isTaskPaused(q.taskId);
       const candidate =
-        (big && queue.find((q) => q.state === 'pending' && isBig(q))) ||
-        (reg && queue.find((q) => q.state === 'pending' && !isBig(q)));
+        (big && queue.find((q) => eligible(q) && isBig(q))) ||
+        (reg && queue.find((q) => eligible(q) && !isBig(q)));
       if (!candidate) break;
       candidate.state = 'running';
       // 槽位归属按「派发时」的大小判定并记账（v4.9.2）：_attempt 下载中会把
@@ -326,7 +340,7 @@ export const downloadManager = {
     };
     while (Date.now() - startedAt < timeoutMs) {
       // 用户主动暂停：completed 流程不会在暂停态触发，避免死等
-      if (pausedTaskId && pausedTaskId === pauseKey()) return false;
+      if (isTaskPaused(pauseKey())) return false;
       const left = queue.filter((q) => q.state === 'pending' || q.state === 'running');
       if (left.length === 0) {
         if (announced) logBoth('info', '下载队列已收尾，全部媒体/头像落盘完成');
@@ -369,7 +383,7 @@ export const downloadManager = {
     }
     // 最小状态断言（P0-1）：当前任务处于暂停态时入队，新任务将排队直至恢复；
     // 若并非用户主动暂停（backup:pause），说明存在暂停位残留，需排查状态机
-    if (pausedTaskId && pausedTaskId === pauseKey()) {
+    if (isTaskPaused(pauseKey())) {
       logger.warn('[download-manager] 任务暂停态中入队新任务，媒体下载将持续排队直至 resume()');
     }
     queue.push(record);
@@ -539,15 +553,28 @@ export const downloadManager = {
     const done = queue.filter((q) => q.state === 'done');
     const failed = queue.filter((q) => q.state === 'failed');
     const inProgress = queue.filter((q) => q.state === 'running' || q.state === 'pending');
-    return { queue, done, failed, inProgress };
+    return { queue, done, failed, inProgress, pausedTasks: [...pausedTaskIds] };
+  },
+
+  /** v5.5 M1：按任务统计下载数量（完成页/下载中心用） */
+  getTaskCounts(taskId) {
+    const counts = { pending: 0, running: 0, done: 0, failed: 0, total: 0 };
+    for (const q of queue) {
+      if (taskId && q.taskId !== taskId) continue;
+      counts.total += 1;
+      if (counts[q.state] !== undefined) counts[q.state] += 1;
+    }
+    return counts;
   },
 
   /** 暂停：停止调度 + 中断运行中任务（.part 保留断点，恢复后续传）——用户暂停期望立刻停止工作。
    * P3-2：暂停位绑定当前活跃任务（§5.2），新任务启动后自动失效 */
   async pause() {
-    pausedTaskId = pauseKey();
+    const key = pauseKey();
+    pausedTaskId = key;
+    pausedTaskIds.add(key);
     for (const q of queue) {
-      if (q.state === 'running') {
+      if (q.state === 'running' && taskKeyOf(q) === key) {
         q.pauseInterrupted = true;
         q.cancelRequested = true;
         // v5.5 M0：立即中断在途请求 + 唤醒退避 sleep（秒级生效，不再等下一个 data 事件）
@@ -557,8 +584,51 @@ export const downloadManager = {
     }
   },
 
-  /** 恢复：清任务暂停位，继续调度 */
+  /** 恢复：清当前任务暂停位，继续调度 */
   async resume() {
+    const key = pauseKey();
+    pausedTaskIds.delete(key);
+    if (pausedTaskId === key) pausedTaskId = null;
+    this.pump();
+  },
+
+  /**
+   * v5.5 M1：暂停其他任务（新任务启动时调用）——保留 pending/.part，
+   * 中断在途请求，当前任务独占下载槽位。
+   */
+  async pauseOthers(currentTaskId) {
+    const current = currentTaskId || getActiveTaskContext()?.taskId;
+    const keys = new Set();
+    for (const q of queue) {
+      if (q.taskId && q.taskId !== current) keys.add(q.taskId);
+    }
+    for (const key of keys) pausedTaskIds.add(key);
+    for (const q of queue) {
+      if (q.state === 'running' && q.taskId && q.taskId !== current) {
+        q.pauseInterrupted = true;
+        q.cancelRequested = true;
+        try { q.abortController?.abort(); } catch (_) { /* ignore */ }
+        if (typeof q._wakeSleep === 'function') q._wakeSleep();
+      }
+    }
+    logger.info(`[download-manager] 已暂停 ${keys.size} 个旧任务下载队列（当前任务 ${current || '—'}）`);
+    return [...keys];
+  },
+
+  /** v5.5 M1：新任务完成后恢复其他任务（FIFO；由调用方在 completed 后触发） */
+  async resumeOthers(currentTaskId) {
+    const current = currentTaskId || getActiveTaskContext()?.taskId;
+    for (const key of [...pausedTaskIds]) {
+      if (key !== current) pausedTaskIds.delete(key);
+    }
+    if (pausedTaskId && pausedTaskId !== current) pausedTaskId = null;
+    this.pump();
+    return [...pausedTaskIds];
+  },
+
+  /** 测试/清理用：解除所有任务暂停 */
+  async resumeAll() {
+    pausedTaskIds.clear();
     pausedTaskId = null;
     this.pump();
   },
@@ -572,6 +642,10 @@ export const downloadManager = {
       q.state = 'failed';
       q.error = '已取消';
     }
+    // v5.5 M1：当前任务取消后清掉自己的暂停位，避免残留影响下一次备份
+    const current = pauseKey();
+    pausedTaskIds.delete(current);
+    if (pausedTaskId === current) pausedTaskId = null;
     persist();
     // 运行中任务标记 cancelRequested，abort 在途请求并销毁流（v5.5 M0：立即生效）
     for (const q of queue) {

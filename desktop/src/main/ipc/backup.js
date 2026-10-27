@@ -173,7 +173,12 @@ export function registerBackupIpc() {
       tl.warn(`清理历史下载记录失败（不阻塞备份）：${e?.message || e}`);
     }
     // P3-2：触发一次下载调度（幂等）——恢复上一任务遗留的 pending 队列；
-    // 旧暂停位已绑定旧 taskId，新任务启动后由 pump 自动失效（P0-1 根因消除）
+    // v5.5 M1：先暂停其他任务的下载队列（保留 pending/.part），当前任务独占槽位
+    try {
+      downloadManager.pauseOthers(id);
+    } catch (e) {
+      tl.warn(`暂停旧任务下载失败（不阻塞备份）：${e?.message || e}`);
+    }
     try {
       await downloadManager.resume();
       tl.info('下载调度已恢复（幂等触发）');

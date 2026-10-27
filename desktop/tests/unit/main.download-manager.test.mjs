@@ -50,7 +50,7 @@ beforeEach(async () => {
   // 复位：清空队列（pending→failed→clear）+ 清暂停位，用例间互不污染
   await downloadManager.cancel();
   await downloadManager.clearDone();
-  await downloadManager.resume();
+  await downloadManager.resumeAll();
   mocks.sendToUi.mockClear();
   mocks.activeCtx = { taskId: null, targetDir: tmpDir };
 });
@@ -77,20 +77,21 @@ describe('P3-2 任务级暂停位（§5.2）', () => {
     expect(stateById()['t1-dl']).toBe('pending');
   });
 
-  it('任务切换后旧暂停位自动失效（P0-1 回归：取消后新备份不再静默排队）', async () => {
+  it('任务切换后旧任务保持暂停，新任务不受影响（v5.5 M1 决策 D12）', async () => {
     mocks.activeCtx = { taskId: 'task-A', targetDir: tmpDir };
     await downloadManager.pause();
     await enqueueTask('t2-dl-a');
     expect(stateById()['t2-dl-a']).toBe('pending');
-    // 新备份 B 启动（activeBackup.taskId 被覆盖）→ 旧暂停位失效，调度恢复
+    // 新备份 B 启动：旧任务 A 仍暂停（由 pauseOthers 显式暂停），B 正常调度
     mocks.activeCtx = { taskId: 'task-B', targetDir: tmpDir };
+    await downloadManager.pauseOthers('task-B');
     await enqueueTask('t2-dl-b');
     const st = stateById();
     expect(st['t2-dl-b']).toBe('running');
-    expect(st['t2-dl-a']).toBe('running'); // A 遗留任务也恢复调度
+    expect(st['t2-dl-a']).toBe('pending'); // A 保持暂停，待 B 完成后 resumeOthers
   });
 
-  it('独立暂停（无活跃备份）在新备份启动后自动失效', async () => {
+  it('独立暂停（无活跃备份）只影响无任务归属的记录', async () => {
     mocks.activeCtx = { taskId: null, targetDir: tmpDir };
     await downloadManager.pause(); // 绑定独立哨兵
     await enqueueTask('t3-dl');
@@ -98,6 +99,21 @@ describe('P3-2 任务级暂停位（§5.2）', () => {
     mocks.activeCtx = { taskId: 'task-A', targetDir: tmpDir };
     await enqueueTask('t3-dl-2');
     expect(stateById()['t3-dl-2']).toBe('running');
+    expect(stateById()['t3-dl']).toBe('pending');
+  });
+
+  it('pauseOthers / resumeOthers 按任务暂停与恢复（D12/D13）', async () => {
+    mocks.activeCtx = { taskId: 'task-A', targetDir: tmpDir };
+    await enqueueTask('old-a');
+    mocks.activeCtx = { taskId: 'task-B', targetDir: tmpDir };
+
+    await downloadManager.pauseOthers('task-B');
+    expect(downloadManager.getState().pausedTasks).toContain('task-A');
+    await enqueueTask('new-b');
+    expect(stateById()['new-b']).toBe('running');
+
+    await downloadManager.resumeOthers('task-B');
+    expect(downloadManager.getState().pausedTasks).not.toContain('task-A');
   });
 
   it('resume 清除暂停位，立即恢复调度', async () => {
@@ -131,7 +147,7 @@ describe('v4.9.2 槽位记账与队列清理', () => {
     }
   });
 
-  it('新任务启动清除其他任务的全部记录（终态与 pending 一并清，v4.9.2）', async () => {
+  it('新任务启动只清其他任务的终态记录，保留未完成任务（v5.5 M1 决策 D12）', async () => {
     mocks.activeCtx = { taskId: 'task-old', targetDir: tmpDir };
     await enqueueTask('old-done');
     await enqueueTask('old-pending');
@@ -140,12 +156,12 @@ describe('v4.9.2 槽位记账与队列清理', () => {
     q.find((x) => x.id === 'old-done').state = 'done';
     q.find((x) => x.id === 'old-pending').state = 'pending';
 
-    // 新备份启动（activeCtx 已切换）→ 旧任务记录（含 pending）全部清除
+    // 新备份启动（activeCtx 已切换）→ 旧任务终态清除，pending 保留待恢复
     mocks.activeCtx = { taskId: 'task-new', targetDir: tmpDir };
     downloadManager.purgeFinished();
     const st = stateById();
     expect(st['old-done']).toBeUndefined();
-    expect(st['old-pending']).toBeUndefined();
+    expect(st['old-pending']).toBe('pending');
   });
 
   it('当前任务自己的记录不受 purgeFinished 影响', async () => {

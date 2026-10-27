@@ -224,63 +224,54 @@ export function registerEngineIpc() {
         }
         if (data?.state === 'completed' || data?.state === 'cancelled') {
           if (data?.state === 'completed') {
-            taskRuntime.holdPowerSave(); // v5.5 M0：收尾期（等下载落盘/统计）维持电源锁
-            // 备份完成 → 自动记录历史统计（含模块级失败明细，P0-3 遗留项落库）。
-            // P3-4：目录统计已异步化，fire-and-forget 不阻塞状态机推送
+            taskRuntime.holdPowerSave(); // v5.5 M0：收尾期（统计/落库）维持电源锁
+            // v5.5 M1：完成与媒体下载解耦——不再 waitIdle(120s)，完成页立即出现；
+            // 下载继续在后台跑，下载中心展示剩余数量。
             const active = getActiveTaskContext();
+            const taskId = data.taskId || active?.taskId;
             // v4.7 反馈 ②：先把备份目标的头像抓到本地缓存（带引擎 session，
             // 避免渲染层 file:// 直连 qlogo 被防盗链拦掉），再落历史记录
             const targetUin = data.target?.uin || active?.targetUin;
             const ensureAvatar = targetUin
               ? avatarStore.ensure(targetUin).catch(() => false)
               : Promise.resolve(false);
-            // 收尾可见状态（2026-10-11 实机反馈）：收尾最长 120s，此前界面只停在
-            // 进度面板干等，看起来像死机。每次计数变化推 backup:finalizing，完成页
-            // 出现前 UI 明确显示「收尾中（剩余 N 项）」。
             const pushFinalizing = (payload) => sendToUi(PushChannels.backupFinalizing, payload);
-            pushFinalizing({ active: true, phase: 'downloads', pending: 0, running: 0, total: 0 });
-            // v5.2 兜底：宣告完成前等下载队列收尾——头像等尾部媒体落盘后再进完成页，
-            // 避免用户立刻打包/关机导致归档缺文件（hasAvatar:true 却无文件）
-            const drainDownloads = downloadManager
-              .waitIdle(120_000, (counts) => pushFinalizing({ active: true, phase: 'downloads', ...counts }))
-              .catch((e) => {
-                logger.warn(`[download-manager] waitIdle 异常，跳过收尾等待：${e && e.message}`);
-                return false;
-              });
+            // 当前下载计数随完成事件下发（完成页/下载页展示「后台下载中 N 项」）
+            const downloads = taskId ? downloadManager.getTaskCounts(taskId) : null;
+            pushFinalizing({ active: true, phase: 'stats', pending: 0, running: 0, total: 0 });
             // v5.0 修复：backup:completed 推送移到 recordBackup **之后**，并携带
-            // 本次备份的完整记录。此前先推 completed、渲染层再回查历史，
-            // 拿到的是【上一次】备份的记录 —— 完成页显示上一次备份的数据。
+            // 本次备份的完整记录；recordBackup 不再等待下载队列排空（M1 决策 D4）。
             ensureAvatar
-              .then(() => drainDownloads)
-              .then(() => {
-                pushFinalizing({ active: true, phase: 'stats', pending: 0, running: 0 });
-                return backupStats.recordBackup({
-                  taskId: data.taskId || active?.taskId,
+              .then(() =>
+                backupStats.recordBackup({
+                  taskId,
                   targetDir: active?.targetDir,
                   modules: active?.modules || [],
                   results: data.results,
                   errors: data.errors,
                   target: data.target, // v4.6：采集目标（uin/昵称），历史档案按目标分组
                   startedAt: taskMachine.getSnapshot().startedAt, // v5.0：只统计本次任务写入的文件
-                });
-              })
+                })
+              )
               .then((rec) => {
                 if (rec) sendToUi(PushChannels.backupHistoryChanged, backupStats.getHistory());
-                sendToUi(PushChannels.backupCompleted, { ...data, record: rec });
+                sendToUi(PushChannels.backupCompleted, { ...data, record: rec, downloads });
               })
               .catch((e) => {
                 console.error('[backup-stats] 记录历史失败', e);
                 // 落库失败也要推完成（数据可从 completed 事件本身构造）
-                sendToUi(PushChannels.backupCompleted, data);
+                sendToUi(PushChannels.backupCompleted, { ...data, downloads });
               })
               .finally(() => {
                 pushFinalizing({ active: false });
                 taskRuntime.releasePowerSave(); // v5.5 M0：收尾结束释放电源锁（与 holdPowerSave 配对）
-                // P5.2：终态清理任务上下文——必须等收尾链结束再清理：
-                // 此前在 completed 事件同步块里立即清理，收尾期间（最长 120s）的
-                // 下载重试/收尾结论日志因 activeTaskId 已置空而落到 main.log，
-                // 任务日志从「任务结束」到收尾完成之间整段缺失（2026-10-11 实机定位）。
-                dropTaskContext(data.taskId);
+                dropTaskContext(taskId);
+                // v5.5 M1 决策 D13：当前任务结束后恢复旧任务下载（FIFO，设置可关后续接入）
+                try {
+                  downloadManager.resumeOthers(taskId);
+                } catch (e) {
+                  logger.warn(`[download-manager] 恢复旧任务下载失败：${e?.message || e}`);
+                }
               });
           } else {
             // cancelled：无收尾流程，直接清理
