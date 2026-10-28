@@ -141,6 +141,7 @@ QZoneCollectors.Videos = {
               }).catch((e) => {
                   console.error("获取视频点赞异常：", item, e);
                   indicator.addFailed(item);
+                  if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
               }));
           }
 

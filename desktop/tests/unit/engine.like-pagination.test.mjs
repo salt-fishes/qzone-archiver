@@ -103,6 +103,19 @@ describe('getModulesLikeList 分页防护', () => {
     expect(likes).toEqual([]);
   });
 
+  it('限流错误（__rateLimited）→ 向上抛出，交给 plan-executor 暂停任务', async () => {
+    pageImpl = () => {
+      const e = new Error('系统压力有点大，请稍后再试');
+      e.__rateLimited = true;
+      throw e;
+    };
+    const item = { uniKey: 'album-rate-limited' };
+    await expect(Common.getModulesLikeList(item, config)).rejects.toMatchObject({
+      __rateLimited: true,
+    });
+    expect(calls).toEqual([0]);
+  });
+
   it('分页达到 200 页硬上限 → 强制结束并告警', async () => {
     pageImpl = (begin) => [{ fuin: begin + 1, uin: 1 }];
     const item = { uniKey: 'album-cap' };

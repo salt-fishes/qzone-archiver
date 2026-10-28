@@ -415,6 +415,11 @@ export const useBackupStore = defineStore('backup', () => {
     logs.value = [];
     // 生成本次备份任务 ID：主进程检查点/状态推送均以 taskId 关联，缺失会导致日志显示 undefined 且无法精确追踪
     const taskId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // v5.5 M1：新任务重置用时（此前跨任务累加，界面显示"用时 69 分钟"但任务才刚开始）
+    lastTaskId = taskId;
+    tickStop();
+    tickBase = 0;
+    elapsedSec.value = 0;
     const targetLabel = targetUin ? `他人空间 ${targetUin} 的公开内容` : '我的空间';
     pushLog('info', `开始备份：${targetLabel} · ${modules.map((m) => MODULE_META[m]?.label || m).join('、')} → ${cfg.targetDir}`);
     try {
@@ -468,6 +473,8 @@ export const useBackupStore = defineStore('backup', () => {
   let unsubs: (() => void)[] = [];
   /** v5.0：最近一次进入 running 的任务（区分新任务与同任务 resume，用于清下载列表） */
   let lastDownloadTaskId = '';
+  /** v5.5 M1：最近一次收到 running 的任务 id——外部启动/恢复时重置用时与运行面板 */
+  let lastTaskId = '';
 
   function initBackup() {
     if (unsubs.length) return;
@@ -487,6 +494,21 @@ export const useBackupStore = defineStore('backup', () => {
         if (Array.isArray(p.modules) && p.modules.length) activeModules.value = [...p.modules];
         if (p.state === 'running') {
           if (p.taskId) currentTaskId.value = p.taskId;
+          // v5.5 M1：新任务（外部启动/后续恢复）重新计时并重置运行面板；
+          // 同 taskId 的 resume 不会触发（否则会把暂停前的用时清掉）
+          if (p.taskId && p.taskId !== lastTaskId) {
+            lastTaskId = p.taskId;
+            tickStop();
+            tickBase = 0;
+            elapsedSec.value = 0;
+            progress.value = { module: '', phase: '启动', percent: 0 };
+            doneModules.value = [];
+            moduleOverall.value = 0;
+            moduleOverallBase = 0;
+            moduleOverallFor = '';
+            logs.value = [];
+            pushLog('info', '检测到新的备份任务，运行面板已重置');
+          }
           ignoreAfterCancel = false; // 新备份开始，恢复下载事件接收
           finalizing.value = null;
           stalled.value = false; // v5.5 M0：心跳恢复（主进程补推 running）或新任务启动 → 解除停滞

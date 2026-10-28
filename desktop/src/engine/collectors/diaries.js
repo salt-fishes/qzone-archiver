@@ -233,6 +233,7 @@ QZoneCollectors.Diaries = {
             }).catch((e) => {
                 console.error("获取日记点赞异常：", item, e);
                 indicator.addFailed(item);
+                if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
             }));
 
         }

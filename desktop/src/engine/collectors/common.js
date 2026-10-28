@@ -463,6 +463,14 @@ QZoneCollectors.Common = {
   },
 
   /**
+   * 点赞请求重试耗尽后的错误是否需要中断整个任务计划。
+   * 限流/登录失效应交给 plan-executor 判定 paused(reason)，
+   * 而不是当作单条失败吞掉后继续逐条重试（2026-10-28 实机：700+ 照片 × 5 次重试 ≈ 数小时）。
+   * @param {Error|object} e
+   */
+  shouldAbortTask: (e) => !!(e && (e.__rateLimited || e.__authLost)),
+
+  /**
    * 是否需要获取最近访问
    * @param {Object} CONFIG 模块配置项
    */
@@ -541,6 +549,8 @@ QZoneCollectors.Common = {
         }).catch((e) => {
             hasNext = false;
             console.error("获取点赞数据异常", item, e);
+            // v5.5 M1：限流/登录失效向上抛出 → plan-executor 暂停任务，等待后再恢复
+            if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
         });
     }
     item.likeTotal = item.likes.length;

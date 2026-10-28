@@ -194,7 +194,10 @@ function attachEngineLifecycle(engine) {
     }
   });
   wc.on('did-finish-load', () => {
-    if (!engineBridge.ready && wc.getURL().startsWith('https://user.qzone.qq.com')) {
+    // v5.5 M1 补：按「每个新文档」注入，而不是只在 ready=false 时注入。
+    // 页面 reload（会话刷新/手动刷新）后旧脚本全部丢失，但 ready 仍为 true，
+    // 之前会跳过注入 → __engineCommands 消失、任务再也发不出去。
+    if (wc.getURL().startsWith('https://user.qzone.qq.com')) {
       engineBridge
         .inject()
         .then(() => pushEngineStatus('ready'))

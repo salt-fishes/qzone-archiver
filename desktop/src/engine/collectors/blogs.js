@@ -235,6 +235,7 @@ QZoneCollectors.Blogs = {
             }).catch((e) => {
                 console.error("获取日志点赞异常：", item, e);
                 indicator.addFailed(item);
+                if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
             }));
 
         }

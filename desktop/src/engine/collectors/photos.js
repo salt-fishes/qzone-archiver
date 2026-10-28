@@ -278,6 +278,7 @@ QZoneCollectors.Photos = {
               }).catch((e) => {
                   console.error("获取相册点赞异常：", item, e);
                   indicator.addFailed(item);
+                  if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
               }));
 
           }
@@ -334,6 +335,7 @@ QZoneCollectors.Photos = {
               }).catch((e) => {
                   console.error("获取相片点赞异常：", item, e);
                   indicator.addFailed(item);
+                  if (QZoneCollectors.Common.shouldAbortTask(e)) throw e;
               }));
 
           }
@@ -670,7 +672,21 @@ QZoneCollectors.Photos = {
     }
 
     // 下一页
+    // v5.5 M1 补：详情分页同样需要硬上限/游标检测。
+    // 2026-10-28 实机：Photos_Images 阶段约每秒 2 次重复请求同一 picKey（offset 恒 0），
+    // 服务端返回的最后一页锚点没有前进 → 递归永不结束。
+    const MAX_DETAIL_PAGES = 200;
+    let detailPage = 0;
     const nextPage = async function(albumId, picKey, indicator) {
+        if (++detailPage > MAX_DETAIL_PAGES) {
+            console.warn('相片详情分页达到上限，提前结束：', albumId, `已取 ${QZone.Photos.Images[albumId].Data.length} 张`);
+            return QZone.Photos.Images[albumId].Data;
+        }
+        if (await checkExportState()) {
+            const err = new Error('[ExportState] 导出已取消');
+            err.__exportCancelled = true;
+            throw err;
+        }
         // 获取相片详情
         await API.Photos.getImageInfo(albumId, picKey).then(async(data) => {
             // 去掉函数，保留json
@@ -699,21 +715,35 @@ QZoneCollectors.Photos = {
                 return QZone.Photos.Images[albumId].Data;
             }
 
-            // 不是最后一页，继续备份
-            return await nextPage(albumId, API.Photos.getImageKey(_.last(dataList)), indicator) || [];
+            // 空页/最后一页锚点异常：没有下一张就停止，避免 _.last([]) 抛错或原地打转
+            const lastPhoto = _.last(dataList);
+            const nextPicKey = lastPhoto ? API.Photos.getImageKey(lastPhoto) : null;
+            if (!nextPicKey || nextPicKey === picKey) {
+                console.warn(
+                    '相片详情游标未前进，停止翻页：',
+                    albumId,
+                    `prev=${picKey}`,
+                    `next=${nextPicKey}`,
+                    `累计=${QZone.Photos.Images[albumId].Data.length}`
+                );
+                return QZone.Photos.Images[albumId].Data;
+            }
 
+            if (detailPage % 20 === 0) {
+                console.info(`相片详情分页：${albumId} 第 ${detailPage} 页，累计 ${QZone.Photos.Images[albumId].Data.length} 张`);
+            }
+
+            // 不是最后一页：等待指定秒数后再继续（等待放在递归之前，避免连续打接口）
+            const min = PHOTO_CONFIG.Info.randomSeconds.min;
+            const max = PHOTO_CONFIG.Info.randomSeconds.max;
+            await API.Utils.sleep(API.Utils.randomSeconds(min, max) * 1000);
+
+            return await nextPage(albumId, nextPicKey, indicator) || [];
         }).catch((error) => {
             console.error('获取相片详情异常', picKey, error);
             // 更新获取进度
             indicator.addFailed(picKey);
         });
-
-        // 请求一页成功后等待指定秒数后再请求下一页
-        const min = PHOTO_CONFIG.Info.randomSeconds.min;
-        const max = PHOTO_CONFIG.Info.randomSeconds.max;
-        const seconds = API.Utils.randomSeconds(min, max);
-
-        await API.Utils.sleep(seconds * 1000);
     }
 
     // 相片Key
