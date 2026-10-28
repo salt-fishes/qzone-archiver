@@ -301,6 +301,7 @@
               message: `模块 ${modName(mod)} 发生致命错误：${(e && e.message) || e}`,
             });
             P.notify.state({ state: 'failed', error: (e && e.message) || String(e) });
+            s.running = false;
             return;
           }
           results[mod] = 'error';
@@ -311,7 +312,11 @@
           });
         }
       }
-      if (s.suspended) return;
+      if (s.suspended) {
+        // 暂停/挂起：任务不再占用引擎；running=false 供任务外请求（登录轮询）继续工作
+        s.running = false;
+        return;
+      }
       // 收尾：未勾选 Statistics 时也补跑，确保生成 index.html 首页 / SPA 入口（等价扩展 OTHERS_INFO 阶段）
       if (!s.cancelled && !moduleList.includes('Statistics')) {
         s.currentModule = 'Statistics';
@@ -337,24 +342,30 @@
           P.notify.log({ level: 'warn', message: `生成备份清单失败：${(e && e.message) || e}` });
         }
       }
+      const wasCancelled = s.cancelled;
       s.currentModule = null;
       s.running = false;
-      // P0-3：errors 随 completed 通知透传（主进程 backup:completed 原样转发 → 成功页展示）
-      // v4.6：附采集目标信息（他人模式档案页按目标分组展示）
-      P.notify.state({
-        taskId,
-        state: 'completed',
-        results,
-        errors: s.errors || [],
-        target: { uin: String(QZone.Common.Target.uin || ''), nickname: QZone.Common.Target.nickname || '' },
-      });
-      if (s.errors && s.errors.length) {
-        P.notify.log({
-          level: 'warn',
-          message: `备份完成，但有 ${s.errors.length} 个模块失败：${s.errors.map((e) => modName(e.module)).join('、')}`,
+      // v5.5 M1：任务已结束，清除取消标记——否则登录状态轮询（getUserInfos）
+      // 会被 request.js 当成"取消中"永久 abort（2026-10-28 实机日志每 5s 刷屏）。
+      s.cancelled = false;
+      if (!wasCancelled) {
+        // P0-3：errors 随 completed 通知透传（主进程 backup:completed 原样转发 → 成功页展示）
+        // v4.6：附采集目标信息（他人模式档案页按目标分组展示）
+        P.notify.state({
+          taskId,
+          state: 'completed',
+          results,
+          errors: s.errors || [],
+          target: { uin: String(QZone.Common.Target.uin || ''), nickname: QZone.Common.Target.nickname || '' },
         });
+        if (s.errors && s.errors.length) {
+          P.notify.log({
+            level: 'warn',
+            message: `备份完成，但有 ${s.errors.length} 个模块失败：${s.errors.map((e) => modName(e.module)).join('、')}`,
+          });
+        }
+        P.notify.log({ level: 'info', message: '备份完成' });
       }
-      P.notify.log({ level: 'info', message: '备份完成' });
       } finally {
         // v5.5 M0：心跳与 progress 包装随任务结束清理（start 正常结束或抛错都走这里）
         if (heartbeatTimer) clearInterval(heartbeatTimer);
@@ -535,6 +546,8 @@
 
     async cancel() {
       const s = window.__engineExportState;
+      const wasSuspended = s.suspended;
+      const wasRunning = s.running;
       s.cancelled = true;
       s.suspended = false;
       s.suspendedReason = null;
@@ -552,6 +565,12 @@
         s.pauseToken = null;
       }
       P.notify.state({ state: 'cancelled' });
+      // v5.5 M1：挂起（限流/登录失效）或任务已结束时没有模块循环会走到
+      // checkExportState 的取消分支。立即清除 cancelled，否则登录/好友列表等
+      // 任务外请求会被 request.js 当成"取消中"永久 abort（2026-10-28 实机）。
+      if (wasSuspended || !wasRunning) {
+        s.cancelled = false;
+      }
     },
 
     async getLoginStatus() {

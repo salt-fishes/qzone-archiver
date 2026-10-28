@@ -68,6 +68,7 @@ const settleTag = (p) =>
 /** 每个用例独立复位引擎状态（模块级单例共享） */
 function resetState() {
   const s = engine.state();
+  s.running = true; // 模拟任务进行中（生产 start 后 running=true）
   s.cancelled = false;
   s.paused = false;
   s.pauseWaiters = [];
@@ -122,5 +123,18 @@ describe('暂停/取消竞态（v5.5 M0）', () => {
     // 引擎已 cancelled：resume 不应把任务拉回 running 语义（notify 无 running）
     await engine.commands.resume();
     expect(engine.states.filter((s) => s.state === 'running').length).toBe(0);
+  });
+
+  it('挂起（suspended）时取消 → 立即清除 cancelled，任务外请求不被误杀', async () => {
+    resetState();
+    const s = engine.state();
+    s.suspended = true;
+    s.running = false;
+
+    await engine.commands.cancel();
+    // 挂起的任务没有模块循环会走到 checkExportState 的取消分支：
+    // 必须立即清标记，否则登录/好友列表请求会被永久 abort（2026-10-28 实机）
+    expect(s.cancelled).toBe(false);
+    expect(s.suspended).toBe(false);
   });
 });
