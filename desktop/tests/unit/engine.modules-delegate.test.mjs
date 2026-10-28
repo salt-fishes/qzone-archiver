@@ -182,6 +182,7 @@ describe('P2-4 批次 3c（common）逐字搬迁证明', () => {
   ];
 
   // v4.9.2 有意偏差：日志瘦身（完整对象不再整包打进任务日志）。
+  // v5.5 M1 有意偏差：点赞分页防护（硬上限 + 游标不前进检测），修复「相册赞列表」静默卡死。
   // 这些函数不再逐字比对，改为校验偏差内容仍在（防止偏差被无意抹掉或扩大）。
   const DEVIATIONS = {
     initUserInfo: [
@@ -191,6 +192,11 @@ describe('P2-4 批次 3c（common）逐字搬迁证明', () => {
     exportConfigToJson: [
       "console.info('生成助手配置JSON开始')",
       "console.info('生成助手配置JSON结束', jsonFile)",
+    ],
+    getModulesLikeList: [
+      'MAX_LIKE_PAGES = 200',
+      '分页达到上限，提前结束',
+      '游标未前进，停止翻页',
     ],
   };
 

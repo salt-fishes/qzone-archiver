@@ -131,6 +131,26 @@ describe('预算与取消', () => {
     expect(ajaxCalls.length).toBeLessThan(5);
   });
 
+  it('jQuery 不回调时硬超时兜底 → __timeout，不再永久挂起', async () => {
+    ajaxImpl = () => {
+      /* 永不回调，模拟代理/上游挂起且 jQuery timeout 不触发 */
+    };
+    const started = Date.now();
+    const err = await QZoneRequest.request({
+      ...base,
+      retries: 0,
+      timeoutMs: 30,
+      totalBudgetMs: 500,
+    }).then(
+      () => null,
+      (e) => e
+    );
+    expect(err.__timeout).toBe(true);
+    expect(err.__networkKind).toBe('transient');
+    expect(Date.now() - started).toBeLessThan(800);
+    expect(ajaxCalls).toHaveLength(1);
+  });
+
   it('在途请求期间取消 → 立即 reject __exportCancelled，不再发下一发', async () => {
     ajaxImpl = () => {
       /* 永不回调，模拟请求挂起 */

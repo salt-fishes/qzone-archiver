@@ -99,6 +99,7 @@
       let settled = false;
       let xhr = null;
       let timer = null;
+      let deadline = null;
       let signalHandler = null;
 
       const done = (fn, value) => {
@@ -110,6 +111,9 @@
       const cleanup = () => {
         if (timer) clearTimeout(timer);
         timer = null;
+        // v5.5 M1 补：硬超时定时器随请求结算一起清理
+        if (deadline) clearTimeout(deadline);
+        deadline = null;
         if (signal && signalHandler && signal.removeEventListener) {
           signal.removeEventListener('abort', signalHandler);
         }
@@ -145,6 +149,21 @@
           done(reject, abortError('请求已取消'));
         }
       }, 50);
+
+      // v5.5 M1 补：独立硬超时——不完全依赖 jQuery timeout。
+      // 代理挂起/上游不响应时 jqXHR 可能长时间不回调（2026-10-28 实机：相册赞列表
+      // 阶段 15 分钟无日志、无网络 IO），这里保证请求链一定在 timeoutMs+0.5s 内结算。
+      deadline = setTimeout(() => {
+        try {
+          if (xhr && xhr.abort) xhr.abort();
+        } catch {
+          /* ignore */
+        }
+        const err = new Error(`请求超时（${Math.round(timeoutMs / 1000)}s 未完成）`);
+        err.__networkKind = 'transient';
+        err.__timeout = true;
+        done(reject, err);
+      }, timeoutMs + 500);
 
       xhr = $.ajax({
         url: opts.url,

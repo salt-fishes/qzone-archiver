@@ -480,8 +480,18 @@ QZoneCollectors.Common = {
     if (!moduleConfig.Like.isGet) {
         return item.likes;
     }
+    // v5.5 M1 补：分页硬上限 + 游标不前进检测。
+    // 2026-10-28 实机：相册赞列表停在第一阶段 15 分钟无日志、无网络 IO。
+    // 服务端在 begin_uin 无效/被忽略时会返回同一页，原循环只依赖“返回空”结束，
+    // 会无限翻页（命中缓存时甚至没有网络活动，UI 看起来就是卡死）。
+    const MAX_LIKE_PAGES = 200;
+    let pageCount = 0;
     let hasNext = true;
     while (hasNext) {
+        if (++pageCount > MAX_LIKE_PAGES) {
+            console.warn('点赞分页达到上限，提前结束：', item.uniKey, '已取', item.likes.length, '条');
+            break;
+        }
         // 检查点：每页点赞记录前检查暂停/取消（该循环原本无检查点）
         if (await checkExportState()) {
             const err = new Error('[ExportState] 导出已取消')
@@ -501,7 +511,26 @@ QZoneCollectors.Common = {
                 hasNext = false;
             } else {
                 item.likes = _.concat(item.likes, data.like_uin_info);
-                nextUin = _.last(item.likes)['fuin'];
+                const prevUin = nextUin;
+                const last = _.last(data.like_uin_info);
+                const next = last && last.fuin;
+                // 游标必须前进；否则下一发会请求同一页（部分风控/缓存场景返回相同数据）
+                if (next === undefined || next === null || next === '' || next === prevUin) {
+                    console.warn(
+                        '点赞分页游标未前进，停止翻页：',
+                        item.uniKey,
+                        `prev=${prevUin}`,
+                        `next=${next}`,
+                        `累计=${item.likes.length}`
+                    );
+                    hasNext = false;
+                    return;
+                }
+                nextUin = next;
+                // 长列表可观察性：每 10 页留一行任务日志（正常相册只有 1–2 页，不产生噪音）
+                if (pageCount % 10 === 0) {
+                    console.info(`点赞分页：${item.uniKey || item.id || '?'} 第 ${pageCount} 页，累计 ${item.likes.length} 条`);
+                }
 
                 // 请求一页成功后等待一秒再请求下一页
                 const min = moduleConfig.Like.randomSeconds.min;
