@@ -291,6 +291,12 @@ QZoneCollectors.Photos = {
       // 已备份数据跳过不处理
       indicator.setSkip(items.length - count);
 
+      // v5.5 M1：点赞数据量提示（每个任务一次）
+      API.Common.maybeWarnHeavy(
+          'like',
+          items.reduce((n, it) => n + ((it.likes && it.likes.length) || 0), 0)
+      );
+
       // 完成
       indicator.complete();
   },
@@ -347,6 +353,12 @@ QZoneCollectors.Photos = {
 
       // 已备份数据跳过不处理
       indicator.setSkip(items.length - count);
+
+      // v5.5 M1：点赞数据量提示（每个任务一次）
+      API.Common.maybeWarnHeavy(
+          'like',
+          items.reduce((n, it) => n + ((it.likes && it.likes.length) || 0), 0)
+      );
 
       // 完成
       indicator.complete();
@@ -887,6 +899,12 @@ QZoneCollectors.Photos = {
         indicator.addSuccess(item);
     }
 
+    // v5.5 M1：评论数据量提示（每个任务一次）
+    API.Common.maybeWarnHeavy(
+        'comment',
+        items.reduce((n, it) => n + ((it.comments && it.comments.length) || 0), 0)
+    );
+
     // 完成
     indicator.complete();
   },
@@ -983,6 +1001,11 @@ QZoneCollectors.Photos = {
         // 添加成功
         indicator.addSuccess(item);
     }
+    // v5.5 M1：评论数据量提示（每个任务一次）
+    API.Common.maybeWarnHeavy(
+        'comment',
+        items.reduce((n, it) => n + ((it.comments && it.comments.length) || 0), 0)
+    );
     // 完成
     indicator.complete();
     return items;

@@ -125,4 +125,24 @@ describe('getModulesLikeList 分页防护', () => {
     expect(likes).toHaveLength(200);
     expect(warns.join('\n')).toContain('分页达到上限');
   });
+
+  it('maybeWarnHeavy：点赞/评论达到阈值只提示一次，并写入 UI 日志', () => {
+    const logs = [];
+    sandbox.QZonePlatform = { notify: { log: (p) => logs.push(p) } };
+    sandbox.__engineExportState = {};
+
+    Common.maybeWarnHeavy('like', 499);
+    expect(logs).toHaveLength(0);
+
+    Common.maybeWarnHeavy('like', 500);
+    Common.maybeWarnHeavy('like', 900);
+    expect(logs).toHaveLength(1);
+    expect(logs[0].level).toBe('warn');
+    expect(logs[0].message).toContain('点赞数量较多');
+    expect(logs[0].message).toContain('获取赞列表');
+
+    Common.maybeWarnHeavy('comment', 600);
+    expect(logs).toHaveLength(2);
+    expect(logs[1].message).toContain('评论数量较多');
+  });
 });

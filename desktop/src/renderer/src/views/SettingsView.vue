@@ -198,6 +198,15 @@ async function exportConfig() {
           >
             各类内容的默认备份方式与采集细节；在「新建任务」里勾选要备份的内容即可套用。
           </NAlert>
+          <NAlert
+            type="warning"
+            :show-icon="true"
+            class="st-note"
+          >
+            点赞 / 评论属于逐条请求：内容多、点赞人数多时会明显变慢，并可能触发 QQ 空间限流。
+            数据量大时建议关闭「获取赞列表」「获取全部评论」「相册评论」「图片评论」；
+            如果任务经常停在「获取赞列表 / 获取评论」阶段，请先关闭对应开关再重试。
+          </NAlert>
           <NCollapse :default-expanded-names="['Messages']">
             <NCollapseItem
               v-for="m in MODULE_KEYS"

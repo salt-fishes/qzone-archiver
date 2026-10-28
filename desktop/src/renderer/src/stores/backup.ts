@@ -531,7 +531,7 @@ export const useBackupStore = defineStore('backup', () => {
             user: '已暂停，可点击「恢复」继续',
             engine_lost: '已暂停：引擎窗口丢失，请重连后重新发起备份',
             auth_lost: '已暂停：登录已失效，请重新扫码登录后重新发起备份',
-            rate_limited: '已暂停：接口限流保护，建议等待 10~30 分钟后恢复',
+            rate_limited: '已暂停：接口限流保护，建议等待 10~30 分钟后恢复；如频繁限流，可在设置关闭「获取赞列表 / 评论」',
           };
           pushLog('warn', reasonText[p.pausedReason as string] || reasonText.user);
         }

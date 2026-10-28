@@ -130,6 +130,10 @@ function selectNone() {
       </div>
     </div>
 
+    <p class="cp-note">
+      提示：点赞 / 评论是逐条请求，点赞人数或评论数量很多时容易变慢并触发限流；数据量大时建议在「设置 → 内容默认设置」关闭对应开关。
+    </p>
+
     <!-- v4.7 反馈 ④：本次备份方式（仅本次生效；设置里逐模块调过增量时不显示） -->
     <div
       v-if="!cfg.moduleIncrementCustomized"
@@ -289,6 +293,12 @@ function selectNone() {
 }
 .cp-hint {
   font-size: 12.5px;
+  opacity: 0.55;
+}
+.cp-note {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
   opacity: 0.55;
 }
 .cp-actions {

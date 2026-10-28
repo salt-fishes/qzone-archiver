@@ -130,6 +130,8 @@
       s.suspendedReason = null;
       s.resumeFrom = resumeFrom && typeof resumeFrom === 'object' ? resumeFrom : null;
       s.lastPayload = { taskId, config: config || null, modules: modules || [], targetDir, targetUin };
+      // v5.5 M1：数据量提示按任务重新计数（点赞/评论过多提示每任务一次）
+      s.__heavyWarned = {};
       let lastPhase = '';
       const origProgressNotify = typeof P.notify.progress === 'function'
         ? P.notify.progress.bind(P.notify)

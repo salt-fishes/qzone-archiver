@@ -471,6 +471,33 @@ QZoneCollectors.Common = {
   shouldAbortTask: (e) => !!(e && (e.__rateLimited || e.__authLost)),
 
   /**
+   * 数据量提示：点赞/评论条数较多时，建议关闭对应采集项（每个任务只提示一次）。
+   * 2026-10-28 实机：722 张照片的点赞逐条请求触发限流，任务长时间停在「获取图片赞列表」。
+   * @param {'like'|'comment'} kind
+   * @param {number} count 本次已采集条数
+   * @param {number} [threshold]
+   */
+  maybeWarnHeavy: (kind, count, threshold = 500) => {
+    const n = Number(count) || 0;
+    if (n < threshold) return;
+    const s = window.__engineExportState || {};
+    s.__heavyWarned = s.__heavyWarned || {};
+    const key = `${kind}:${threshold}`;
+    if (s.__heavyWarned[key]) return;
+    s.__heavyWarned[key] = true;
+    const label = kind === 'like' ? '点赞' : '评论';
+    const option = kind === 'like' ? '获取赞列表' : '评论';
+    try {
+      window.QZonePlatform.notify.log({
+        level: 'warn',
+        message: `${label}数量较多（本次已采集 ${n} 条）：逐条请求容易触发限流，建议在「设置 → 内容默认设置」关闭「${option}」后重新备份`,
+      });
+    } catch (_) {
+      /* 提示失败不影响采集 */
+    }
+  },
+
+  /**
    * 是否需要获取最近访问
    * @param {Object} CONFIG 模块配置项
    */

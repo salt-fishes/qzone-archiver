@@ -126,7 +126,7 @@ const pauseReasonCard = computed(() => {
   return {
     type: 'warning' as const,
     title: '接口限流保护',
-    text: 'QQ 空间接口连续异常，已暂停请求以避免加重限制。建议等待 10~30 分钟后点击「恢复」继续。',
+    text: 'QQ 空间接口连续异常，已暂停请求以避免加重限制。建议等待 10~30 分钟后点击「恢复」继续；如仍频繁限流，可到「设置 → 内容默认设置」关闭「获取赞列表 / 评论」后重新备份。',
     actionLabel: '',
     action: null,
   };
