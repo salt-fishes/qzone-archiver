@@ -72,6 +72,8 @@ QZoneCollectors.Visitors = {
               return await arguments.callee.apply(undefined, [nextPageIndex]);
           }).catch(async(e) => {
               console.error("获取访客列表异常，当前页：", nextPageIndex, e);
+              // v5.5 M1：限流/登录失效或首页失败必须向上抛，避免“0 条却成功”的静默丢数据
+              if (API.Common.shouldAbortTask(e) || pageIndex === 0) throw e;
               // PATCH: 如果服务器错误，则判断页数再进入重试
               if (nextPageIndex >= QZone.Visitors.Data.totalPage) {
                   // 最后一页停止获取

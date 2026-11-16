@@ -49,6 +49,8 @@ QZoneCollectors.Shares = {
 
           }).catch(async(e) => {
               console.error("获取分享列表异常，当前页：", nextPageIndex, e);
+              // v5.5 M1：限流/登录失效或首页失败必须向上抛，避免“0 条却成功”的静默丢数据
+              if (API.Common.shouldAbortTask(e) || pageIndex === 0) throw e;
               indicator.addFailed(new PageInfo(nextPageIndex, CONFIG.pageSize));
               // 当前页失败后，跳过继续请求下一页
               // 递归获取下一页
@@ -117,6 +119,8 @@ QZoneCollectors.Shares = {
               return await API.Common.callNextPage(nextPageIndex, CONFIG, total, item.comments, arguments.callee, item, nextPageIndex);
           }).catch(async(e) => {
               console.error("获取分享评论列表异常，当前页：", pageIndex + 1, item, e);
+              // v5.5 M1：限流/登录失效向上抛，交给 plan-executor 暂停任务
+              if (API.Common.shouldAbortTask(e)) throw e;
               // 当前页失败后，跳过继续请求下一页
               // 递归获取下一页
               return await API.Common.callNextPage(nextPageIndex, CONFIG, total, item.comments, arguments.callee, item, nextPageIndex);
@@ -265,6 +269,8 @@ QZoneCollectors.Shares = {
               return await API.Common.callNextPage(nextPageIndex, CONFIG, item.custom_visitor.totalNum, item.custom_visitor.list, arguments.callee, item, nextPageIndex);
           }).catch(async(e) => {
               console.error("获取分享最近访问列表异常，当前页：", pageIndex + 1, item, e);
+              // v5.5 M1：限流/登录失效向上抛，交给 plan-executor 暂停任务
+              if (API.Common.shouldAbortTask(e)) throw e;
 
               // 当前页失败后，跳过继续请求下一页
               // 递归获取下一页
