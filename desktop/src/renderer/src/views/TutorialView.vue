@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
     <!-- 目录 -->
     <aside class="toc app-scroll">
       <div class="toc-title">
-        使用教程
+        新手教程
       </div>
       <button
         v-for="s in SECTIONS"
@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
 
     <!-- 正文 -->
     <article class="doc app-scroll">
-      <h1>空间档案备份 · 使用教程</h1>
+      <h1>空间档案备份 · 新手教程</h1>
       <p class="lead">
         把 QQ 空间里的说说、相册、日志等记忆完整备份到自己的电脑，备份产物双击即可离线浏览，不依赖任何服务器。
       </p>

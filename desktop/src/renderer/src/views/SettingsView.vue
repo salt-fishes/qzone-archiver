@@ -4,7 +4,6 @@
  * 全部数据源为 config store（settings + albums），自动保存；schema 由 config-spec.json 生成
  */
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import {
   NTabs, NTabPane, NCollapse, NCollapseItem, NButton, NSelect, NAlert, NInput,
   useDialog, useMessage,
@@ -15,6 +14,7 @@ import { useAppearanceStore } from '../stores/appearance';
 import { useBackupStore } from '../stores/backup';
 import { useUpdateStore } from '../stores/update';
 import SettingItems from '../components/settings/SettingItems.vue';
+import UpdatePanel from '../components/settings/UpdatePanel.vue';
 
 const cfg = useConfigStore();
 const appearance = useAppearanceStore();
@@ -22,7 +22,14 @@ const bk = useBackupStore();
 const update = useUpdateStore();
 const dialog = useDialog();
 const message = useMessage();
-const router = useRouter();
+
+const REPO_URL = 'https://github.com/salt-fishes/qzone-archiver';
+const RELEASES_URL = 'https://github.com/salt-fishes/qzone-archiver/releases';
+const LICENSE_URL = 'https://github.com/salt-fishes/qzone-archiver/blob/main/LICENSE';
+
+function openLink(url: string) {
+  window.api.app.openExternal(url);
+}
 
 const themeOptions = [
   { label: '跟随系统（自动切换深浅色）', value: 'auto' },
@@ -30,7 +37,7 @@ const themeOptions = [
   { label: '深色', value: 'dark' },
 ];
 
-/* -------- 检查更新：页面统一收口在 /update，此处只保留版本摘要入口 -------- */
+/* -------- 检查更新：统一收口在「关于与更新」tab（UpdatePanel） -------- */
 
 /* -------- 日志（v4.9 §K） -------- */
 function openLogsDir() {
@@ -132,7 +139,6 @@ async function exportConfig() {
 
     <NTabs
       type="line"
-      animated
       class="st-tabs"
     >
       <NTabPane
@@ -330,20 +336,96 @@ async function exportConfig() {
               </NButton>
             </div>
           </div>
+        </div>
+      </NTabPane>
+
+      <NTabPane
+        name="privacy"
+        tab="隐私政策"
+      >
+        <div class="st-card">
           <div class="st-block">
-            <h4>关于与更新</h4>
-            <p class="st-tip">当前版本 v{{ update.currentVersion || '—' }}；更新源为 GitHub Releases，手动检查、不自动下载。</p>
+            <h4>本地优先</h4>
+            <p class="st-tip">
+              本应用不接入任何自建服务器。采集通过本机登录的 QQ 空间会话完成，备份数据只写入你在新建任务时选择的目录。
+            </p>
+          </div>
+          <div class="st-block">
+            <h4>登录凭证</h4>
+            <p class="st-tip">
+              QQ 登录 Cookie 保存在 Electron 的本地会话分区（persist:qzone），仅用于访问 QQ 空间；应用不会上传 Cookie，也不会在日志中记录完整凭证。
+            </p>
+          </div>
+          <div class="st-block">
+            <h4>备份数据</h4>
+            <p class="st-tip">
+              说说、相册、日志等档案保存在你选择的本地目录，卸载应用不会主动删除这些档案。应用配置、任务记录与日志位于
+              <code>%APPDATA%\qzone-archiver-desktop</code>。
+            </p>
+          </div>
+          <div class="st-block">
+            <h4>他人空间</h4>
+            <p class="st-tip">
+              备份他人空间仅采集对方公开内容；访客、日记、好友、收藏等仅本人可见的内容会自动跳过。访问会像普通浏览一样留下访客记录，请尊重他人隐私并遵守平台规则。
+            </p>
+          </div>
+          <div class="st-block">
+            <h4>检查更新</h4>
+            <p class="st-tip">
+              手动检查更新只读取 GitHub Releases 的公开版本信息与安装包列表，不自动下载、不静默安装，也不会上传任何用户数据。
+            </p>
+          </div>
+          <div class="st-block">
+            <h4>免责声明</h4>
+            <p class="st-tip">
+              本项目依赖 QQ 空间内部 Web 接口，仅用于备份自己的数据，使用风险由使用者自行承担；本项目与腾讯 / QQ 空间无隶属关系。
+            </p>
+          </div>
+        </div>
+      </NTabPane>
+
+      <NTabPane
+        name="about"
+        tab="关于与更新"
+      >
+        <div class="st-card">
+          <div class="st-block about-head">
+            <div>
+              <h4>空间档案备份</h4>
+              <p class="st-tip">
+                v{{ update.currentVersion || '—' }} · {{ update.platform || 'win32' }} {{ update.arch || 'x64' }}
+              </p>
+            </div>
             <div class="st-actions">
               <NButton
                 size="small"
-                type="primary"
-                secondary
-                round
-                @click="router.push('/update')"
+                @click="openLink(REPO_URL)"
               >
-                打开检查更新
+                GitHub 仓库
+              </NButton>
+              <NButton
+                size="small"
+                @click="openLink(RELEASES_URL)"
+              >
+                发布页面
+              </NButton>
+              <NButton
+                size="small"
+                @click="openLink(LICENSE_URL)"
+              >
+                开源许可
               </NButton>
             </div>
+          </div>
+          <div class="st-block">
+            <h4>检查更新</h4>
+            <UpdatePanel />
+          </div>
+          <div class="st-block">
+            <h4>致谢</h4>
+            <p class="st-tip">
+              基于 ShunCai/QZoneExport 二次开发，遵循 Apache-2.0；感谢所有提交反馈、提供日志与帮助测试的用户。
+            </p>
           </div>
         </div>
       </NTabPane>
@@ -403,6 +485,23 @@ async function exportConfig() {
   margin: 0 0 10px;
   font-size: 12.5px;
   opacity: 0.55;
+}
+.about-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.about-head .st-actions {
+  margin-bottom: 0;
+}
+.st-tip code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--surface-soft);
+  font-family: var(--mono-font);
+  font-size: 11.5px;
 }
 .ctl {
   width: 200px;

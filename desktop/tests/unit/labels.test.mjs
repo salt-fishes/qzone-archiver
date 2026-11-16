@@ -57,13 +57,13 @@ describe('§C 静态文案守卫', () => {
     }
   });
 
-  it('TargetPicker / TutorialView / HelpModal 不再出现「好友的空间」（已改「访问空间」）', () => {
-    for (const f of ['components/task/TargetPicker.vue', 'views/TutorialView.vue', 'components/onboarding/HelpModal.vue']) {
+  it('TargetPicker / TutorialView / SettingsView 不再出现「好友的空间」（已改「访问空间」）', () => {
+    for (const f of ['components/task/TargetPicker.vue', 'views/TutorialView.vue', 'views/SettingsView.vue']) {
       expect(read(f), `${f} 仍出现「好友的空间」`).not.toContain('好友的空间');
     }
     expect(read('components/task/TargetPicker.vue')).toContain('访问空间');
     expect(read('views/TutorialView.vue')).toContain('访问空间');
-    expect(read('components/onboarding/HelpModal.vue')).toContain('访问空间');
+    expect(read('views/SettingsView.vue')).toContain('他人空间');
   });
 
   it('界面对「我的档案」的引用已全部改为「档案列表」', () => {

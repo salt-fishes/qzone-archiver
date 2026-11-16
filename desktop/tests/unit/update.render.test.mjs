@@ -1,12 +1,12 @@
 /**
- * v5.5 检查更新页 SSR 守卫：已是最新 / 发现新版本 / 检查失败三态
+ * v5.5 检查更新面板 SSR 守卫：已是最新 / 发现新版本 / 检查失败三态
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createSSRApp, h } from 'vue';
 import { renderToString } from '@vue/server-renderer';
 import { createPinia, setActivePinia } from 'pinia';
 
-const { default: UpdateView } = await import('../../src/renderer/src/views/UpdateView.vue');
+const { default: UpdatePanel } = await import('../../src/renderer/src/components/settings/UpdatePanel.vue');
 
 const originalWindow = globalThis.window;
 
@@ -33,14 +33,14 @@ async function renderUpdate(setup) {
   const store = useUpdateStore();
   store.currentVersion = '5.5.0';
   setup?.(store);
-  const app = createSSRApp({ render: () => h(UpdateView) });
+  const app = createSSRApp({ render: () => h(UpdatePanel) });
   app.use(pinia);
   return renderToString(app);
 }
 
 const stripComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '');
 
-describe('检查更新页三态', () => {
+describe('检查更新面板三态', () => {
   it('已是最新版本：显示当前版本与发布页入口', async () => {
     const html = stripComments(
       await renderUpdate((s) => {

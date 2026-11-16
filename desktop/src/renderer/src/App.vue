@@ -10,7 +10,6 @@ import type { GlobalTheme } from 'naive-ui';
 import AppSidebar from './components/layout/AppSidebar.vue';
 import AppHeader from './components/layout/AppHeader.vue';
 import WelcomeModal from './components/onboarding/WelcomeModal.vue';
-import HelpModal from './components/onboarding/HelpModal.vue';
 import TourOverlay from './components/onboarding/TourOverlay.vue';
 import LoginSuccessNotifier from './components/system/LoginSuccessNotifier.vue';
 import { lightThemeOverrides, darkThemeOverrides } from './theme';
@@ -31,7 +30,6 @@ const cfgStore = useConfigStore();
 
 const appInfo = ref<{ version: string; platform: string }>({ version: '', platform: '' });
 const showWelcome = ref(false);
-const showHelp = ref(false);
 const showTour = ref(false);
 
 // §D：三态（auto/light/dark）统一收敛到 resolvedTheme，Naive 主题/覆盖/自定义面板不再各判一次
@@ -106,7 +104,7 @@ onBeforeUnmount(() => {
     >
       <NDialogProvider>
         <div class="app-shell">
-          <AppSidebar @help="showHelp = true" />
+          <AppSidebar />
           <div class="app-main">
             <AppHeader :version="appInfo.version" />
             <main class="app-content app-scroll">
@@ -124,10 +122,6 @@ onBeforeUnmount(() => {
 
         <WelcomeModal
           v-model:show="showWelcome"
-          @tour="showTour = true"
-        />
-        <HelpModal
-          v-model:show="showHelp"
           @tour="showTour = true"
         />
         <TourOverlay v-model:show="showTour" />
