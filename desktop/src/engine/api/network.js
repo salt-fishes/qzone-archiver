@@ -553,15 +553,27 @@ const API_NETWORK_METHODS = {
                 QZone.Common.Owner.name = $ownerInfoDom && $ownerInfoDom.innerText.trim() || '我';
                 QZone.Common.Owner.nickname = QZone.Common.Owner.name;
 
-                // 备份目标用户信息
-                const $targetInfoDom = document.querySelector('#headContainer > div.head-detail > div.head-detail-name > span.user-name.textoverflow');
+                // v5.5 M1 补：任务运行中不得把 Target 重置成登录者。
+                // 2026-11-16 实机：他人备份途中 UI 刷新相册列表调用 initUin，
+                // Target 被改回本人，Photos 之后的模块都写成了本人数据。
+                const state = window.__engineExportState;
+                const keepTarget = !!(
+                    state &&
+                    state.running &&
+                    QZone.Common.Target &&
+                    QZone.Common.Target.uin
+                );
+                if (!keepTarget) {
+                    // 备份目标用户信息
+                    const $targetInfoDom = document.querySelector('#headContainer > div.head-detail > div.head-detail-name > span.user-name.textoverflow');
 
-                QZone.Common.Target = {
-                    uin: rs[1] - 0,
-                    title: document.title,
-                    description: $('meta[name="description"]').attr("content") || document.title,
-                    name: $targetInfoDom && $targetInfoDom.innerText.trim() || 'TA',
-                    nickname: $targetInfoDom && $targetInfoDom.innerText.trim() || 'TA'
+                    QZone.Common.Target = {
+                        uin: rs[1] - 0,
+                        title: document.title,
+                        description: $('meta[name="description"]').attr("content") || document.title,
+                        name: $targetInfoDom && $targetInfoDom.innerText.trim() || 'TA',
+                        nickname: $targetInfoDom && $targetInfoDom.innerText.trim() || 'TA'
+                    }
                 }
             }
         }

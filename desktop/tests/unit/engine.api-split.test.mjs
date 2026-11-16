@@ -71,7 +71,7 @@ const P23_REMOVED = { Shares: ['convert'], Favorites: ['convert'] };
  * 基线键集合是拆分产物的子集，故 Utils 只要求「基线键全部保留且源码一致」，允许新增。
  */
 const V47_CHANGED = {
-  Utils: ['get', 'post'],
+  Utils: ['get', 'post', 'initUin'],
   Common: ['addEmoticonDowanloadTask', 'formatEmoticonPath'],
 };
 

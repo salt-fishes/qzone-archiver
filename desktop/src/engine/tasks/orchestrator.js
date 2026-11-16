@@ -81,6 +81,24 @@
   }
 
   async function runModule(mod) {
+    // v5.5 M1：每个模块开始前校正采集目标（防 UI 命令中途改写 Target）
+    const state = window.__engineExportState;
+    if (state && state.taskTargetUin) {
+      const want = Number(state.taskTargetUin);
+      const cur = (window.QZone && QZone.Common && QZone.Common.Target) || null;
+      if (!cur || Number(cur.uin) !== want) {
+        const owner = (QZone.Common && QZone.Common.Owner) || {};
+        const isOwner = Number(owner.uin) === want;
+        QZone.Common.Target = {
+          ...(cur || {}),
+          uin: want,
+          title: `${state.taskTargetUin} 的空间`,
+          name: isOwner ? owner.name || '我' : (cur && cur.name) || 'TA',
+          nickname: isOwner ? owner.nickname || owner.name || '我' : (cur && cur.nickname) || 'TA',
+        };
+        console.warn(`[tasks/orchestrator] 采集目标被改写，已恢复为 ${state.taskTargetUin}`);
+      }
+    }
     if (mod === 'Statistics') {
       // Statistics 模块 = 其它信息收尾（等价扩展 OperatorType.OTHERS_INFO）：
       // 用户信息 / 头像 / 配置 / 备份清单 / index.html 首页与 SPA 入口
@@ -178,6 +196,12 @@
         P.notify.log({ level: 'info', message: `他人模式：采集目标 ${targetUin}（登录 ${QZone.Common.Owner.uin}），仅采集对方公开内容` });
         await fetchTargetProfile();
       }
+      // v5.5 M1：本次任务的目标 uin 固化下来；每个模块执行前校正，
+      // 防止 UI 命令（相册列表/好友列表/目标校验）中途把 Target 改回登录者。
+      const ownerUinForTask = QZone.Common.Owner && QZone.Common.Owner.uin;
+      s.taskTargetUin = isOtherUser
+        ? String(targetUin).replace(/\D/g, '')
+        : (ownerUinForTask ? String(ownerUinForTask) : null);
       // 立即上报一条启动日志：确认 notify 链路存活（排障锚点）
       P.notify.log({ level: 'info', message: `备份任务已启动（${taskId}）` });
 
@@ -202,6 +226,16 @@
       //   undefined/未配置 = 备份全部相册；[] = 明确不备份相册；非空 = 按选择备份
       // 预取完整相册对象写入 QZone.Photos.Album.Select，initAlbums 会据此处理
       // v4.6 他人模式忽略相册多选（选择列表基于登录者相册 ID，对他人空间无意义）→ 备份对方全部相册
+      // v5.5 M1 补：清空上一任务/UI 预取留下的相册缓存，避免跨任务串号
+      if (window.QZone && window.QZone.Photos) {
+        if (window.QZone.Photos.Album) {
+          window.QZone.Photos.Album.Data = [];
+          window.QZone.Photos.Album.total = 0;
+          // OLD_Data / Select 保留（增量基线与本次选择）
+        }
+        window.QZone.Photos.Images = {};
+        window.QZone.Photos.Class = {};
+      }
       const selIds = isOtherUser ? undefined : window.QZone_Config.Photos && window.QZone_Config.Photos.albumSelect;
       const prevSuppress = s._suppressProgress;
       s._suppressProgress = true; // 预取列表不让进度/日志刷屏
@@ -454,6 +488,11 @@
     async validateTarget(targetUin) {
       const clean = String(targetUin || '').replace(/\D/g, '');
       if (!clean) return { ok: false, error: 'QQ 号不能为空' };
+      // v5.5 M1 补：任务运行中禁止临时改写 Target（会与采集模块竞争）
+      const st = window.__engineExportState;
+      if (st && st.running) {
+        return { ok: false, error: '备份任务进行中，请结束当前任务后再校验目标' };
+      }
       const ownerUin = QZone.Common.Owner && QZone.Common.Owner.uin;
       if (!ownerUin) {
         try {
@@ -614,6 +653,23 @@
      */
     async getAlbumList() {
       const s = window.__engineExportState;
+      // v5.5 M1 补：任务运行中禁止 UI 刷新相册列表。
+      // 该命令会 initUin + 清空 QZone.Photos.Album 缓存，曾把他人备份的 Target
+      // 重置成登录者并污染相册数据（2026-11-16 实机）。
+      if (s && s.running) {
+        const current = (window.QZone && window.QZone.Photos && window.QZone.Photos.Album && window.QZone.Photos.Album.Data) || [];
+        return current.map((a) => ({
+          id: a.id,
+          name: a.name,
+          classid: a.classid,
+          className: a.className,
+          total: a.total,
+          pre: a.pre,
+          url: a.url,
+          desc: a.desc,
+          allowAccess: a.allowAccess,
+        }));
+      }
       const prevSuppress = s._suppressProgress;
       s._suppressProgress = true;
       try {
