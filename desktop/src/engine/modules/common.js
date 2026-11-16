@@ -184,6 +184,7 @@ API.Common.setCompareFiledInfo = QZoneCollectors.Common.setCompareFiledInfo;
 /** 是否获取点赞列表（P2：委托 collectors/Common） */
 API.Common.isGetLike = QZoneCollectors.Common.isGetLike;
 API.Common.shouldAbortTask = QZoneCollectors.Common.shouldAbortTask;
+API.Common.maybeWarnHeavy = QZoneCollectors.Common.maybeWarnHeavy;
 
 /** 是否获取访客列表（P2：委托 collectors/Common） */
 API.Common.isGetVisitor = QZoneCollectors.Common.isGetVisitor;

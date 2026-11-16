@@ -151,6 +151,8 @@ describe('P2-4 modules 编排层全链挂接证明', () => {
       ['API.Common.initUserInfo', 'QZoneCollectors.Common.initUserInfo'],
       ['API.Common.downloadsByAjax', 'QZoneCollectors.Common.downloadsByAjax'],
       ['API.Common.isGetNextPage', 'QZoneCollectors.Common.isGetNextPage'],
+      ['API.Common.shouldAbortTask', 'QZoneCollectors.Common.shouldAbortTask'],
+      ['API.Common.maybeWarnHeavy', 'QZoneCollectors.Common.maybeWarnHeavy'],
       ['API.Common.exportUserAvatar', 'QZoneCollectors.Common.exportUserAvatar'],
       ['API.Common.exportUser', 'QZoneExporters.Common.exportUser'],
       ['API.Common.exportUserToMd', 'QZoneExporters.Common.exportUserToMd'],
