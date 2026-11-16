@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题（私下报告）
+    url: https://github.com/salt-fishes/qzone-archiver/security/advisories/new
+    about: 请勿公开提交可利用细节、账号信息或用户数据
+  - name: 最新版本与更新说明
+    url: https://github.com/salt-fishes/qzone-archiver/releases/latest
+    about: 下载最新版、查看本次修复与已知限制
+  - name: 使用教程
+    url: https://github.com/salt-fishes/qzone-archiver#readme
+    about: 先看 README 的快速上手、常见问题与隐私说明
