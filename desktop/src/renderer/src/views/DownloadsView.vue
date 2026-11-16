@@ -54,9 +54,9 @@ const moduleOptions = computed(() => {
 });
 
 const summary = computed(() => {
-  const s = bk.downloadSummary;
-  if (s) return s;
   const list = bk.mediaDownloads;
+  // v5.5 M1 补：卡片按本地队列实时重算；主进程 summary 仅在没有本地记录时兜底
+  if (!list.length && bk.downloadSummary) return bk.downloadSummary;
   return {
     pending: list.filter((d) => d.state === 'pending').length,
     running: list.filter((d) => d.state === 'running').length,

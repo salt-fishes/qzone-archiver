@@ -317,8 +317,14 @@ export const useBackupStore = defineStore('backup', () => {
   const dlFilterCount = computed(() => filteredDownloads.value.length);
   /** v4.7：后台仍在下载时提示「下载中 x / 共 y」 */
   const downloadingCount = computed(() => {
-    if (downloadSummary.value) return downloadSummary.value.pending + downloadSummary.value.running;
-    return mediaDownloads.value.filter((d) => d.state === 'pending' || d.state === 'running').length;
+    // v5.5 M1 补：以本地事件队列为准，避免主进程 summary 推送滞后导致角标/卡片长期显示旧数字
+    const local = Object.values(downloads.value).filter(
+      (d) => d.state === 'pending' || d.state === 'running'
+    ).length;
+    if (Object.keys(downloads.value).length) return local;
+    return downloadSummary.value
+      ? downloadSummary.value.pending + downloadSummary.value.running
+      : 0;
   });
 
   function downloadName(url: string) {
