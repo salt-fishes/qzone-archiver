@@ -9,6 +9,7 @@ import ArchivesView from './views/ArchivesView.vue';
 import DownloadsView from './views/DownloadsView.vue';
 import SettingsView from './views/SettingsView.vue';
 import TutorialView from './views/TutorialView.vue';
+import UpdateView from './views/UpdateView.vue';
 
 export const router = createRouter({
   history: createWebHashHistory(),
@@ -18,6 +19,7 @@ export const router = createRouter({
     { path: '/archives', name: 'archives', component: ArchivesView },
     { path: '/downloads', name: 'downloads', component: DownloadsView },
     { path: '/settings', name: 'settings', component: SettingsView },
+    { path: '/update', name: 'update', component: UpdateView },
     { path: '/tutorial', name: 'tutorial', component: TutorialView },
   ],
 });

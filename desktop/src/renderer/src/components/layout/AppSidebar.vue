@@ -17,6 +17,7 @@ const NAV = [
   { path: '/archives', label: '档案列表', icon: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6Z M4 10h16 M9 14h6' },
   { path: '/downloads', label: '下载', icon: 'M12 4v11 M8 11l4 4 4-4 M5 20h14' },
   { path: '/settings', label: '设置', icon: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5c.07-.4.1-.8.1-1.2Z' },
+  { path: '/update', label: '检查更新', icon: 'M12 3v12 M8 11l4 4 4-4 M5 21h14' },
 ];
 
 const activePath = computed(() => '/' + (route.path.split('/')[1] || ''));

@@ -4,6 +4,7 @@
  * 全部数据源为 config store（settings + albums），自动保存；schema 由 config-spec.json 生成
  */
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import {
   NTabs, NTabPane, NCollapse, NCollapseItem, NButton, NSelect, NAlert, NInput,
   useDialog, useMessage,
@@ -12,13 +13,16 @@ import { useConfigStore, MODULE_META, MODULE_KEYS } from '../stores/config';
 import { COMMON_SCHEMA, MODULE_SCHEMA, DEV_SCHEMA } from '../stores/schema';
 import { useAppearanceStore } from '../stores/appearance';
 import { useBackupStore } from '../stores/backup';
+import { useUpdateStore } from '../stores/update';
 import SettingItems from '../components/settings/SettingItems.vue';
 
 const cfg = useConfigStore();
 const appearance = useAppearanceStore();
 const bk = useBackupStore();
+const update = useUpdateStore();
 const dialog = useDialog();
 const message = useMessage();
+const router = useRouter();
 
 const themeOptions = [
   { label: '跟随系统（自动切换深浅色）', value: 'auto' },
@@ -26,37 +30,7 @@ const themeOptions = [
   { label: '深色', value: 'dark' },
 ];
 
-/* -------- 检查更新（GitHub Releases） -------- */
-type UpdateInfo = {
-  ok: boolean;
-  current?: string;
-  latest?: string;
-  hasUpdate?: boolean;
-  url?: string;
-  notes?: string;
-  error?: string;
-};
-const checkingUpdate = ref(false);
-const updateInfo = ref<UpdateInfo | null>(null);
-const appVersion = ref('');
-
-async function checkUpdate() {
-  if (checkingUpdate.value) return;
-  checkingUpdate.value = true;
-  updateInfo.value = null;
-  try {
-    const r = await window.api.app.checkUpdate();
-    updateInfo.value = r;
-  } catch (e: any) {
-    updateInfo.value = { ok: false, error: e?.message || String(e) };
-  } finally {
-    checkingUpdate.value = false;
-  }
-}
-
-function openUpdatePage() {
-  if (updateInfo.value?.url) window.api.app.openExternal(updateInfo.value.url);
-}
+/* -------- 检查更新：页面统一收口在 /update，此处只保留版本摘要入口 -------- */
 
 /* -------- 日志（v4.9 §K） -------- */
 function openLogsDir() {
@@ -110,7 +84,7 @@ async function loadAlbumsForSelect() {
 onMounted(() => {
   // 相册列表按需加载（进入该页时预取，登录后有效）
   if (!cfg.albums.length) loadAlbumsForSelect();
-  window.api.app.getInfo().then((i) => (appVersion.value = i.version));
+  update.loadAppInfo();
 });
 
 /* -------- 配置管理 -------- */
@@ -358,48 +332,18 @@ async function exportConfig() {
           </div>
           <div class="st-block">
             <h4>关于与更新</h4>
-            <p class="st-tip">当前版本 v{{ updateInfo?.current || appVersion || '—' }}；更新源为 GitHub Releases，仅提醒、不自动下载。</p>
+            <p class="st-tip">当前版本 v{{ update.currentVersion || '—' }}；更新源为 GitHub Releases，手动检查、不自动下载。</p>
             <div class="st-actions">
-              <NButton size="small" type="primary" secondary round :loading="checkingUpdate" @click="checkUpdate">
-                检查更新
-              </NButton>
-              <NButton v-if="updateInfo?.hasUpdate" size="small" type="primary" round @click="openUpdatePage">
-                前往下载 v{{ updateInfo?.latest }}
-              </NButton>
               <NButton
-                v-else-if="updateInfo?.ok"
                 size="small"
-                quaternary
+                type="primary"
+                secondary
                 round
-                @click="openUpdatePage"
+                @click="router.push('/update')"
               >
-                查看发布页
+                打开检查更新
               </NButton>
             </div>
-            <NAlert
-              v-if="updateInfo?.ok && !updateInfo.hasUpdate"
-              type="success"
-              :show-icon="true"
-              class="st-note"
-            >
-              已是最新版本（v{{ updateInfo.latest }}）
-            </NAlert>
-            <NAlert
-              v-else-if="updateInfo?.ok && updateInfo.hasUpdate"
-              type="info"
-              :show-icon="true"
-              class="st-note"
-            >
-              发现新版本 v{{ updateInfo.latest }}（当前 v{{ updateInfo.current }}），点击「前往下载」获取安装包。
-            </NAlert>
-            <NAlert
-              v-else-if="updateInfo && !updateInfo.ok"
-              type="warning"
-              :show-icon="true"
-              class="st-note"
-            >
-              {{ updateInfo.error }}
-            </NAlert>
           </div>
         </div>
       </NTabPane>

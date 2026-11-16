@@ -11,7 +11,18 @@ declare global {
       app: {
         getInfo(): Promise<{ version: string; platform: string; arch: string }>;
         openExternal(url: string): Promise<void>;
-        checkUpdate(): Promise<{ ok: boolean; current?: string; latest?: string; hasUpdate?: boolean; url?: string; notes?: string; publishedAt?: string; error?: string }>;
+        checkUpdate(): Promise<{
+          ok: boolean;
+          current?: string;
+          latest?: string;
+          hasUpdate?: boolean;
+          url?: string;
+          name?: string;
+          notes?: string;
+          publishedAt?: string | null;
+          assets?: { name: string; size: number; url: string }[];
+          error?: string;
+        }>;
         /** v4.9：打开日志目录（main.log + backup-<taskId>.log） */
         openLogs(): Promise<void>;
       };
