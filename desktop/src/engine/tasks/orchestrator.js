@@ -15,8 +15,12 @@
 
   // ---------- 模块序列执行 ----------
 
-  /** 他人空间不可见的隐私模块（与原版扩展 popup.js 的 privateTypeList 同源） */
-  const PRIVATE_MODULES = ['Diaries', 'Friends', 'Favorites'];
+  /**
+   * 他人空间不可见的隐私模块（与原版扩展 popup.js 的 privateTypeList 同源）。
+   * v5.5：补 Visitors —— cgi_get_visitor_simple 对非本人固定返回 -99996
+   * “抱歉，您没有权限访问”，此前会被当成模块失败；他人模式直接跳过并提示。
+   */
+  const PRIVATE_MODULES = ['Diaries', 'Friends', 'Favorites', 'Visitors'];
 
   /**
    * v4.6 他人模式：显式指定采集目标。
