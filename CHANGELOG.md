@@ -2,10 +2,14 @@
 
 完整发布说明与安装包见 [GitHub Releases](https://github.com/salt-fishes/qzone-archiver/releases)。本文件只保留版本索引。
 
-## 未发布
+## v5.5.1 · 2026-11-17
 
 - 新增「检查更新」页面：手动查询 GitHub Releases，展示版本、更新说明与安装包下载入口
+- GitHub API 不可用时回退网页解析，网络受限时仍可手动检查
+- 设置页「关于与更新」改为检查更新页面入口
 - 重写 README；补充贡献指南、安全策略、行为准则、Issue / PR 模板与编辑器规范
+
+详细说明：[RELEASE_v5.5.1.md](RELEASE_v5.5.1.md)
 
 ## v5.5.0 · 2026-11-16
 
