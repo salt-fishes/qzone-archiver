@@ -178,7 +178,7 @@ npm run typecheck && npm run lint && npm run test
 ## 版本与发布
 
 - 版本遵循语义化版本；桌面端与查看器版本独立
-- 当前桌面端：**5.5.1**；查看器：**4.3.0**
+- 当前桌面端：**5.5.2**；查看器：**4.3.0**
 - 每次发布提供安装版与免安装版，更新说明见 [Releases](https://github.com/salt-fishes/qzone-archiver/releases)；版本索引见 [CHANGELOG.md](CHANGELOG.md)
 
 ## 许可与致谢
