@@ -100,6 +100,11 @@ export function createMainWindow() {
     },
   });
   windows.main.loadFile(RENDERER_INDEX);
+  // v5.5 M1 补：渲染层重载/崩溃恢复后补推当前引擎状态，
+  // 否则顶栏会停在「未连接 · 点击重试」（主进程引擎其实仍 ready）。
+  windows.main.webContents.on('did-finish-load', () => {
+    if (engineBridge.ready) pushEngineStatus('ready');
+  });
   hardenNavigation(windows.main);
   windows.main.once('ready-to-show', () => {
     windows.main.show();
